@@ -427,6 +427,41 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.start();
                 }
             }
+        },
+
+        // Fast image processing and frame resizing (compressed to standard 640x480 size)
+        captureFrame() {
+            const video = document.getElementById('camera-stream');
+            
+            const maxW = 640;
+            const maxH = 480;
+
+            let sourceEl = null;
+            let srcWidth = 0;
+            let srcHeight = 0;
+
+            if (video && video.style.display !== 'none' && video.readyState === video.HAVE_ENOUGH_DATA) {
+                sourceEl = video;
+                srcWidth = video.videoWidth;
+                srcHeight = video.videoHeight;
+            }
+
+            if (!sourceEl || srcWidth === 0) return null;
+
+            // Calculate responsive boundary box dimensions keeping scaling aspect ratios
+            let destW = srcWidth;
+            let destH = srcHeight;
+            if (srcWidth > maxW || srcHeight > maxH) {
+                const ratio = Math.min(maxW / srcWidth, maxH / srcHeight);
+                destW = Math.round(srcWidth * ratio);
+                destH = Math.round(srcHeight * ratio);
+            }
+
+            this.canvas.width = destW;
+            this.canvas.height = destH;
+            const ctx = this.canvas.getContext('2d');
+            ctx.drawImage(sourceEl, 0, 0, destW, destH);
+            return this.canvas;
         }
     };
 
@@ -506,41 +541,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 SpeechService.announce("Camera access is required for object detection and scene description.");
             }
             this.updateUI();
-        }
-
-        // Fast image processing and frame resizing (compressed to standard 640x480 size)
-        captureFrame() {
-            const video = document.getElementById('camera-stream');
-            
-            const maxW = 640;
-            const maxH = 480;
-
-            let sourceEl = null;
-            let srcWidth = 0;
-            let srcHeight = 0;
-
-            if (video && video.style.display !== 'none' && video.readyState === video.HAVE_ENOUGH_DATA) {
-                sourceEl = video;
-                srcWidth = video.videoWidth;
-                srcHeight = video.videoHeight;
-            }
-
-            if (!sourceEl || srcWidth === 0) return null;
-
-            // Calculate responsive boundary box dimensions keeping scaling aspect ratios
-            let destW = srcWidth;
-            let destH = srcHeight;
-            if (srcWidth > maxW || srcHeight > maxH) {
-                const ratio = Math.min(maxW / srcWidth, maxH / srcHeight);
-                destW = Math.round(srcWidth * ratio);
-                destH = Math.round(srcHeight * ratio);
-            }
-
-            this.canvas.width = destW;
-            this.canvas.height = destH;
-            const ctx = this.canvas.getContext('2d');
-            ctx.drawImage(sourceEl, 0, 0, destW, destH);
-            return this.canvas;
         }
     };
 
