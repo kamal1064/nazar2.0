@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v8';
+    const CURRENT_VERSION = 'v9';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -1432,8 +1432,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const bindWarmupListeners = () => {
         const targets = [
             document.getElementById('action-scan'),
-            document.getElementById('start-assistant-btn'),
-            document.querySelector('.nav-item[data-target="camera"]')
+            document.getElementById('start-assistant-btn')
         ];
 
         targets.forEach(el => {
@@ -1441,6 +1440,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Initialize model warmup immediately when the user clicks any camera page link
                 el.addEventListener('click', triggerWarmup, { once: true });
             }
+        });
+
+        // Bind warmup triggers to all camera nav buttons (both sidebar and bottom-nav)
+        document.querySelectorAll('.nav-item[data-target="camera"]').forEach(el => {
+            el.addEventListener('click', triggerWarmup, { once: true });
         });
     };
 
