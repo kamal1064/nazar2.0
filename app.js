@@ -168,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             this.syncStatusBadge();
+            this.initAccordions();
         },
 
         syncStatusBadge() {
@@ -186,6 +187,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 badge.innerText = "Inactive";
                 badge.className = "status-indicator-badge";
             }
+        },
+
+        initAccordions() {
+            const cards = document.querySelectorAll('.settings-menu-card');
+            cards.forEach(card => {
+                const header = card.querySelector('.settings-menu-card-header');
+                const content = card.querySelector('div[style*="margin-top"]');
+                
+                if (header && content) {
+                    header.setAttribute('aria-expanded', 'false');
+                    content.style.display = 'none';
+
+                    const toggle = () => {
+                        const isExpanded = header.getAttribute('aria-expanded') === 'true';
+                        header.setAttribute('aria-expanded', !isExpanded);
+                        content.style.display = isExpanded ? 'none' : 'flex';
+                        
+                        const labelEl = header.querySelector('.settings-label-name');
+                        const sectionName = labelEl ? labelEl.innerText : 'Section';
+                        SpeechService.announce(`${sectionName} section ${isExpanded ? 'collapsed' : 'expanded'}`);
+                    };
+
+                    header.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        toggle();
+                    });
+                    
+                    header.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggle();
+                        }
+                    });
+                }
+            });
         }
     };
 
@@ -294,6 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stream: null,
         isStarting: false,
         stopRequested: false,
+        facingMode: 'environment', // Toggle default camera facingMode
         
         // Single offscreen canvas reused throughout camera session to reduce memory thrashing
         canvas: document.createElement('canvas'),
@@ -313,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const mediaStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
+                    video: { facingMode: this.facingMode }
                 });
 
                 if (this.stopRequested) {
@@ -374,6 +411,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 video.style.display = 'none';
             }
             if (fallback) fallback.style.display = 'block';
+        },
+
+        toggleCamera() {
+            this.facingMode = this.facingMode === 'environment' ? 'user' : 'environment';
+            SpeechService.announce(this.facingMode === 'environment' ? "Using rear camera." : "Using front camera.");
+            if (this.stream) {
+                this.stop();
+                setTimeout(() => this.start(), 100);
+            }
         },
 
         pauseOnHidden() {
@@ -1066,7 +1112,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (assistantGlow) assistantGlow.style.background = 'radial-gradient(circle, rgba(59, 130, 246, 0.75) 0%, rgba(37, 99, 235, 0.25) 50%, rgba(37, 99, 235, 0) 70%)';
                 if (assistantText) assistantText.innerText = "Monitoring surrounding path actively...";
                 
-                SpeechService.announce("Assistant activated. Point your camera to begin local scanning.");
+                SpeechService.announce("Camera ready. Point your phone ahead.");
+                switchTab('camera');
             } else {
                 startAssistantBtn.innerHTML = `
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1146,6 +1193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const drawerContent = document.getElementById('drawer-content');
     const drawerCloseBtn = document.getElementById('drawer-close');
     const notificationBtn = document.getElementById('notification-btn');
+    const cameraSwapBtn = document.getElementById('camera-swap-btn');
 
     if (cancelSosBtn) {
         cancelSosBtn.addEventListener('click', () => {
@@ -1153,17 +1201,61 @@ document.addEventListener('DOMContentLoaded', () => {
             SpeechService.announce("SOS cancelled.");
         });
     }
+    
     if (confirmSosBtn) {
-        confirmSosBtn.addEventListener('click', () => {
-            confirmSosBtn.innerText = "SOS Dispatched!";
-            confirmSosBtn.style.backgroundColor = 'var(--success)';
-            SpeechService.announce("SOS alert has been sent. Rescue services notified.");
-            setTimeout(() => {
-                sosModal.classList.remove('modal-active');
-                confirmSosBtn.innerText = "Trigger SOS (5)";
-                confirmSosBtn.style.backgroundColor = 'var(--danger)';
-            }, 1500);
-        });
+        let sosTimer = null;
+        let countdownVal = 3;
+
+        const startHold = (e) => {
+            e.preventDefault();
+            countdownVal = 3;
+            confirmSosBtn.innerText = `Holding... (3)`;
+            confirmSosBtn.style.backgroundColor = 'var(--danger)';
+            
+            if (navigator.vibrate) navigator.vibrate([100]);
+            SpeechService.announce("Emergency alert will be sent in 3...");
+
+            sosTimer = setInterval(() => {
+                countdownVal--;
+                if (countdownVal > 0) {
+                    confirmSosBtn.innerText = `Holding... (${countdownVal})`;
+                    if (navigator.vibrate) navigator.vibrate([100]);
+                    SpeechService.announce(`${countdownVal}...`);
+                } else {
+                    clearInterval(sosTimer);
+                    sosTimer = null;
+                    dispatchSOS();
+                }
+            }, 1000);
+        };
+
+        const cancelHold = () => {
+            if (sosTimer) {
+                clearInterval(sosTimer);
+                sosTimer = null;
+                confirmSosBtn.innerText = "Press & Hold to Confirm (3s)";
+                confirmSosBtn.style.backgroundColor = '';
+                SpeechService.announce("SOS dispatch aborted.");
+            }
+        };
+
+        confirmSosBtn.addEventListener('mousedown', startHold);
+        confirmSosBtn.addEventListener('touchstart', startHold);
+        confirmSosBtn.addEventListener('mouseup', cancelHold);
+        confirmSosBtn.addEventListener('mouseleave', cancelHold);
+        confirmSosBtn.addEventListener('touchend', cancelHold);
+    }
+
+    function dispatchSOS() {
+        confirmSosBtn.innerText = "SOS Dispatched!";
+        confirmSosBtn.style.backgroundColor = 'var(--success)';
+        SpeechService.announce("Emergency alert sent. Location coordinates shared.");
+        if (navigator.vibrate) navigator.vibrate([500, 100, 500, 100, 500]);
+        setTimeout(() => {
+            sosModal.classList.remove('modal-active');
+            confirmSosBtn.innerText = "Press & Hold to Confirm (3s)";
+            confirmSosBtn.style.backgroundColor = '';
+        }, 2000);
     }
 
     // Activity Drawer close
@@ -1179,6 +1271,72 @@ document.addEventListener('DOMContentLoaded', () => {
             drawerContent.style.transform = 'translateY(0)';
             SpeechService.announce("Opening activity logs.");
         });
+    }
+
+    // Camera Swap trigger
+    if (cameraSwapBtn) {
+        cameraSwapBtn.addEventListener('click', () => {
+            CameraService.toggleCamera();
+        });
+    }
+
+    // Viewfinder Gestures (Single Tap to repeat, Double Tap to describe, Long Press for Voice Command)
+    const cameraPanel = document.getElementById('camera-panel');
+    if (cameraPanel) {
+        let tapTimeout = null;
+        let lastTapTime = 0;
+        let pressTimeout = null;
+
+        const handleGestureStart = (e) => {
+            if (e.target.closest('button') || e.target.closest('.announcement-card')) {
+                return;
+            }
+            pressTimeout = setTimeout(() => {
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                
+                // Long Press -> Voice command mode (Activate mic)
+                const micBtn = document.getElementById('mic-btn');
+                if (micBtn) {
+                    micBtn.click();
+                }
+                pressTimeout = null;
+            }, 800);
+        };
+
+        const handleGestureEnd = (e) => {
+            if (pressTimeout) {
+                clearTimeout(pressTimeout);
+                pressTimeout = null;
+                
+                if (e.target.closest('button') || e.target.closest('.announcement-card')) {
+                    return;
+                }
+                
+                const now = Date.now();
+                const diff = now - lastTapTime;
+                
+                if (diff < 300) {
+                    // Double Tap -> Describe surroundings
+                    if (tapTimeout) {
+                        clearTimeout(tapTimeout);
+                        tapTimeout = null;
+                    }
+                    triggerDescribeSurroundings();
+                } else {
+                    // Single Tap -> Repeat description
+                    tapTimeout = setTimeout(() => {
+                        SpeechService.repeat();
+                        tapTimeout = null;
+                    }, 300);
+                }
+                lastTapTime = now;
+            }
+        };
+
+        cameraPanel.addEventListener('touchstart', handleGestureStart);
+        cameraPanel.addEventListener('touchend', handleGestureEnd);
+        cameraPanel.addEventListener('mousedown', handleGestureStart);
+        cameraPanel.addEventListener('mouseup', handleGestureEnd);
     }
 
     // --- 9. LIFECYCLE PAGE VISIBILITY BINDINGS ---
@@ -1234,8 +1392,8 @@ document.addEventListener('DOMContentLoaded', () => {
     SettingsService.initUI();
     VoiceCommandService.init();
 
-    // Initial greeting narration (delayed to 15s to clear initial paint and TTI audits)
+    // Initial greeting narration (accelerated for instant accessibility response)
     setTimeout(() => {
         SpeechService.announce("Welcome to Nazar, your AI navigation companion. Ready to assist.");
-    }, 15000);
+    }, 2000);
 });
