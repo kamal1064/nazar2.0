@@ -337,15 +337,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         async start() {
             this.stopRequested = false;
-            if (this.isStarting) return;
+            if (this.isStarting) return false;
             this.isStarting = true;
 
             const startCamTime = performance.now();
             const video = document.getElementById('camera-stream');
-            const fallback = document.getElementById('camera-fallback-img');
             if (!video) {
                 this.isStarting = false;
-                return;
+                return false;
             }
 
             try {
@@ -356,13 +355,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (this.stopRequested) {
                     mediaStream.getTracks().forEach(track => track.stop());
                     this.isStarting = false;
-                    return;
+                    return false;
                 }
 
                 this.stream = mediaStream;
                 video.srcObject = this.stream;
                 video.style.display = 'block';
-                if (fallback) fallback.style.display = 'none';
 
                 try {
                     await video.play();
@@ -378,18 +376,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         DetectionService.start(video);
                     }
                 };
+                return true;
             } catch (err) {
-                console.warn("MediaDevices camera access failed, fallback active.", err);
+                console.warn("MediaDevices camera access failed: ", err);
                 video.style.display = 'none';
-                if (fallback) fallback.style.display = 'block';
-                
-                if (!this.stopRequested) {
-                    setTimeout(() => {
-                        if (!this.stopRequested) {
-                            DetectionService.start(fallback);
-                        }
-                    }, 1000);
-                }
+                return false;
             } finally {
                 this.isStarting = false;
             }
@@ -400,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
             DetectionService.stop();
 
             const video = document.getElementById('camera-stream');
-            const fallback = document.getElementById('camera-fallback-img');
             
             if (this.stream) {
                 this.stream.getTracks().forEach(track => track.stop());
@@ -410,7 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 video.srcObject = null;
                 video.style.display = 'none';
             }
-            if (fallback) fallback.style.display = 'block';
         },
 
         toggleCamera() {
@@ -434,14 +423,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resumeOnVisible() {
             if (state.currentTab === 'camera') {
-                this.start();
+                if (CameraPermissionManager.state === 'granted') {
+                    this.start();
+                }
+            }
+        }
+    };
+
+    // --- CAMERA PERMISSION MANAGER ---
+    const CameraPermissionManager = {
+        state: 'unauthorized', // 'unauthorized' | 'requesting' | 'denied' | 'granted'
+
+        async checkStatus() {
+            try {
+                if (navigator.permissions && navigator.permissions.query) {
+                    const status = await navigator.permissions.query({ name: 'camera' });
+                    if (status.state === 'granted') {
+                        this.state = 'granted';
+                    } else if (status.state === 'denied') {
+                        this.state = 'denied';
+                    } else {
+                        this.state = 'unauthorized';
+                    }
+                    this.updateUI();
+                    
+                    status.onchange = () => {
+                        this.checkStatus();
+                    };
+                }
+            } catch (e) {
+                console.warn("navigator.permissions query not supported", e);
             }
         },
+
+        updateUI() {
+            const container = document.getElementById('camera-permission-container');
+            const viewfinder = document.querySelector('.camera-panel-wrapper.viewfinder');
+            
+            const stateInitial = document.getElementById('perm-state-initial');
+            const stateRequesting = document.getElementById('perm-state-requesting');
+            const stateDenied = document.getElementById('perm-state-denied');
+
+            if (!container || !viewfinder) return;
+
+            stateInitial.classList.remove('active');
+            stateRequesting.classList.remove('active');
+            stateDenied.classList.remove('active');
+
+            if (this.state === 'granted') {
+                container.style.display = 'none';
+                viewfinder.style.display = 'block';
+            } else {
+                container.style.display = 'flex';
+                viewfinder.style.display = 'none';
+
+                if (this.state === 'unauthorized') {
+                    stateInitial.classList.add('active');
+                } else if (this.state === 'requesting') {
+                    stateRequesting.classList.add('active');
+                } else if (this.state === 'denied') {
+                    stateDenied.classList.add('active');
+                }
+            }
+        },
+
+        async requestPermission() {
+            this.state = 'requesting';
+            this.updateUI();
+            SpeechService.announce("Requesting camera access.");
+
+            try {
+                const hasStream = await CameraService.start();
+                if (hasStream) {
+                    this.state = 'granted';
+                    SpeechService.announce("Camera permission approved.");
+                } else {
+                    this.state = 'denied';
+                    SpeechService.announce("Camera access is required for object detection and scene description.");
+                }
+            } catch (err) {
+                this.state = 'denied';
+                SpeechService.announce("Camera access is required for object detection and scene description.");
+            }
+            this.updateUI();
+        }
 
         // Fast image processing and frame resizing (compressed to standard 640x480 size)
         captureFrame() {
             const video = document.getElementById('camera-stream');
-            const fallback = document.getElementById('camera-fallback-img');
             
             const maxW = 640;
             const maxH = 480;
@@ -454,10 +523,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 sourceEl = video;
                 srcWidth = video.videoWidth;
                 srcHeight = video.videoHeight;
-            } else if (fallback) {
-                sourceEl = fallback;
-                srcWidth = fallback.naturalWidth;
-                srcHeight = fallback.naturalHeight;
             }
 
             if (!sourceEl || srcWidth === 0) return null;
@@ -1001,16 +1066,12 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentTab = tabId;
 
         if (tabId === 'camera') {
-            const wrapper = document.querySelector('.camera-panel-wrapper');
-            if (wrapper && !document.getElementById('camera-fallback-img')) {
-                const img = document.createElement('img');
-                img.id = 'camera-fallback-img';
-                img.src = 'street_scene.png';
-                img.alt = 'Simulated city environment viewfinder';
-                img.className = 'camera-bg-image';
-                wrapper.insertBefore(img, document.getElementById('camera-stream') || wrapper.firstChild);
+            CameraPermissionManager.checkStatus();
+            if (CameraPermissionManager.state === 'granted') {
+                CameraService.start();
+            } else {
+                CameraPermissionManager.updateUI();
             }
-            CameraService.start();
         } else {
             CameraService.stop();
             VoiceCommandService.stop();
@@ -1391,6 +1452,31 @@ document.addEventListener('DOMContentLoaded', () => {
     Telemetry.init();
     SettingsService.initUI();
     VoiceCommandService.init();
+
+    // Bind Camera Permission buttons
+    const btnEnableCamera = document.getElementById('btn-enable-camera');
+    const btnTryAgain = document.getElementById('btn-try-again');
+    const btnOpenSettings = document.getElementById('btn-open-settings');
+
+    if (btnEnableCamera) {
+        btnEnableCamera.addEventListener('click', () => {
+            CameraPermissionManager.requestPermission();
+        });
+    }
+    if (btnTryAgain) {
+        btnTryAgain.addEventListener('click', () => {
+            CameraPermissionManager.requestPermission();
+        });
+    }
+    if (btnOpenSettings) {
+        btnOpenSettings.addEventListener('click', () => {
+            SpeechService.announce("Please open your browser settings to grant camera access.");
+            alert("To grant camera permissions:\n1. Click the permissions/lock icon in the URL bar.\n2. Toggle 'Camera' access to Allow.\n3. Refresh this page to start scanning.");
+        });
+    }
+
+    // Initial check of camera permissions
+    CameraPermissionManager.checkStatus();
 
     // Initial greeting narration (accelerated for instant accessibility response)
     setTimeout(() => {

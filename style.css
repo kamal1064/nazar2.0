@@ -1454,3 +1454,107 @@ input:checked + .toggle-slider:before {
     color: var(--text-muted);
     margin-left: auto;
 }
+
+/* Camera Permission Screens styling */
+.permission-panel {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    height: 100%;
+    width: 100%;
+    background-color: #F8FAFC;
+    color: var(--text-main);
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.perm-state {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+.perm-state.active {
+    display: flex;
+}
+
+.perm-icon-wrapper {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background-color: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.perm-icon-wrapper.warning {
+    background-color: var(--danger-light);
+    color: var(--danger);
+}
+
+.perm-icon-wrapper svg {
+    width: 40px;
+    height: 40px;
+}
+
+.perm-heading {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.2;
+}
+
+.perm-description {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.perm-btn {
+    width: 100%;
+    min-height: 48px; /* Large touch target */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: 600;
+    font-size: 1rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.perm-buttons-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.perm-spinner-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 80px;
+    height: 80px;
+}
+
+.perm-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--primary);
+    border-radius: 50%;
+    animation: permSpin 1s linear infinite;
+}
+
+@keyframes permSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
