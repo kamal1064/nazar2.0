@@ -90,33 +90,33 @@ body {
     min-height: 100vh;
     background-color: var(--bg-app);
     display: flex;
-    flex-direction: column;
-    position: relative;
+    justify-content: center;
+    align-items: stretch;
     overflow: hidden;
+    position: relative;
     transition: all var(--transition-speed);
 }
 
-/* Center-aligned responsive container for SaaS app layout */
-.app-responsive-wrapper {
-    max-width: 1400px;
+/* Mobile-first centered application viewport */
+.app-mobile-viewport {
     width: 100%;
-    height: 100%;
-    margin: 0 auto;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     position: relative;
+    background-color: var(--bg-app);
+    overflow: hidden;
     box-sizing: border-box;
 }
 
-@media (min-width: 1024px) {
-    .app-responsive-wrapper {
-        padding: 24px;
-    }
-}
-
-@media (max-width: 1023px) {
-    .app-responsive-wrapper {
-        padding: 0;
+@media (min-width: 501px) {
+    .app-mobile-viewport {
+        max-width: 500px;
+        margin: 0 auto;
+        height: 100vh;
+        border-left: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.08);
     }
 }
 
@@ -129,80 +129,31 @@ body {
     position: relative;
 }
 
-/* Global Header */
-.global-header {
+/* Scrollable main panel content area */
+.app-panels-container {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Global Header on Home View specifically */
+.home-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.25rem 2rem;
+    padding: 1.25rem 1.5rem;
     background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
     box-shadow: var(--shadow-small);
+    box-sizing: border-box;
+    width: 100%;
 }
 
-@media (max-width: 1023px) {
-    .global-header {
-        border-radius: 0;
-        border-top: none;
-        border-left: none;
-        border-right: none;
-        margin-bottom: 0;
-        padding: 0.85rem 1.25rem;
-    }
-}
-
-/* Top Navigation Bar on Desktop */
-.top-nav {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-@media (max-width: 1023px) {
-    .top-nav {
-        display: none !important;
-    }
-}
-
-.top-nav .nav-item {
-    display: flex;
-    align-items: center;
-    padding: 0.65rem 1.25rem;
-    border-radius: var(--radius-md);
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    font-weight: 600;
-    background: none;
-    border: none;
-    cursor: pointer;
-    transition: all var(--transition-speed);
-}
-
-.top-nav .nav-item svg {
-    stroke: currentColor;
-    stroke-width: 2.5;
-    margin-right: 6px;
-    transition: transform var(--transition-speed);
-}
-
-.top-nav .nav-item:hover {
-    color: var(--primary);
-    background-color: var(--bg-card-hover);
-}
-
-.top-nav .nav-item.active {
-    color: var(--primary);
-    background-color: var(--primary-light);
-}
-
-[data-theme="dark"] .top-nav .nav-item.active {
-    color: #ffffff;
-    background-color: var(--primary);
-}
-
-/* Main Content Area (Takes 100% full width, no sidebar space reserved) */
+/* Main Content Area */
 .main-content-area {
     flex: 1;
     height: 100%;
@@ -218,9 +169,14 @@ body {
     display: none;
     flex-direction: column;
     overflow-y: auto;
-    padding: 2.25rem 1.75rem 6.5rem 1.75rem; /* Increased top padding to prevent cuts, bottom padding room for nav */
+    padding: 1.5rem 1.5rem 6.5rem 1.5rem; /* bottom padding room for bottom nav */
     position: relative;
     scrollbar-width: none;
+    box-sizing: border-box;
+}
+
+#home-panel {
+    padding-top: 0;
 }
 
 .screen-panel::-webkit-scrollbar {
@@ -1670,139 +1626,9 @@ input:checked + .toggle-slider:before {
     100% { transform: rotate(360deg); }
 }
 
-/* Settings Page grid and sidebar layout defaults (mobile) */
-.settings-grid-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    width: 100%;
-}
+/* End of settings styles */
 
-.settings-sidebar-col {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    width: 100%;
-}
-
-.settings-sidebar-col .profile-card {
-    margin-bottom: 0 !important;
-}
-
-/* Responsive Layout Styles (Desktop & Tablet) */
-@media (min-width: 1024px) {
-    /* Home Screen layout - Centered Stack */
-    #home-panel.active-panel {
-        display: flex !important;
-        flex-direction: column;
-        align-items: center;
-        gap: 2.25rem;
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 2.5rem 2rem 4rem 2rem;
-    }
-    
-    .assistant-card {
-        width: 100%;
-        max-width: 900px;
-        min-height: 400px;
-        margin-bottom: 0 !important;
-        justify-content: center;
-    }
-    
-    .quick-actions {
-        width: 100%;
-        max-width: 900px;
-        display: grid !important;
-        grid-template-columns: repeat(3, 1fr) !important;
-        gap: 1.5rem;
-        margin-bottom: 0 !important;
-    }
-    
-    .tip-card {
-        width: 100%;
-        max-width: 900px;
-        margin-bottom: 0 !important;
-    }
-
-    /* Settings Screen grid layout - Centered */
-    #settings-panel.active-panel {
-        display: flex !important;
-        flex-direction: column;
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 2.5rem 2rem 4rem 2rem;
-    }
-    
-    .settings-title {
-        margin-bottom: 1.5rem;
-        text-align: left;
-        width: 100%;
-    }
-    
-    .settings-grid-container {
-        display: grid !important;
-        grid-template-columns: 300px 1fr;
-        gap: 2.5rem;
-        align-items: start;
-        width: 100%;
-    }
-    
-    .settings-sidebar-col {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-    
-    .settings-menu-list {
-        margin-bottom: 0 !important;
-    }
-
-    /* Camera Panel layout - Centered Viewfinder */
-    #camera-panel {
-        max-width: 960px;
-        margin: 0 auto;
-        padding: 0 !important;
-        overflow: hidden !important;
-        height: calc(100vh - 160px) !important;
-        border-radius: var(--radius-xl);
-        border: 1px solid var(--border-color);
-        box-shadow: var(--shadow-small);
-    }
-
-    /* Bottom Navigation layout */
-    .bottom-nav {
-        display: none !important;
-    }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-    #home-panel.active-panel, #settings-panel.active-panel {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 3rem 1.5rem 6.5rem 1.5rem;
-    }
-    #settings-panel.active-panel .settings-grid-container {
-        display: grid !important;
-        grid-template-columns: 1fr;
-        gap: 2rem;
-        width: 100%;
-    }
-    #settings-panel.active-panel .settings-sidebar-col {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-    .bottom-nav {
-        max-width: 560px;
-        margin: 0 auto;
-        left: 50% !important;
-        transform: translateX(-50%);
-        border-radius: 24px 24px 0 0 !important;
-        bottom: 0px;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
-    }
-}
+/* End of styles */
 
 
 
