@@ -1,6 +1,19 @@
 /* NAZAR Premium Accessibility App - High-Performance Optimized JS Vision Engine */
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Programmatic PWA cache invalidation and reloading on version mismatch
+    const CURRENT_VERSION = 'v7';
+    if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
+        localStorage.setItem('nazar-app-version', CURRENT_VERSION);
+        if ('caches' in window) {
+            caches.keys().then(keys => {
+                Promise.all(keys.map(key => caches.delete(key))).then(() => {
+                    window.location.reload();
+                });
+            });
+            return;
+        }
+    }
     
     // --- DIAGNOSTICS & TELEMETRY CONSTANTS ---
     const Telemetry = {
