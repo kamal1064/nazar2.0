@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v11';
+    const CURRENT_VERSION = 'v12';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -858,7 +858,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastDescriptionTimestamp: 0,
 
         async describe(canvas) {
-            if (!canvas) return "No image captured.";
+            if (!canvas) return "Unable to analyze surroundings. Please try again.";
 
             // Cloud AI mode enabled
             if (SettingsService.state.cloudAiEnabled && SettingsService.state.florenceEndpoint) {
@@ -937,7 +937,7 @@ document.addEventListener('DOMContentLoaded', () => {
         generateLocalDescription() {
             const detections = DetectionService.activeDetections;
             if (!detections || detections.length === 0) {
-                return "Path is clear. No obstacles detected ahead.";
+                return "Unable to analyze surroundings. Please try again.";
             }
 
             const elWidth = 640;
@@ -1120,6 +1120,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isAnalyzing) return;
         isAnalyzing = true;
 
+        console.log("[Vision System] triggerDescribeSurroundings invoked.");
+
         const describeBtn = document.getElementById('describe-btn');
         const announceStatus = document.getElementById('announce-status');
         const announceTitle = document.getElementById('announce-title');
@@ -1140,11 +1142,23 @@ document.addEventListener('DOMContentLoaded', () => {
         SpeechService.announce("Analyzing surroundings.");
 
         const canvas = CameraService.captureFrame();
+        if (canvas) {
+            console.log(`[Vision System] Camera frame captured successfully. Canvas dimensions: ${canvas.width}x${canvas.height}`);
+        } else {
+            console.warn("[Vision System] Camera frame capture failed (canvas is null).");
+        }
         
         setTimeout(async () => {
+            console.log("[Vision System] Vision request sent to model/adapter.");
             const description = await VisionServiceAdapter.describeImage(canvas);
+            console.log(`[Vision System] Vision response received: "${description}"`);
 
-            if (announceTitle) announceTitle.innerText = description;
+            if (announceTitle) {
+                announceTitle.innerText = description;
+                console.log(`[Vision System] UI updated: announceTitle set to "${description}"`);
+            } else {
+                console.warn("[Vision System] announceTitle element not found in DOM.");
+            }
             
             const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             if (announceDistance) announceDistance.innerText = `Analysis complete at ${timestamp}`;
