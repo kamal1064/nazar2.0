@@ -129,79 +129,6 @@ body {
     position: relative;
 }
 
-@media (min-width: 1024px) {
-    .app-layout-body {
-        gap: 24px;
-    }
-}
-
-/* Sidebar Navigation (Desktop SaaS Layout) */
-.sidebar-nav {
-    display: none; /* Hidden on mobile/tablet */
-    width: 240px;
-    flex-shrink: 0;
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-xl);
-    padding: 1.5rem 1rem;
-    box-shadow: var(--shadow-small);
-}
-
-@media (min-width: 1024px) {
-    .sidebar-nav {
-        display: flex;
-        flex-direction: column;
-    }
-}
-
-.sidebar-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-/* Sidebar items styling matching PWA theme */
-.sidebar-nav .nav-item {
-    display: flex;
-    flex-direction: row; /* Horizontal items in sidebar */
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.85rem 1.25rem;
-    border-radius: var(--radius-md);
-    color: var(--text-muted);
-    font-size: 0.95rem;
-    font-weight: 600;
-    background: none;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-    transition: all var(--transition-speed);
-}
-
-.sidebar-nav .nav-item svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    stroke-width: 2;
-    transition: transform var(--transition-speed);
-}
-
-.sidebar-nav .nav-item:hover {
-    color: var(--primary);
-    background-color: var(--bg-card-hover);
-}
-
-.sidebar-nav .nav-item:hover svg {
-    transform: translateX(2px);
-}
-
-.sidebar-nav .nav-item.active {
-    color: #ffffff;
-    background-color: var(--primary);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
-}
-
 /* Global Header */
 .global-header {
     display: flex;
@@ -226,7 +153,56 @@ body {
     }
 }
 
-/* Main Content Area */
+/* Top Navigation Bar on Desktop */
+.top-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+@media (max-width: 1023px) {
+    .top-nav {
+        display: none !important;
+    }
+}
+
+.top-nav .nav-item {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 1.25rem;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-weight: 600;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+}
+
+.top-nav .nav-item svg {
+    stroke: currentColor;
+    stroke-width: 2.5;
+    margin-right: 6px;
+    transition: transform var(--transition-speed);
+}
+
+.top-nav .nav-item:hover {
+    color: var(--primary);
+    background-color: var(--bg-card-hover);
+}
+
+.top-nav .nav-item.active {
+    color: var(--primary);
+    background-color: var(--primary-light);
+}
+
+[data-theme="dark"] .top-nav .nav-item.active {
+    color: #ffffff;
+    background-color: var(--primary);
+}
+
+/* Main Content Area (Takes 100% full width, no sidebar space reserved) */
 .main-content-area {
     flex: 1;
     height: 100%;
@@ -1715,54 +1691,59 @@ input:checked + .toggle-slider:before {
 
 /* Responsive Layout Styles (Desktop & Tablet) */
 @media (min-width: 1024px) {
-    /* Home Screen grid layout */
+    /* Home Screen layout - Centered Stack */
     #home-panel.active-panel {
-        display: grid !important;
-        grid-template-columns: 1.2fr 1fr;
-        grid-template-rows: auto 1fr;
-        gap: 3rem;
-        align-items: start;
-        max-width: 1140px;
+        display: flex !important;
+        flex-direction: column;
+        align-items: center;
+        gap: 2.25rem;
+        max-width: 960px;
         margin: 0 auto;
-        padding: 3.5rem 2rem 6.5rem 2rem;
-    }
-    
-    .home-header {
-        grid-column: 1 / -1;
-        margin-bottom: 1.5rem;
+        padding: 2.5rem 2rem 4rem 2rem;
     }
     
     .assistant-card {
-        grid-column: 1;
+        width: 100%;
+        max-width: 900px;
+        min-height: 400px;
         margin-bottom: 0 !important;
-        min-height: 480px;
         justify-content: center;
     }
     
     .quick-actions {
-        grid-column: 2;
-        grid-template-columns: 1fr; /* Stack vertically for desktop balance */
+        width: 100%;
+        max-width: 900px;
+        display: grid !important;
+        grid-template-columns: repeat(3, 1fr) !important;
         gap: 1.5rem;
         margin-bottom: 0 !important;
     }
+    
+    .tip-card {
+        width: 100%;
+        max-width: 900px;
+        margin-bottom: 0 !important;
+    }
 
-    /* Settings Screen grid layout */
+    /* Settings Screen grid layout - Centered */
     #settings-panel.active-panel {
         display: flex !important;
         flex-direction: column;
-        max-width: 1140px;
+        max-width: 960px;
         margin: 0 auto;
-        padding: 3.5rem 2rem 6.5rem 2rem;
+        padding: 2.5rem 2rem 4rem 2rem;
     }
     
     .settings-title {
         margin-bottom: 1.5rem;
+        text-align: left;
+        width: 100%;
     }
     
     .settings-grid-container {
         display: grid !important;
-        grid-template-columns: 320px 1fr;
-        gap: 3rem;
+        grid-template-columns: 300px 1fr;
+        gap: 2.5rem;
         align-items: start;
         width: 100%;
     }
@@ -1777,15 +1758,21 @@ input:checked + .toggle-slider:before {
         margin-bottom: 0 !important;
     }
 
+    /* Camera Panel layout - Centered Viewfinder */
+    #camera-panel {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 !important;
+        overflow: hidden !important;
+        height: calc(100vh - 160px) !important;
+        border-radius: var(--radius-xl);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-small);
+    }
+
     /* Bottom Navigation layout */
     .bottom-nav {
-        max-width: 600px;
-        margin: 0 auto;
-        left: 50% !important;
-        transform: translateX(-50%);
-        border-radius: 24px 24px 0 0 !important; /* Floating nav bar look on desktop */
-        bottom: 0px;
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+        display: none !important;
     }
 }
 
@@ -1797,9 +1784,8 @@ input:checked + .toggle-slider:before {
     }
     #settings-panel.active-panel .settings-grid-container {
         display: grid !important;
-        grid-template-columns: 280px 1fr;
+        grid-template-columns: 1fr;
         gap: 2rem;
-        align-items: start;
         width: 100%;
     }
     #settings-panel.active-panel .settings-sidebar-col {
