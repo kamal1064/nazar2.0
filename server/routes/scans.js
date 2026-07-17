@@ -140,10 +140,8 @@ router.post('/', scanLimiter, async (req, res, next) => {
             throw new Error('Failed to parse structured JSON response from Gemini API');
         }
 
-        // Save scan payload to MongoDB
-        const scan = new Scan({
-            userId: userId || null,
-            imageUrl: '',
+        // Attempt to save scan to MongoDB (non-fatal if DB unavailable)
+        let savedScan = {
             summary: parsedResult.summary || 'Scene scanned.',
             hazards: parsedResult.hazards || [],
             objects: parsedResult.objects || [],
@@ -152,40 +150,51 @@ router.post('/', scanLimiter, async (req, res, next) => {
             navigation: parsedResult.navigation || '',
             environment: parsedResult.environment || '',
             confidence: parsedResult.confidence || 0.0,
-            scanMode: ocrMode ? 'ocr' : 'scene'
-        });
+            scanMode: ocrMode ? 'ocr' : 'scene',
+            createdAt: new Date()
+        };
 
-        await scan.save();
+        try {
+            const scan = new Scan({
+                userId: userId || null,
+                imageUrl: '',
+                ...savedScan
+            });
+            await scan.save();
+            savedScan.createdAt = scan.createdAt;
 
-        // Pruning logic: keep last 100 scans per user
-        if (userId) {
-            const count = await Scan.countDocuments({ userId });
-            if (count > 100) {
-                const oldestToKeep = await Scan.find({ userId })
-                    .sort({ createdAt: -1 })
-                    .skip(99)
-                    .limit(1);
-                if (oldestToKeep.length > 0) {
-                    await Scan.deleteMany({
-                        userId,
-                        createdAt: { $lt: oldestToKeep[0].createdAt }
-                    });
+            // Pruning logic: keep last 100 scans per user
+            if (userId) {
+                const count = await Scan.countDocuments({ userId });
+                if (count > 100) {
+                    const oldestToKeep = await Scan.find({ userId })
+                        .sort({ createdAt: -1 })
+                        .skip(99)
+                        .limit(1);
+                    if (oldestToKeep.length > 0) {
+                        await Scan.deleteMany({
+                            userId,
+                            createdAt: { $lt: oldestToKeep[0].createdAt }
+                        });
+                    }
                 }
             }
+        } catch (dbErr) {
+            console.warn('[Scan] MongoDB save failed — returning result without persisting:', dbErr.message);
         }
 
         res.status(200).json({
             success: true,
-            summary: scan.summary,
-            hazards: scan.hazards,
-            objects: scan.objects,
-            people: scan.people,
-            textDetected: scan.textDetected,
-            navigation: scan.navigation,
-            environment: scan.environment,
-            confidence: scan.confidence,
-            scanMode: scan.scanMode,
-            timestamp: scan.createdAt
+            summary: savedScan.summary,
+            hazards: savedScan.hazards,
+            objects: savedScan.objects,
+            people: savedScan.people,
+            textDetected: savedScan.textDetected,
+            navigation: savedScan.navigation,
+            environment: savedScan.environment,
+            confidence: savedScan.confidence,
+            scanMode: savedScan.scanMode,
+            timestamp: savedScan.createdAt
         });
 
     } catch (err) {

@@ -50,8 +50,14 @@ let dbReady = false;
 
 const ensureDB = async () => {
     if (!dbReady) {
-        await connectDB();
-        dbReady = true;
+        try {
+            await connectDB();
+            dbReady = true;
+        } catch (err) {
+            // DB unavailable (e.g. env vars not set on Vercel).
+            // Log a warning but do NOT crash — routes that don't need DB will still work.
+            console.warn('[Server] MongoDB unavailable — running without database:', err.message);
+        }
     }
 };
 
