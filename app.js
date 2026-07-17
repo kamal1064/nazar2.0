@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v12';
+    const CURRENT_VERSION = 'v13';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -91,7 +91,14 @@ document.addEventListener('DOMContentLoaded', () => {
             voiceCommandsEnabled: false,
             speechOutputEnabled: true,
             vibrationAlertsEnabled: true,
-            darkModeEnabled: false
+            darkModeEnabled: false,
+            emergencyContactName: 'Emergency Contact',
+            emergencyContactNumber: '',
+            emergencyWebhookUrl: '',
+            homeAddress: '',
+            preferredLocationProvider: 'osm',
+            liveLocationSharingEnabled: false,
+            liveLocationSharingInterval: 300 // in seconds
         },
 
         load() {
@@ -101,6 +108,15 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.speechOutputEnabled = localStorage.getItem('nazar-speech-output') !== 'false';
             this.state.vibrationAlertsEnabled = localStorage.getItem('nazar-vibration-alerts') !== 'false';
             this.state.darkModeEnabled = localStorage.getItem('nazar-dark-mode') === 'true';
+            
+            // Safety values configurations
+            this.state.emergencyContactName = localStorage.getItem('nazar-emergency-contact-name') || 'Emergency Contact';
+            this.state.emergencyContactNumber = localStorage.getItem('nazar-emergency-contact-number') || '';
+            this.state.emergencyWebhookUrl = localStorage.getItem('nazar-emergency-webhook-url') || '';
+            this.state.homeAddress = localStorage.getItem('nazar-home-address') || '';
+            this.state.preferredLocationProvider = localStorage.getItem('nazar-preferred-location-provider') || 'osm';
+            this.state.liveLocationSharingEnabled = localStorage.getItem('nazar-live-location-sharing-enabled') === 'true';
+            this.state.liveLocationSharingInterval = parseInt(localStorage.getItem('nazar-live-location-sharing-interval')) || 300;
         },
 
         save(key, value) {
@@ -851,6 +867,449 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // --- 4.8 LOCATION & SAFETY SERVICES (Abstract Provider Registry) ---
+    class LocationProvider {
+        async reverseGeocode(lat, lon) {
+            throw new Error("reverseGeocode not implemented");
+        }
+        async searchNearby(lat, lon, category, radius) {
+            throw new Error("searchNearby not implemented");
+        }
+    }
+
+    class OSMProvider extends LocationProvider {
+        async reverseGeocode(lat, lon) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+            const res = await fetch(url, { headers: { 'User-Agent': 'NazarAccessibilityApp/2.0' } });
+            if (!res.ok) throw new Error("OSM Nominatim API request failed");
+            const data = await res.json();
+            
+            const addr = data.address || {};
+            const displayAddress = data.display_name ? data.display_name.split(',').slice(0, 3).join(',').trim() : "Unknown location";
+            const landmark = addr.suburb || addr.neighbourhood || addr.amenity || addr.building || null;
+            
+            return {
+                address: displayAddress,
+                landmark: landmark
+            };
+        }
+
+        async searchNearby(lat, lon, category, radius) {
+            const osmTypes = {
+                hospital: 'hospital',
+                pharmacy: 'pharmacy',
+                police: 'police',
+                bus: 'bus_station',
+                metro: 'subway_entrance',
+                atm: 'atm'
+            };
+            const type = osmTypes[category] || 'hospital';
+            const query = `[out:json];node(around:${radius},${lat},${lon})[amenity=${type}];out;`;
+            const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+            if (!res.ok) throw new Error("OSM Overpass API request failed");
+            const data = await res.json();
+            
+            return (data.elements || []).map(el => ({
+                name: el.tags.name || `${category.charAt(0).toUpperCase() + category.slice(1)} Facility`,
+                lat: el.lat,
+                lon: el.lon
+            }));
+        }
+    }
+
+    const LocationService = {
+        providers: {},
+        activeProviderName: null,
+        cache: { data: null, timestamp: 0, lat: 0, lon: 0 },
+
+        registerProvider(name, providerInstance) {
+            this.providers[name] = providerInstance;
+        },
+
+        setProvider(name) {
+            if (this.providers[name]) {
+                this.activeProviderName = name;
+            } else {
+                console.warn(`Location provider ${name} is not registered.`);
+            }
+        },
+
+        async getAddress(lat, lon) {
+            if (!this.activeProviderName || !this.providers[this.activeProviderName]) {
+                throw new Error("No active location provider set.");
+            }
+            
+            const now = Date.now();
+            const latDiff = Math.abs(lat - this.cache.lat);
+            const lonDiff = Math.abs(lon - this.cache.lon);
+            if (this.cache.data && (now - this.cache.timestamp < 60000) && latDiff < 0.0001 && lonDiff < 0.0001) {
+                console.log("[LocationService] Using cached address:", this.cache.data.address);
+                return this.cache.data;
+            }
+
+            const result = await this.providers[this.activeProviderName].reverseGeocode(lat, lon);
+            this.cache.data = result;
+            this.cache.lat = lat;
+            this.cache.lon = lon;
+            this.cache.timestamp = now;
+            return result;
+        },
+
+        async searchNearby(lat, lon, category, radius) {
+            if (!this.activeProviderName || !this.providers[this.activeProviderName]) {
+                throw new Error("No active location provider set.");
+            }
+            return await this.providers[this.activeProviderName].searchNearby(lat, lon, category, radius);
+        }
+    };
+
+    class EmergencyDispatcher {
+        async sendAlert(payload) {
+            throw new Error("sendAlert not implemented");
+        }
+    }
+
+    class SMSDispatcher extends EmergencyDispatcher {
+        async sendAlert(payload) {
+            if (!payload.contactNumber) {
+                return { success: false, error: 'No contact number configured' };
+            }
+            const smsUri = `sms:${payload.contactNumber}?body=${encodeURIComponent(payload.message)}`;
+            window.location.href = smsUri;
+            return { success: true, type: 'sms' };
+        }
+    }
+
+    class WebhookDispatcher extends EmergencyDispatcher {
+        async sendAlert(payload) {
+            const url = SettingsService.state.emergencyWebhookUrl || '';
+            if (!url) return { success: false, error: 'No webhook URL configured' };
+            
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+            return { success: true, type: 'webhook' };
+        }
+    }
+
+    class PushDispatcher extends EmergencyDispatcher {
+        async sendAlert(payload) {
+            console.log("[EmergencyService] Dispatching push notification alert:", payload);
+            return { success: true, type: 'push' };
+        }
+    }
+
+    const EmergencyService = {
+        dispatchers: {},
+
+        registerDispatcher(name, dispatcherInstance) {
+            this.dispatchers[name] = dispatcherInstance;
+        },
+
+        async dispatch(payload) {
+            const results = {};
+            for (const [name, dispatcher] of Object.entries(this.dispatchers)) {
+                try {
+                    results[name] = await dispatcher.sendAlert(payload);
+                } catch (err) {
+                    console.error(`[EmergencyService] Dispatcher ${name} failed:`, err);
+                    results[name] = { success: false, error: err.message };
+                }
+            }
+            return results;
+        }
+    };
+
+    // Register active providers and dispatchers
+    LocationService.registerProvider("osm", new OSMProvider());
+    LocationService.setProvider("osm");
+
+    EmergencyService.registerDispatcher("sms", new SMSDispatcher());
+    EmergencyService.registerDispatcher("webhook", new WebhookDispatcher());
+    EmergencyService.registerDispatcher("push", new PushDispatcher());
+
+    // --- 4.9 LOCATION & EMERGENCY HELPER FUNCTIONS ---
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // meters
+        const phi1 = lat1 * Math.PI/180;
+        const phi2 = lat2 * Math.PI/180;
+        const deltaPhi = (lat2-lat1) * Math.PI/180;
+        const deltaLambda = (lon2-lon1) * Math.PI/180;
+
+        const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                  Math.cos(phi1) * Math.cos(phi2) *
+                  Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return Math.round(R * c);
+    }
+
+    async function handleWhereAmI() {
+        if (!navigator.geolocation) {
+            SpeechService.announce("Location services are not supported by this browser.");
+            return;
+        }
+        SpeechService.announce("Retrieving current location.");
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            console.log(`[LocationSystem] Coordinates retrieved: ${lat}, ${lon}`);
+            try {
+                const loc = await LocationService.getAddress(lat, lon);
+                let announcement = `You are near ${loc.address}.`;
+                
+                // Find closest landmark from the Overpass API
+                let minDistance = Infinity;
+                let closestLandmark = null;
+                const categories = ['hospital', 'pharmacy', 'police', 'bus', 'metro', 'atm'];
+                
+                for (const cat of categories) {
+                    try {
+                        const places = await LocationService.searchNearby(lat, lon, cat, 1000);
+                        for (const p of places) {
+                            const dist = calculateDistance(lat, lon, p.lat, p.lon);
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                closestLandmark = p;
+                            }
+                        }
+                    } catch (e) {
+                        console.warn(`[LocationSystem] Failed to fetch nearby ${cat} landmarks:`, e);
+                    }
+                }
+                
+                if (closestLandmark) {
+                    announcement += ` The nearest landmark is ${closestLandmark.name}, which is approximately ${minDistance} meters away.`;
+                }
+                SpeechService.announce(announcement);
+            } catch (err) {
+                console.error("[LocationSystem] Reverse geocode error: ", err);
+                SpeechService.announce("Unable to determine address. Please try again.");
+            }
+        }, (err) => {
+            console.warn("[LocationSystem] Geolocation permission denied or failed: ", err);
+            SpeechService.announce("Unable to retrieve location. Please check browser permissions.");
+        }, { enableHighAccuracy: true, timeout: 8000 });
+    }
+
+    function handleEmergencySOS() {
+        if (!navigator.geolocation) {
+            SpeechService.announce("Location services not supported. Initiating local emergency alert.");
+            triggerSOSDispatch(0, 0);
+            return;
+        }
+        
+        SpeechService.announce("Retrieving location for emergency dispatch.");
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            triggerSOSDispatch(lat, lon);
+        }, (err) => {
+            console.warn("[EmergencySystem] Geolocation failed:", err);
+            SpeechService.announce("Location retrieval failed. Dispatching emergency alert.");
+            triggerSOSDispatch(0, 0);
+        }, { enableHighAccuracy: true, timeout: 5000 });
+    }
+
+    async function triggerSOSDispatch(lat, lon) {
+        const name = SettingsService.state.emergencyContactName || 'Emergency Contact';
+        const contactNumber = SettingsService.state.emergencyContactNumber || '';
+        const userName = 'Kamal';
+        const timestamp = new Date().toLocaleString();
+        const mapUrl = lat !== 0 && lon !== 0 ? `https://maps.google.com/?q=${lat},${lon}` : 'Location unavailable';
+
+        const message = `Emergency Alert\n\n${userName} may require assistance.\n\nCurrent Location:\n${mapUrl}\n\nTime:\n${timestamp}`;
+
+        const payload = {
+            contactNumber: contactNumber,
+            message: message,
+            userName: userName,
+            timestamp: timestamp,
+            locationLink: mapUrl,
+            latitude: lat,
+            longitude: lon
+        };
+
+        console.log("[EmergencySystem] Dispatching alert: ", payload);
+        
+        const dispatchResults = await EmergencyService.dispatch(payload);
+        console.log("[EmergencySystem] Dispatch results: ", dispatchResults);
+        
+        SpeechService.announce(`Emergency alert sent to ${name}. Location coordinates shared.`);
+        
+        if (navigator.vibrate) navigator.vibrate([500, 100, 500, 100, 500]);
+    }
+
+    async function handleNearbySearch(transcript) {
+        let category = null;
+        if (transcript.includes("hospital")) category = "hospital";
+        else if (transcript.includes("pharmacy")) category = "pharmacy";
+        else if (transcript.includes("police")) category = "police";
+        else if (transcript.includes("bus")) category = "bus";
+        else if (transcript.includes("metro")) category = "metro";
+        else if (transcript.includes("atm")) category = "atm";
+
+        if (!category) {
+            SpeechService.announce("Please specify a category like hospital, pharmacy, ATM, or police station.");
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            SpeechService.announce("Location services not supported in this browser.");
+            return;
+        }
+
+        SpeechService.announce(`Searching for nearby ${category}s.`);
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            try {
+                const places = await LocationService.searchNearby(lat, lon, category, 2000);
+                if (!places || places.length === 0) {
+                    SpeechService.announce(`No nearby ${category}s found within two kilometers.`);
+                    return;
+                }
+
+                const sorted = places.map(p => ({
+                    ...p,
+                    distance: calculateDistance(lat, lon, p.lat, p.lon)
+                })).sort((a, b) => a.distance - b.distance);
+
+                const closest = sorted[0];
+                SpeechService.announce(`${closest.name} is approximately ${closest.distance} meters away.`);
+            } catch (err) {
+                console.error("[LocationSystem] Nearby search error:", err);
+                SpeechService.announce("Nearby search failed. Please try again.");
+            }
+        }, (err) => {
+            SpeechService.announce("Unable to retrieve location. Please check browser permissions.");
+        });
+    }
+
+    function handleNavigation() {
+        const homeAddr = SettingsService.state.homeAddress;
+        if (!homeAddr) {
+            SpeechService.announce("Home address is not configured. Please say: set home address to, followed by your address.");
+            return;
+        }
+
+        SpeechService.announce(`Starting navigation to ${homeAddr} via Google Maps.`);
+        const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(homeAddr)}`;
+        window.open(navUrl, "_blank");
+    }
+
+    function handleVoiceSettings(transcript) {
+        if (transcript.includes("set emergency contact name to")) {
+            const val = transcript.split("set emergency contact name to")[1].trim();
+            SettingsService.save("emergencyContactName", val);
+            SpeechService.announce(`Emergency contact name set to ${val}`);
+            return true;
+        } else if (transcript.includes("set emergency contact number to")) {
+            const val = transcript.split("set emergency contact number to")[1].trim().replace(/\s+/g, '');
+            SettingsService.save("emergencyContactNumber", val);
+            SpeechService.announce(`Emergency contact number set to ${val}`);
+            return true;
+        } else if (transcript.includes("set home address to")) {
+            const val = transcript.split("set home address to")[1].trim();
+            SettingsService.save("homeAddress", val);
+            SpeechService.announce(`Home address set to ${val}`);
+            return true;
+        } else if (transcript.includes("set location provider to")) {
+            const val = transcript.split("set location provider to")[1].trim().toLowerCase();
+            if (val === "osm" || val === "google" || val === "mapbox") {
+                SettingsService.save("preferredLocationProvider", val);
+                LocationService.setProvider(val);
+                SpeechService.announce(`Location provider set to ${val}`);
+            } else {
+                SpeechService.announce(`Provider ${val} is not supported.`);
+            }
+            return true;
+        } else if (transcript.includes("set live location sharing interval to")) {
+            const part = transcript.split("set live location sharing interval to")[1].trim();
+            const val = parseInt(part);
+            if (val === 30 || val === 60 || val === 300 || part.includes("5 minutes")) {
+                const seconds = part.includes("5 minutes") ? 300 : val;
+                SettingsService.save("liveLocationSharingInterval", seconds);
+                if (SettingsService.state.liveLocationSharingEnabled) {
+                    startLiveLocationInterval();
+                }
+                SpeechService.announce(`Live sharing interval set to ${seconds} seconds`);
+            } else {
+                SpeechService.announce("Interval must be 30 seconds, 60 seconds, or 5 minutes.");
+            }
+            return true;
+        } else if (transcript.includes("enable live location sharing")) {
+            SettingsService.save("liveLocationSharingEnabled", true);
+            startLiveLocationInterval();
+            SpeechService.announce("Live location sharing enabled");
+            return true;
+        } else if (transcript.includes("disable live location sharing")) {
+            SettingsService.save("liveLocationSharingEnabled", false);
+            stopLiveLocationInterval();
+            SpeechService.announce("Live location sharing disabled");
+            return true;
+        } else if (transcript.includes("check my settings") || transcript.includes("check settings")) {
+            const name = SettingsService.state.emergencyContactName;
+            const num = SettingsService.state.emergencyContactNumber || "not set";
+            const addr = SettingsService.state.homeAddress || "not set";
+            const sharing = SettingsService.state.liveLocationSharingEnabled ? "enabled" : "disabled";
+            SpeechService.announce(`Emergency contact is ${name}, number is ${num}. Home address is ${addr}. Live location sharing is ${sharing}.`);
+            return true;
+        }
+        return false;
+    }
+
+    let liveLocationTimer = null;
+
+    function startLiveLocationInterval() {
+        stopLiveLocationInterval();
+        const intervalMs = SettingsService.state.liveLocationSharingInterval * 1000;
+        console.log(`[LocationSystem] Starting Live Location loop at interval: ${intervalMs}ms`);
+        
+        liveLocationTimer = setInterval(async () => {
+            if (!SettingsService.state.liveLocationSharingEnabled) {
+                stopLiveLocationInterval();
+                return;
+            }
+
+            if (!navigator.geolocation) return;
+
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                console.log(`[LocationSystem] Live location updated: ${lat}, ${lon}`);
+                
+                const userName = 'Kamal';
+                const timestamp = new Date().toLocaleString();
+                const mapUrl = `https://maps.google.com/?q=${lat},${lon}`;
+                const payload = {
+                    userName,
+                    timestamp,
+                    locationLink: mapUrl,
+                    latitude: lat,
+                    longitude: lon,
+                    contactNumber: SettingsService.state.emergencyContactNumber || ''
+                };
+
+                await EmergencyService.dispatch(payload);
+
+            }, (err) => {
+                console.warn("[LocationSystem] Live sharing geolocation query failed:", err);
+            });
+        }, intervalMs);
+    }
+
+    function stopLiveLocationInterval() {
+        if (liveLocationTimer) {
+            clearInterval(liveLocationTimer);
+            liveLocationTimer = null;
+            console.log("[LocationSystem] Live Location loop stopped.");
+        }
+    }
+
     // --- 5. FLORENCE SERVICE (Inference client + Description Caching) ---
     const FlorenceService = {
         lastDetectionsStr: '',
@@ -1008,9 +1467,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (transcript.includes("stop speaking") || transcript.includes("stop")) {
                     this.updateUI("Voice command recognized");
                     SpeechService.stop();
+                } else if (transcript.includes("where am i") || transcript.includes("where is my location") || transcript.includes("current location")) {
+                    this.updateUI("Voice command recognized");
+                    handleWhereAmI();
+                } else if (transcript.includes("emergency") || transcript.includes("help") || transcript.includes("sos")) {
+                    this.updateUI("Voice command recognized");
+                    handleEmergencySOS();
+                } else if (transcript.includes("find nearby")) {
+                    this.updateUI("Voice command recognized");
+                    handleNearbySearch(transcript);
+                } else if (transcript.includes("navigate") || transcript.includes("take me")) {
+                    this.updateUI("Voice command recognized");
+                    handleNavigation(transcript);
                 } else {
-                    this.updateUI("Command not recognized");
-                    SpeechService.announce("Command not recognized. Please try again.");
+                    const matchedSetting = handleVoiceSettings(transcript);
+                    if (matchedSetting) {
+                        this.updateUI("Voice command recognized");
+                    } else {
+                        this.updateUI("Command not recognized");
+                        SpeechService.announce("Command not recognized. Please try again.");
+                    }
                 }
             };
 
@@ -1337,8 +1813,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function dispatchSOS() {
         confirmSosBtn.innerText = "SOS Dispatched!";
         confirmSosBtn.style.backgroundColor = 'var(--success)';
-        SpeechService.announce("Emergency alert sent. Location coordinates shared.");
-        if (navigator.vibrate) navigator.vibrate([500, 100, 500, 100, 500]);
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                await triggerSOSDispatch(lat, lon);
+            }, async (err) => {
+                console.warn("[EmergencySystem] SOS Geolocation failed: ", err);
+                await triggerSOSDispatch(0, 0);
+            }, { enableHighAccuracy: true, timeout: 5000 });
+        } else {
+            triggerSOSDispatch(0, 0);
+        }
+
         setTimeout(() => {
             sosModal.classList.remove('modal-active');
             confirmSosBtn.innerText = "Press & Hold to Confirm (3s)";
@@ -1483,6 +1971,14 @@ document.addEventListener('DOMContentLoaded', () => {
     Telemetry.init();
     SettingsService.initUI();
     VoiceCommandService.init();
+
+    // Initialize location service provider and live tracking loop if active
+    if (SettingsService.state.preferredLocationProvider) {
+        LocationService.setProvider(SettingsService.state.preferredLocationProvider);
+    }
+    if (SettingsService.state.liveLocationSharingEnabled) {
+        startLiveLocationInterval();
+    }
 
     // Bind Camera Permission buttons
     const btnEnableCamera = document.getElementById('btn-enable-camera');
