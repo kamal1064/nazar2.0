@@ -1,23 +1,18 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "server/server.js",
-      "use": "@vercel/node"
-    }
+    { "src": "server/server.js", "use": "@vercel/node" },
+    { "src": "index.html",          "use": "@vercel/static" },
+    { "src": "app.js",              "use": "@vercel/static" },
+    { "src": "style.css",           "use": "@vercel/static" },
+    { "src": "manifest.json",       "use": "@vercel/static" },
+    { "src": "service-worker.js",   "use": "@vercel/static" },
+    { "src": "detection-worker.js", "use": "@vercel/static" },
+    { "src": "nazar_icon.png",      "use": "@vercel/static" }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server/server.js"
-    },
-    {
-      "src": "/health",
-      "dest": "server/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
+    { "src": "/api/(.*)", "dest": "/server/server.js" },
+    { "src": "/health",   "dest": "/server/server.js" },
+    { "src": "/(.*)",     "dest": "/$1" }
   ]
 }
