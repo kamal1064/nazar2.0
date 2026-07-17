@@ -1713,9 +1713,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (userId) {
-            await loadSettingsFromServer(userId);
-            await loadContactsFromServer(userId);
-            await syncPendingQueue();
+            // Skip server sync for local-only IDs (backend unavailable)
+            if (!userId.startsWith('local-')) {
+                await loadSettingsFromServer(userId);
+                await loadContactsFromServer(userId);
+                await syncPendingQueue();
+            } else {
+                console.log("[User Session] Offline-only mode — skipping server sync.");
+            }
         }
     }
 

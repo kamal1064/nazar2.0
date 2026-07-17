@@ -10,7 +10,7 @@ const app = express();
 // Security and utility middleware
 app.use(helmet());
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increased for base64 image payloads
 
 // Load routers
 const usersRouter = require('./routes/users');
@@ -44,16 +44,37 @@ app.get('/api/health', healthHandler);
 // Global Error Handler Middleware
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+// Serverless export for Vercel — connectDB is called per cold-start and
+// reuses the cached connection on subsequent invocations (see db.js).
+let dbReady = false;
 
-// Initialize Database connection then start listener
-connectDB()
-    .then(() => {
-        app.listen(PORT, () => {
-            console.log(`[Server] Nazar backend operational on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode.`);
+const ensureDB = async () => {
+    if (!dbReady) {
+        await connectDB();
+        dbReady = true;
+    }
+};
+
+// Wrap the Express app so DB is connected before handling requests
+const handler = async (req, res) => {
+    await ensureDB();
+    return app(req, res);
+};
+
+// Export for Vercel serverless runtime
+module.exports = handler;
+
+// Start local dev server when run directly (not imported by Vercel)
+if (require.main === module) {
+    const PORT = process.env.PORT || 5000;
+    connectDB()
+        .then(() => {
+            app.listen(PORT, () => {
+                console.log(`[Server] Nazar backend operational on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode.`);
+            });
+        })
+        .catch(err => {
+            console.error('[Server] Critical connection startup failure:', err.message);
+            process.exit(1);
         });
-    })
-    .catch(err => {
-        console.error('[Server] Critical connection startup failure:', err.message);
-        process.exit(1);
-    });
+}
