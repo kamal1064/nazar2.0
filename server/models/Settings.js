@@ -11,6 +11,5 @@ const settingsSchema = new mongoose.Schema({
     timestamps: true
 });
 
-settingsSchema.index({ userId: 1 });
 
 module.exports = mongoose.model('Settings', settingsSchema);
