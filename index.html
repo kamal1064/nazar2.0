@@ -7,7 +7,7 @@
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=14">
+    <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
 
@@ -464,7 +464,7 @@
 
                 <!-- 5. Emergency Contacts -->
                 <div class="settings-menu-card">
-                    <button class="settings-menu-card-header" type="button" aria-expanded="false" aria-label="Manage Emergency SOS settings">
+                    <button class="settings-menu-card-header" aria-label="Manage Emergency SOS settings">
                         <div class="settings-left-info">
                             <div class="settings-icon-box icon-sos">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -483,51 +483,6 @@
                             <path d="m9 18 6-6-6-6"/>
                         </svg>
                     </button>
-
-                    <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                        <!-- Contact Name -->
-                        <div style="display: flex; flex-direction: column;">
-                            <label class="settings-label-name" for="input-emergency-name" style="font-size: 0.85rem;">Emergency Contact Name</label>
-                            <input class="settings-input" type="text" id="input-emergency-name" placeholder="Enter contact name">
-                        </div>
-
-                        <!-- Contact Phone -->
-                        <div style="display: flex; flex-direction: column;">
-                            <label class="settings-label-name" for="input-emergency-number" style="font-size: 0.85rem;">Emergency Contact Number</label>
-                            <input class="settings-input" type="tel" id="input-emergency-number" placeholder="e.g. +1234567890">
-                        </div>
-
-                        <!-- Webhook URL -->
-                        <div style="display: flex; flex-direction: column;">
-                            <label class="settings-label-name" for="input-emergency-webhook" style="font-size: 0.85rem;">Emergency Webhook URL</label>
-                            <input class="settings-input" type="url" id="input-emergency-webhook" placeholder="https://api.yourserver.com/sos">
-                        </div>
-
-                        <!-- Home Address -->
-                        <div style="display: flex; flex-direction: column;">
-                            <label class="settings-label-name" for="input-home-address" style="font-size: 0.85rem;">Home Address (for Navigation)</label>
-                            <input class="settings-input" type="text" id="input-home-address" placeholder="Enter home address">
-                        </div>
-
-                        <!-- Live Location Sharing toggle -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: 0.5rem;">
-                            <span class="settings-label-name" style="font-size: 0.85rem;">Enable Live Location Sharing</span>
-                            <label class="toggle-switch-wrapper" for="toggle-live-sharing">
-                                <input type="checkbox" id="toggle-live-sharing">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-
-                        <!-- Live Sharing interval -->
-                        <div style="display: flex; flex-direction: column;">
-                            <label class="settings-label-name" for="select-live-sharing-interval" style="font-size: 0.85rem;">Live update interval</label>
-                            <select class="settings-input" id="select-live-sharing-interval">
-                                <option value="30">30 seconds</option>
-                                <option value="60">60 seconds</option>
-                                <option value="300">5 minutes</option>
-                            </select>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- 6. About Nazar -->
@@ -652,6 +607,6 @@
     </main>
 
     <!-- JS Logic -->
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=15"></script>
 </body>
 </html>

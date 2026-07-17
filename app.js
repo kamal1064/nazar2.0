@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v14';
+    const CURRENT_VERSION = 'v15';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -123,27 +123,6 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state[key] = value;
             localStorage.setItem(`nazar-${this.kebabCase(key)}`, value);
             this.syncStatusBadge();
-
-            // Sync settings state updates with visible input elements
-            if (key === 'emergencyContactName') {
-                const el = document.getElementById('input-emergency-name');
-                if (el) el.value = value;
-            } else if (key === 'emergencyContactNumber') {
-                const el = document.getElementById('input-emergency-number');
-                if (el) el.value = value;
-            } else if (key === 'emergencyWebhookUrl') {
-                const el = document.getElementById('input-emergency-webhook');
-                if (el) el.value = value;
-            } else if (key === 'homeAddress') {
-                const el = document.getElementById('input-home-address');
-                if (el) el.value = value;
-            } else if (key === 'liveLocationSharingEnabled') {
-                const el = document.getElementById('toggle-live-sharing');
-                if (el) el.checked = value === true || value === 'true';
-            } else if (key === 'liveLocationSharingInterval') {
-                const el = document.getElementById('select-live-sharing-interval');
-                if (el) el.value = value;
-            }
         },
 
         kebabCase(str) {
@@ -218,66 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Bind Emergency Settings Inputs
-            const inputEmergencyName = document.getElementById('input-emergency-name');
-            const inputEmergencyNumber = document.getElementById('input-emergency-number');
-            const inputEmergencyWebhook = document.getElementById('input-emergency-webhook');
-            const inputHomeAddress = document.getElementById('input-home-address');
-            const toggleLiveSharing = document.getElementById('toggle-live-sharing');
-            const selectLiveSharingInterval = document.getElementById('select-live-sharing-interval');
-
-            if (inputEmergencyName) {
-                inputEmergencyName.value = this.state.emergencyContactName;
-                inputEmergencyName.addEventListener('input', (e) => {
-                    this.save('emergencyContactName', e.target.value.trim());
-                });
-            }
-
-            if (inputEmergencyNumber) {
-                inputEmergencyNumber.value = this.state.emergencyContactNumber;
-                inputEmergencyNumber.addEventListener('input', (e) => {
-                    this.save('emergencyContactNumber', e.target.value.trim().replace(/\s+/g, ''));
-                });
-            }
-
-            if (inputEmergencyWebhook) {
-                inputEmergencyWebhook.value = this.state.emergencyWebhookUrl;
-                inputEmergencyWebhook.addEventListener('input', (e) => {
-                    this.save('emergencyWebhookUrl', e.target.value.trim());
-                });
-            }
-
-            if (inputHomeAddress) {
-                inputHomeAddress.value = this.state.homeAddress;
-                inputHomeAddress.addEventListener('input', (e) => {
-                    this.save('homeAddress', e.target.value.trim());
-                });
-            }
-
-            if (toggleLiveSharing) {
-                toggleLiveSharing.checked = this.state.liveLocationSharingEnabled;
-                toggleLiveSharing.addEventListener('change', (e) => {
-                    this.save('liveLocationSharingEnabled', e.target.checked);
-                    SpeechService.announce(e.target.checked ? "Live sharing activated" : "Live sharing deactivated");
-                    if (e.target.checked) {
-                        startLiveLocationInterval();
-                    } else {
-                        stopLiveLocationInterval();
-                    }
-                });
-            }
-
-            if (selectLiveSharingInterval) {
-                selectLiveSharingInterval.value = this.state.liveLocationSharingInterval;
-                selectLiveSharingInterval.addEventListener('change', (e) => {
-                    const val = parseInt(e.target.value);
-                    this.save('liveLocationSharingInterval', val);
-                    SpeechService.announce(`Live sharing interval updated to ${val} seconds`);
-                    if (this.state.liveLocationSharingEnabled) {
-                        startLiveLocationInterval();
-                    }
-                });
-            }
-
             this.syncStatusBadge();
             this.initAccordions();
         },
@@ -1506,11 +1425,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- 5.1 VISION SERVICE ADAPTER (Scalable abstraction layer) ---
     const VisionServiceAdapter = {
         async describeImage(canvas) {
-            // Interface abstraction for future AI integration (Gemini, etc.)
-            return await FlorenceService.describe(canvas);
+            return await VisionService.analyze(canvas, 'describe');
         }
     };
 
@@ -1539,6 +1456,13 @@ document.addEventListener('DOMContentLoaded', () => {
             this.recognition.onresult = (e) => {
                 const transcript = e.results[0][0].transcript.trim().toLowerCase();
                 console.log("Voice command parsed: ", transcript);
+
+                // Check for safety confirmation loop response first
+                const confirmed = checkConfirmationResponse(transcript);
+                if (confirmed) {
+                    this.updateUI("Voice command recognized");
+                    return;
+                }
 
                 if (transcript.includes("describe surroundings") || transcript.includes("describe")) {
                     this.updateUI("Voice command recognized");
