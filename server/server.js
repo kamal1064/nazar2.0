@@ -21,6 +21,7 @@ const settingsRouter = require('./routes/settings');
 // Route bindings
 app.use('/api/users', usersRouter);
 app.use('/api/scans', scansRouter);
+app.use('/api/scan', scansRouter);
 app.use('/api/emergency-contacts', contactsRouter);
 app.use('/api/settings', settingsRouter);
 

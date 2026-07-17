@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v15';
+    const CURRENT_VERSION = 'v16';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -1466,13 +1466,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (transcript.includes("describe surroundings") || transcript.includes("describe")) {
                     this.updateUI("Voice command recognized");
-                    triggerDescribeSurroundings();
+                    triggerDescribeSurroundings(false);
                 } else if (transcript.includes("repeat description") || transcript.includes("repeat")) {
                     this.updateUI("Voice command recognized");
                     SpeechService.repeat();
-                } else if (transcript.includes("stop speaking") || transcript.includes("stop")) {
+                } else if (transcript.includes("stop speaking") || transcript.includes("silence") || transcript.includes("stop speech")) {
                     this.updateUI("Voice command recognized");
-                    SpeechService.stop();
+                    window.speechSynthesis.cancel();
+                } else if (transcript.includes("continue reading") || transcript.includes("read more")) {
+                    this.updateUI("Voice command recognized");
+                    if (window.pendingOcrText) {
+                        const textToSpeak = window.pendingOcrText;
+                        if (textToSpeak.length > 500) {
+                            const truncatedText = textToSpeak.slice(0, 500);
+                            window.pendingOcrText = textToSpeak.slice(500);
+                            SpeechService.announce(truncatedText + "... Say continue reading to hear the rest.");
+                        } else {
+                            window.pendingOcrText = null;
+                            SpeechService.announce(textToSpeak);
+                        }
+                    } else {
+                        SpeechService.announce("No further text to read.");
+                    }
+                } else if (transcript.includes("enable continuous") || transcript.includes("continuous scan")) {
+                    this.updateUI("Voice command recognized");
+                    isContinuousScanning = true;
+                    startContinuousScanning();
+                    updateContinuousButtonUI();
+                    SpeechService.announce("Continuous scanning activated.");
+                } else if (transcript.includes("disable continuous") || transcript.includes("stop continuous")) {
+                    this.updateUI("Voice command recognized");
+                    isContinuousScanning = false;
+                    stopContinuousScanning();
+                    updateContinuousButtonUI();
+                    SpeechService.announce("Continuous scanning deactivated.");
+                } else if (transcript.includes("read text") || transcript.includes("ocr mode")) {
+                    this.updateUI("Voice command recognized");
+                    isOcrMode = true;
+                    updateModeButtonUI();
+                    SpeechService.announce("OCR text reading mode active.");
+                } else if (transcript.includes("scene mode") || transcript.includes("describe mode")) {
+                    this.updateUI("Voice command recognized");
+                    isOcrMode = false;
+                    updateModeButtonUI();
+                    SpeechService.announce("Scene description mode active.");
                 } else if (transcript.includes("where am i") || transcript.includes("where is my location") || transcript.includes("current location")) {
                     this.updateUI("Voice command recognized");
                     handleWhereAmI();
@@ -1592,73 +1629,255 @@ document.addEventListener('DOMContentLoaded', () => {
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-            switchTab(item.getAttribute('data-target'));
+        switchTab(item.getAttribute('data-target'));
         });
     });
 
     let isAnalyzing = false;
+    let isOcrMode = false;
+    let isContinuousScanning = false;
+    let continuousScanTimer = null;
+    let lastSceneState = {
+        hazards: [],
+        objects: [],
+        navigation: ''
+    };
 
-    async function triggerDescribeSurroundings() {
+    function startContinuousScanning() {
+        stopContinuousScanning();
+        console.log("[Continuous Scan] Starting 5-second interval loop.");
+        continuousScanTimer = setInterval(async () => {
+            if (!isContinuousScanning) {
+                stopContinuousScanning();
+                return;
+            }
+            await triggerDescribeSurroundings(true);
+        }, 5000);
+    }
+
+    function stopContinuousScanning() {
+        if (continuousScanTimer) {
+            clearInterval(continuousScanTimer);
+            continuousScanTimer = null;
+            console.log("[Continuous Scan] Stopped loop.");
+        }
+    }
+
+    function updateContinuousButtonUI() {
+        const btn = document.getElementById('btn-continuous-toggle');
+        const dot = btn?.querySelector('.indicator-dot');
+        if (dot) {
+            dot.style.backgroundColor = isContinuousScanning ? '#2ecc71' : '#888';
+        }
+    }
+
+    function updateModeButtonUI() {
+        const btn = document.getElementById('btn-mode-toggle');
+        const descBtn = document.getElementById('describe-btn');
+        if (btn) {
+            btn.innerText = isOcrMode ? "Text Mode" : "Scene Mode";
+        }
+        if (descBtn) {
+            descBtn.innerText = isOcrMode ? "Read Text aloud" : "Describe Surroundings";
+            const descLabel = descBtn.querySelector('span span span:last-child');
+            if (descLabel) {
+                descLabel.innerText = isOcrMode ? "Tap for text reading" : "Tap for an audio narration";
+            }
+        }
+    }
+
+    async function triggerDescribeSurroundings(isContinuous = false) {
         if (isAnalyzing) return;
-        isAnalyzing = true;
 
+        // Offline check
+        if (!navigator.onLine) {
+            const offlineMsg = "No internet connection. Vision analysis unavailable.";
+            SpeechService.announce(offlineMsg);
+            const announceTitle = document.getElementById('announce-title');
+            if (announceTitle) announceTitle.innerText = offlineMsg;
+            return;
+        }
+
+        isAnalyzing = true;
         console.log("[Vision System] triggerDescribeSurroundings invoked.");
 
         const describeBtn = document.getElementById('describe-btn');
         const announceStatus = document.getElementById('announce-status');
         const announceTitle = document.getElementById('announce-title');
         const announceDistance = document.getElementById('announce-distance');
+        const repeatBtn = document.getElementById('repeat-btn');
 
-        if (describeBtn) {
+        if (describeBtn && !isContinuous) {
             describeBtn.disabled = true;
-            describeBtn.innerText = "Analyzing surroundings...";
             describeBtn.style.opacity = '0.7';
         }
         if (announceStatus) {
             announceStatus.innerText = "Analyzing...";
             announceStatus.classList.add('active');
         }
-        if (announceTitle) announceTitle.innerText = "Capturing viewport frame...";
-        if (announceDistance) announceDistance.innerText = "";
+        if (announceTitle && !isContinuous) announceTitle.innerText = "Capturing viewport frame...";
+        if (announceDistance && !isContinuous) announceDistance.innerText = "";
 
-        SpeechService.announce("Analyzing surroundings.");
-
-        const canvas = CameraService.captureFrame();
-        if (canvas) {
-            console.log(`[Vision System] Camera frame captured successfully. Canvas dimensions: ${canvas.width}x${canvas.height}`);
-        } else {
-            console.warn("[Vision System] Camera frame capture failed (canvas is null).");
+        if (!isContinuous) {
+            SpeechService.announce(isOcrMode ? "Reading text." : "Analyzing surroundings.");
         }
-        
-        setTimeout(async () => {
-            console.log("[Vision System] Vision request sent to model/adapter.");
-            const description = await VisionServiceAdapter.describeImage(canvas);
-            console.log(`[Vision System] Vision response received: "${description}"`);
 
-            if (announceTitle) {
-                announceTitle.innerText = description;
-                console.log(`[Vision System] UI updated: announceTitle set to "${description}"`);
-            } else {
-                console.warn("[Vision System] announceTitle element not found in DOM.");
-            }
-            
-            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            if (announceDistance) announceDistance.innerText = `Analysis complete at ${timestamp}`;
-            
-            if (announceStatus) {
-                announceStatus.innerText = "Complete";
-                announceStatus.classList.remove('active');
-            }
-
+        const rawCanvas = CameraService.captureFrame();
+        if (!rawCanvas) {
+            isAnalyzing = false;
+            if (announceStatus) announceStatus.classList.remove('active');
             if (describeBtn) {
                 describeBtn.disabled = false;
-                describeBtn.innerText = "Describe Surroundings";
                 describeBtn.style.opacity = '1';
             }
+            return;
+        }
 
-            SpeechService.announce(description);
+        // Scale canvas to 1280x720 and compress as JPEG quality 0.8
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = 1280;
+        resizedCanvas.height = 720;
+        const ctx = resizedCanvas.getContext('2d');
+        ctx.drawImage(rawCanvas, 0, 0, 1280, 720);
+
+        const base64Img = resizedCanvas.toDataURL('image/jpeg', 0.8);
+        const payloadSize = (base64Img.length * (3/4)) / (1024 * 1024); // in MB
+        if (payloadSize > 5) {
+            console.warn(`[Vision System] Image size ${payloadSize.toFixed(2)}MB exceeds 5MB limit. Aborting.`);
             isAnalyzing = false;
-        }, 100);
+            if (announceStatus) announceStatus.classList.remove('active');
+            if (describeBtn) {
+                describeBtn.disabled = false;
+                describeBtn.style.opacity = '1';
+            }
+            return;
+        }
+
+        try {
+            const endpoint = '/api/scan';
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+            let response;
+            try {
+                response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: SettingsService.state.userId || null,
+                        image: base64Img,
+                        ocrMode: isOcrMode
+                    }),
+                    signal: controller.signal
+                });
+            } catch (fetchErr) {
+                if (fetchErr.name === 'AbortError') {
+                    throw new Error('timeout');
+                }
+                throw fetchErr;
+            } finally {
+                clearTimeout(timeoutId);
+            }
+
+            if (!response.ok) {
+                throw new Error(`Server status ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Confidence filtering >= 0.70
+            const filterConfidence = items => (items || []).filter(item => item.confidence >= 0.70).map(item => item.name);
+            const filteredHazards = filterConfidence(data.hazards);
+            const filteredObjects = filterConfidence(data.objects);
+
+            // Change detection
+            if (isContinuous) {
+                const sameHazards = JSON.stringify(filteredHazards.sort()) === JSON.stringify(lastSceneState.hazards.sort());
+                const sameObjects = JSON.stringify(filteredObjects.sort()) === JSON.stringify(lastSceneState.objects.sort());
+                const sameNav = data.navigation === lastSceneState.navigation;
+                
+                if (sameHazards && sameObjects && sameNav) {
+                    console.log("[Continuous Scan] Scene unchanged. Skipping announcement.");
+                    isAnalyzing = false;
+                    if (announceStatus) announceStatus.classList.remove('active');
+                    return;
+                }
+            }
+
+            // Save state for next comparison
+            lastSceneState = {
+                hazards: filteredHazards,
+                objects: filteredObjects,
+                navigation: data.navigation || ''
+            };
+
+            // Emergency Hazard Prioritization Override
+            const criticalHazardList = [
+                'stairs', 'vehicle', 'vehicles', 'bicycle', 'bicycles', 
+                'road crossing', 'road crossings', 'construction zone', 
+                'construction zones', 'open pit', 'open pits', 'fire', 
+                'smoke', 'low-hanging obstacle', 'low-hanging obstacles', 
+                'moving object', 'moving objects', 'wet floor', 'wet floors'
+            ];
+
+            let speechAnnouncement = data.summary;
+            let emergencyTriggered = false;
+
+            for (const h of filteredHazards) {
+                const lowerH = h.toLowerCase();
+                const matched = criticalHazardList.some(crit => lowerH.includes(crit));
+                if (matched) {
+                    speechAnnouncement = `Warning. ${h} detected ahead. Please proceed carefully.`;
+                    emergencyTriggered = true;
+                    break;
+                }
+            }
+
+            // OCR reading limit (500 chars)
+            if (isOcrMode && data.textDetected && data.textDetected.length > 0) {
+                const fullText = data.textDetected.join(" ");
+                if (fullText.length > 500) {
+                    const truncatedText = fullText.slice(0, 500);
+                    speechAnnouncement = `${truncatedText}... End of preview. Say continue reading to hear the rest.`;
+                    window.pendingOcrText = fullText.slice(500);
+                } else {
+                    speechAnnouncement = fullText;
+                    window.pendingOcrText = null;
+                }
+            } else {
+                window.pendingOcrText = null;
+            }
+
+            if (announceTitle) {
+                announceTitle.innerText = speechAnnouncement;
+            }
+
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            if (announceDistance) {
+                announceDistance.innerText = `Analysis complete at ${timestamp}`;
+            }
+
+            if (repeatBtn) {
+                repeatBtn.disabled = false;
+                repeatBtn.style.opacity = '1';
+            }
+
+            SpeechService.announce(speechAnnouncement);
+
+        } catch (err) {
+            console.error("[Vision System] Advanced vision request failed:", err);
+            const errDescription = err.message === 'timeout' ? 'Scan timed out' : 'Analysis failed';
+            
+            if (announceTitle) announceTitle.innerText = errDescription;
+            SpeechService.announce(errDescription);
+        } finally {
+            isAnalyzing = false;
+            if (announceStatus) announceStatus.classList.remove('active');
+            if (describeBtn) {
+                describeBtn.disabled = false;
+                describeBtn.style.opacity = '1';
+            }
+        }
     }
 
     // Home assistant Orb trigger
@@ -2006,6 +2225,62 @@ document.addEventListener('DOMContentLoaded', () => {
             SpeechService.announce("Please open your browser settings to grant camera access.");
             alert("To grant camera permissions:\n1. Click the permissions/lock icon in the URL bar.\n2. Toggle 'Camera' access to Allow.\n3. Refresh this page to start scanning.");
         });
+    }
+
+    // Dynamically inject the new scanner controls row to maintain UI Freeze compliance
+    const card = document.querySelector('.announcement-card');
+    if (card) {
+        const controlsRow = document.createElement('div');
+        controlsRow.style = 'display: flex; gap: 0.5rem; justify-content: space-between; width: 100%; margin-top: 0.5rem;';
+        controlsRow.innerHTML = `
+            <button class="btn-secondary" id="btn-continuous-toggle" style="flex: 1; padding: 0.6rem; font-size: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border: 1px solid var(--border-color); background: var(--glass-bg); color: var(--text-main); cursor: pointer;" aria-label="Toggle Continuous Scanning Mode">
+                <span class="indicator-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #888; display: inline-block;"></span>
+                Continuous
+            </button>
+            <button class="btn-secondary" id="btn-mode-toggle" style="flex: 1; padding: 0.6rem; font-size: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border: 1px solid var(--border-color); background: var(--glass-bg); color: var(--text-main); cursor: pointer;" aria-label="Toggle between OCR and Scene analysis">
+                Scene Mode
+            </button>
+            <button class="btn-secondary" id="btn-stop-speech" style="flex: 1; padding: 0.6rem; font-size: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border: 1px solid rgba(255, 74, 74, 0.2); background: var(--glass-bg); color: #ff4a4a; cursor: pointer;" aria-label="Stop Speaking">
+                Stop Speech
+            </button>
+        `;
+        card.appendChild(controlsRow);
+
+        // Bind events
+        const continuousBtn = document.getElementById('btn-continuous-toggle');
+        if (continuousBtn) {
+            continuousBtn.addEventListener('click', () => {
+                isContinuousScanning = !isContinuousScanning;
+                if (isContinuousScanning) {
+                    startContinuousScanning();
+                    SpeechService.announce("Continuous scanning activated.");
+                } else {
+                    stopContinuousScanning();
+                    SpeechService.announce("Continuous scanning deactivated.");
+                }
+                updateContinuousButtonUI();
+            });
+        }
+
+        const modeBtn = document.getElementById('btn-mode-toggle');
+        if (modeBtn) {
+            modeBtn.addEventListener('click', () => {
+                isOcrMode = !isOcrMode;
+                if (isOcrMode) {
+                    SpeechService.announce("OCR text reading mode active.");
+                } else {
+                    SpeechService.announce("Scene description mode active.");
+                }
+                updateModeButtonUI();
+            });
+        }
+
+        const stopSpeechBtn = document.getElementById('btn-stop-speech');
+        if (stopSpeechBtn) {
+            stopSpeechBtn.addEventListener('click', () => {
+                window.speechSynthesis.cancel();
+            });
+        }
     }
 
     // Initial check of camera permissions
