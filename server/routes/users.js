@@ -4,21 +4,22 @@ const User = require('../models/User');
 const { userValidator, validateObjectId } = require('../middleware/validator');
 const { userLimiter } = require('../middleware/rateLimiter');
 
-// POST /api/users - Register a new user
+// POST /api/users - Register or find user by deviceId
 router.post('/', userLimiter, userValidator, async (req, res, next) => {
     try {
-        const { name, email, profilePicture, provider } = req.body;
+        const { deviceId, name, profilePicture, provider } = req.body;
         
-        let user = await User.findOne({ email: email.toLowerCase() });
+        let user = await User.findOne({ deviceId: deviceId.trim() });
         if (user) {
-            return res.status(409).json({ success: false, message: 'User with this email already exists' });
+            // Return existing user if already registered
+            return res.status(200).json({ success: true, data: user });
         }
 
         user = new User({
-            name,
-            email,
-            profilePicture,
-            provider
+            deviceId: deviceId.trim(),
+            name: name || 'Nazar User',
+            profilePicture: profilePicture || '',
+            provider: provider || 'local'
         });
 
         await user.save();
@@ -28,7 +29,7 @@ router.post('/', userLimiter, userValidator, async (req, res, next) => {
     }
 });
 
-// GET /api/users/:id - Retrieve user profile by id
+// GET /api/users/:id - Retrieve user profile by database ObjectId
 router.get('/:id', userLimiter, async (req, res, next) => {
     try {
         const id = req.params.id;
@@ -37,6 +38,25 @@ router.get('/:id', userLimiter, async (req, res, next) => {
         }
 
         const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.status(200).json({ success: true, data: user });
+    } catch (err) {
+        next(err);
+    }
+});
+
+// GET /api/users/device/:deviceId - Retrieve user profile by deviceId
+router.get('/device/:deviceId', userLimiter, async (req, res, next) => {
+    try {
+        const deviceId = req.params.deviceId;
+        if (!deviceId || !deviceId.trim()) {
+            return res.status(400).json({ success: false, message: 'Missing deviceId parameter' });
+        }
+
+        const user = await User.findOne({ deviceId: deviceId.trim() });
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
         }

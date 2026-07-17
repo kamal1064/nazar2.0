@@ -26,9 +26,20 @@ app.use('/api/emergency-contacts', contactsRouter);
 app.use('/api/settings', settingsRouter);
 
 // Base healthcheck route
-app.get('/health', (req, res) => {
-    res.status(200).json({ success: true, status: 'Nazar backend API operational' });
-});
+const healthHandler = (req, res) => {
+    const mongoose = require('mongoose');
+    const dbConnected = mongoose.connection.readyState === 1;
+    const geminiAvailable = !!process.env.GEMINI_API_KEY;
+    res.status(200).json({
+        success: true,
+        database: dbConnected ? "connected" : "disconnected",
+        gemini: geminiAvailable ? "available" : "unavailable",
+        timestamp: new Date().toISOString(),
+        version: "v18"
+    });
+};
+app.get('/health', healthHandler);
+app.get('/api/health', healthHandler);
 
 // Global Error Handler Middleware
 app.use(errorHandler);

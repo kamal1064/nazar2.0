@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, index: true, lowercase: true, trim: true },
+    deviceId: { type: String, required: true, unique: true, index: true, trim: true },
+    name: { type: String, default: 'Nazar User', trim: true },
     profilePicture: { type: String, default: '' },
     provider: { type: String, default: 'local' }
 }, {

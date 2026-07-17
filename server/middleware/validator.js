@@ -10,12 +10,9 @@ const validateObjectId = (id) => {
 };
 
 const userValidator = (req, res, next) => {
-    const { name, email } = req.body;
-    if (!name || typeof name !== 'string' || !name.trim()) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing user name' });
-    }
-    if (!email || !validateEmail(email)) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing user email' });
+    const { deviceId } = req.body;
+    if (!deviceId || typeof deviceId !== 'string' || !deviceId.trim()) {
+        return res.status(400).json({ success: false, message: 'Invalid or missing deviceId' });
     }
     next();
 };

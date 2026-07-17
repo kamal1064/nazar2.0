@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v17';
+    const CURRENT_VERSION = 'v18';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -123,6 +123,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state[key] = value;
             localStorage.setItem(`nazar-${this.kebabCase(key)}`, value);
             this.syncStatusBadge();
+            if (typeof queueSettingsSync === 'function') {
+                queueSettingsSync();
+            }
         },
 
         kebabCase(str) {
@@ -1207,11 +1210,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const val = transcript.split("set emergency contact name to")[1].trim();
             SettingsService.save("emergencyContactName", val);
             SpeechService.announce(`Emergency contact name set to ${val}`);
+            if (typeof syncEmergencyContact === 'function') {
+                syncEmergencyContact(val, SettingsService.state.emergencyContactNumber);
+            }
             return true;
         } else if (transcript.includes("set emergency contact number to")) {
             const val = transcript.split("set emergency contact number to")[1].trim().replace(/\s+/g, '');
             SettingsService.save("emergencyContactNumber", val);
             SpeechService.announce(`Emergency contact number set to ${val}`);
+            if (typeof syncEmergencyContact === 'function') {
+                syncEmergencyContact(SettingsService.state.emergencyContactName, val);
+            }
+            return true;
+        } else if (transcript.includes("delete emergency contact") || transcript.includes("remove emergency contact")) {
+            const contactId = localStorage.getItem("emergencyContactDbId");
+            SettingsService.save("emergencyContactName", "Emergency Contact");
+            SettingsService.save("emergencyContactNumber", "");
+            localStorage.removeItem("emergencyContactDbId");
+            if (contactId && typeof executeOrQueueSync === 'function') {
+                executeOrQueueSync({
+                    type: 'delete-contact',
+                    contactId,
+                    timestamp: Date.now()
+                });
+            }
+            SpeechService.announce("Emergency contact deleted.");
             return true;
         } else if (transcript.includes("set home address to")) {
             const val = transcript.split("set home address to")[1].trim();
@@ -1643,6 +1666,267 @@ document.addEventListener('DOMContentLoaded', () => {
         navigation: ''
     };
 
+    async function initUserSession() {
+        let userId = localStorage.getItem("userId");
+        let deviceId = localStorage.getItem("deviceId");
+
+        if (!deviceId) {
+            deviceId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).slice(2, 9) + '-' + Date.now();
+            localStorage.setItem("deviceId", deviceId);
+        }
+
+        if (!userId) {
+            console.log("[User Session] Registering new user profile dynamically for device:", deviceId);
+            try {
+                const response = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        deviceId,
+                        name: 'Nazar User',
+                        provider: 'local'
+                    })
+                });
+                if (response.ok) {
+                    const result = await response.json();
+                    userId = result.data._id;
+                    localStorage.setItem("userId", userId);
+                    console.log("[User Session] Successfully registered dynamic userId:", userId);
+                }
+            } catch (err) {
+                console.error("[User Session] Failed to register user profile dynamically:", err);
+            }
+        } else {
+            console.log("[User Session] Resolved dynamic userId from cache:", userId);
+        }
+
+        if (userId) {
+            await loadSettingsFromServer(userId);
+            await loadContactsFromServer(userId);
+            await syncPendingQueue();
+        }
+    }
+
+    async function loadSettingsFromServer(userId) {
+        try {
+            const response = await fetch(`/api/settings/${userId}`);
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data) {
+                    const settings = result.data;
+                    SettingsService.state.voiceCommandsEnabled = settings.voiceEnabled !== undefined ? settings.voiceEnabled : SettingsService.state.voiceCommandsEnabled;
+                    SettingsService.state.liveLocationSharingEnabled = settings.locationSharing !== undefined ? settings.locationSharing : SettingsService.state.liveLocationSharingEnabled;
+                    SettingsService.state.darkModeEnabled = settings.darkMode !== undefined ? settings.darkMode : SettingsService.state.darkModeEnabled;
+                    SettingsService.state.speechRate = settings.speechRate || 1.0;
+                    SettingsService.state.speechVolume = settings.speechVolume || 1.0;
+                    
+                    isContinuousScanning = settings.continuousScanning !== undefined ? settings.continuousScanning : isContinuousScanning;
+                    isOcrMode = settings.preferredScanMode === 'ocr';
+
+                    localStorage.setItem('nazar-voice-commands', SettingsService.state.voiceCommandsEnabled);
+                    localStorage.setItem('nazar-live-location-sharing-enabled', SettingsService.state.liveLocationSharingEnabled);
+                    localStorage.setItem('nazar-dark-mode', SettingsService.state.darkModeEnabled);
+                    
+                    updateContinuousButtonUI();
+                    updateModeButtonUI();
+                    if (SettingsService.state.darkModeEnabled) {
+                        document.body.classList.add('dark-theme');
+                    } else {
+                        document.body.classList.remove('dark-theme');
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("[Settings Sync] Failed to load settings:", err);
+        }
+    }
+
+    async function loadContactsFromServer(userId) {
+        try {
+            const response = await fetch(`/api/emergency-contacts/${userId}`);
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success && result.data && result.data.length > 0) {
+                    const contact = result.data[0];
+                    SettingsService.state.emergencyContactName = contact.name;
+                    SettingsService.state.emergencyContactNumber = contact.phone;
+                    localStorage.setItem("emergencyContactDbId", contact._id);
+                    localStorage.setItem("nazar-emergency-contact-name", contact.name);
+                    localStorage.setItem("nazar-emergency-contact-number", contact.phone);
+                }
+            }
+        } catch (err) {
+            console.error("[Contacts Sync] Failed to load contacts:", err);
+        }
+    }
+
+    let settingsDebounceTimer = null;
+    function queueSettingsSync() {
+        if (settingsDebounceTimer) {
+            clearTimeout(settingsDebounceTimer);
+        }
+        settingsDebounceTimer = setTimeout(async () => {
+            const userId = localStorage.getItem("userId");
+            if (!userId) return;
+
+            const settingsPayload = {
+                voiceEnabled: SettingsService.state.voiceCommandsEnabled,
+                speechRate: SettingsService.state.speechRate || 1.0,
+                speechVolume: SettingsService.state.speechVolume || 1.0,
+                locationSharing: SettingsService.state.liveLocationSharingEnabled,
+                darkMode: SettingsService.state.darkModeEnabled,
+                continuousScanning: isContinuousScanning,
+                preferredScanMode: isOcrMode ? 'ocr' : 'scene'
+            };
+
+            await executeOrQueueSync({
+                type: 'settings',
+                payload: settingsPayload,
+                timestamp: Date.now()
+            });
+        }, 500);
+    }
+
+    async function syncEmergencyContact(name, phone, relationship = 'Primary') {
+        const contactId = localStorage.getItem("emergencyContactDbId");
+        if (contactId) {
+            await executeOrQueueSync({
+                type: 'update-contact',
+                contactId,
+                payload: { name, phone, relationship },
+                timestamp: Date.now()
+            });
+        } else {
+            await executeOrQueueSync({
+                type: 'create-contact',
+                payload: { name, phone, relationship },
+                timestamp: Date.now()
+            });
+        }
+    }
+
+    async function executeOrQueueSync(action) {
+        if (!navigator.onLine) {
+            queuePendingAction(action);
+            SpeechService.announce("Offline. Action saved to pending sync queue.");
+            return;
+        }
+
+        try {
+            const success = await performBackendSync(action);
+            if (!success) {
+                queuePendingAction(action);
+            }
+        } catch (err) {
+            console.error("[Sync Queue] Sync failed, queuing action:", err);
+            queuePendingAction(action);
+        }
+    }
+
+    function queuePendingAction(action) {
+        let queue = [];
+        try {
+            queue = JSON.parse(localStorage.getItem("nazar-pending-sync-queue") || "[]");
+        } catch (e) {
+            queue = [];
+        }
+        if (action.type === 'settings') {
+            queue = queue.filter(item => item.type !== 'settings');
+        }
+        queue.push(action);
+        localStorage.setItem("nazar-pending-sync-queue", JSON.stringify(queue));
+        console.log("[Sync Queue] Action queued:", action);
+    }
+
+    async function syncPendingQueue() {
+        if (!navigator.onLine) return;
+        
+        let queue = [];
+        try {
+            queue = JSON.parse(localStorage.getItem("nazar-pending-sync-queue") || "[]");
+        } catch (e) {
+            queue = [];
+        }
+        if (queue.length === 0) return;
+
+        console.log(`[Sync Queue] Synchronizing ${queue.length} pending actions...`);
+        let failedActions = [];
+
+        for (const action of queue) {
+            try {
+                const success = await performBackendSync(action);
+                if (!success) {
+                    failedActions.push(action);
+                }
+            } catch (err) {
+                console.error("[Sync Queue] Failed to play back action:", action, err);
+                failedActions.push(action);
+            }
+        }
+
+        if (failedActions.length > 0) {
+            localStorage.setItem("nazar-pending-sync-queue", JSON.stringify(failedActions));
+        } else {
+            localStorage.removeItem("nazar-pending-sync-queue");
+            console.log("[Sync Queue] All pending actions successfully synchronized.");
+            SpeechService.announce("Settings and contacts synchronized successfully.");
+        }
+    }
+
+    async function performBackendSync(action) {
+        const userId = localStorage.getItem("userId");
+        if (!userId) return false;
+
+        if (action.type === 'settings') {
+            const response = await fetch(`/api/settings/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(action.payload)
+            });
+            return response.ok;
+        }
+
+        if (action.type === 'create-contact') {
+            const response = await fetch('/api/emergency-contacts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...action.payload, userId })
+            });
+            if (response.ok) {
+                const result = await response.json();
+                if (result.data) {
+                    localStorage.setItem("emergencyContactDbId", result.data._id);
+                }
+                return true;
+            }
+            return false;
+        }
+
+        if (action.type === 'update-contact') {
+            const contactId = action.contactId || localStorage.getItem("emergencyContactDbId");
+            if (!contactId) return true;
+            const response = await fetch(`/api/emergency-contacts/${contactId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(action.payload)
+            });
+            return response.ok;
+        }
+
+        if (action.type === 'delete-contact') {
+            const contactId = action.contactId || localStorage.getItem("emergencyContactDbId");
+            if (!contactId) return true;
+            const response = await fetch(`/api/emergency-contacts/${contactId}`, {
+                method: 'DELETE'
+            });
+            return response.ok;
+        }
+
+        return false;
+    }
+
+    window.addEventListener('online', syncPendingQueue);
+
     function startContinuousScanning() {
         stopContinuousScanning();
         console.log("[Continuous Scan] Starting 5-second interval loop.");
@@ -1740,7 +2024,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = resizedCanvas.getContext('2d');
         ctx.drawImage(rawCanvas, 0, 0, 1280, 720);
 
-        const base64Img = resizedCanvas.toDataURL('image/jpeg', 0.8);
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        const formatType = 'image/jpeg';
+        if (!validTypes.includes(formatType)) {
+            console.warn(`[Vision System] Invalid format ${formatType}. JPEG, PNG, WebP only.`);
+            isAnalyzing = false;
+            if (announceStatus) announceStatus.classList.remove('active');
+            if (describeBtn) {
+                describeBtn.disabled = false;
+                describeBtn.style.opacity = '1';
+            }
+            return;
+        }
+
+        const base64Img = resizedCanvas.toDataURL(formatType, 0.8);
         const payloadSize = (base64Img.length * (3/4)) / (1024 * 1024); // in MB
         if (payloadSize > 5) {
             console.warn(`[Vision System] Image size ${payloadSize.toFixed(2)}MB exceeds 5MB limit. Aborting.`);
@@ -1764,7 +2061,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        userId: SettingsService.state.userId || null,
+                        userId: localStorage.getItem("userId") || null,
                         image: base64Img,
                         ocrMode: isOcrMode
                     }),
@@ -2257,6 +2554,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     SpeechService.announce("Continuous scanning deactivated.");
                 }
                 updateContinuousButtonUI();
+                if (typeof queueSettingsSync === 'function') {
+                    queueSettingsSync();
+                }
             });
         }
 
@@ -2270,6 +2570,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     SpeechService.announce("Scene description mode active.");
                 }
                 updateModeButtonUI();
+                if (typeof queueSettingsSync === 'function') {
+                    queueSettingsSync();
+                }
             });
         }
 
@@ -2279,6 +2582,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.speechSynthesis.cancel();
             });
         }
+    }
+
+    // Resolve user session and sync settings/contacts
+    if (typeof initUserSession === 'function') {
+        initUserSession();
     }
 
     // Initial check of camera permissions

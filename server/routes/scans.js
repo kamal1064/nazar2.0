@@ -151,7 +151,8 @@ router.post('/', scanLimiter, async (req, res, next) => {
             textDetected: parsedResult.textDetected || [],
             navigation: parsedResult.navigation || '',
             environment: parsedResult.environment || '',
-            confidence: parsedResult.confidence || 0.0
+            confidence: parsedResult.confidence || 0.0,
+            scanMode: ocrMode ? 'ocr' : 'scene'
         });
 
         await scan.save();
@@ -183,6 +184,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
             navigation: scan.navigation,
             environment: scan.environment,
             confidence: scan.confidence,
+            scanMode: scan.scanMode,
             timestamp: scan.createdAt
         });
 

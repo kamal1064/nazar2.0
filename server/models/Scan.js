@@ -11,6 +11,7 @@ const scanSchema = new mongoose.Schema({
     navigation: { type: String, default: '' },
     environment: { type: String, default: '' },
     confidence: { type: Number, default: 0.0 },
+    scanMode: { type: String, enum: ['scene', 'ocr'], default: 'scene' },
     createdAt: { type: Date, default: Date.now, index: true }
 });
 
