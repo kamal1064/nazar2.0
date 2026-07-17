@@ -5,11 +5,28 @@ const User = require('../models/User');
 const { validateObjectId } = require('../middleware/validator');
 const { scanLimiter } = require('../middleware/rateLimiter');
 
-const SCENE_INSTRUCTION = `You are NAZAR, an AI accessibility assistant designed for visually impaired users.
-Analyze the image and provide a structured JSON response specifying hazards, nearby objects, people, text detected, navigation directions, environmental context, and a spoken summary.
+const SCENE_INSTRUCTION = `You are NAZAR, an AI assistant designed for visually impaired users.
 
-Focus on these critical hazards if present: stairs, vehicles, bicycles, road crossings, construction zones, open pits, fire, smoke, low-hanging obstacles, moving objects, and wet floors.
-Prioritize safety. Distinguish left, right, front, and behind. Approximate distances. Keep spoken summary concise.`;
+Analyze the image and provide:
+1. Immediate hazards first.
+2. Nearby objects.
+3. People and their relative positions.
+4. Important visible text.
+5. Navigation guidance.
+6. Environmental context.
+7. A concise spoken summary.
+
+Rules:
+- Safety always comes first.
+- Use simple language.
+- Mention left, right, front, behind.
+- Mention approximate distances when possible.
+- Read important text exactly.
+- Avoid unnecessary details.
+- Keep spoken summaries under 80 words.
+- Focus on helping the user move safely.
+
+Focus on these critical hazards if present: stairs, vehicles, bicycles, road crossings, construction zones, open pits, fire, smoke, wet floors, low hanging obstacles, moving objects, and crowded pathways.`;
 
 const OCR_INSTRUCTION = `Extract all visible text from the image, preserving wording precisely for documents, labels, signs, or packaging. Return it structured in JSON.`;
 
@@ -28,7 +45,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
         }
 
         const apiKey = process.env.GEMINI_API_KEY;
-        const modelName = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+        const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
         
         if (!apiKey) {
             return res.status(500).json({ success: false, message: 'Gemini API Key is not configured' });
@@ -63,45 +80,25 @@ router.post('/', scanLimiter, async (req, res, next) => {
                         summary: { type: 'STRING' },
                         hazards: {
                             type: 'ARRAY',
-                            items: {
-                                type: 'OBJECT',
-                                properties: {
-                                    name: { type: 'STRING' },
-                                    confidence: { type: 'NUMBER' }
-                                },
-                                required: ['name', 'confidence']
-                            }
+                            items: { type: 'STRING' }
                         },
                         objects: {
                             type: 'ARRAY',
-                            items: {
-                                type: 'OBJECT',
-                                properties: {
-                                    name: { type: 'STRING' },
-                                    confidence: { type: 'NUMBER' }
-                                },
-                                required: ['name', 'confidence']
-                            }
+                            items: { type: 'STRING' }
                         },
                         people: {
                             type: 'ARRAY',
-                            items: {
-                                type: 'OBJECT',
-                                properties: {
-                                    name: { type: 'STRING' },
-                                    confidence: { type: 'NUMBER' }
-                                },
-                                required: ['name', 'confidence']
-                            }
+                            items: { type: 'STRING' }
                         },
                         textDetected: {
                             type: 'ARRAY',
                             items: { type: 'STRING' }
                         },
                         navigation: { type: 'STRING' },
-                        environment: { type: 'STRING' }
+                        environment: { type: 'STRING' },
+                        confidence: { type: 'NUMBER' }
                     },
-                    required: ['summary', 'hazards', 'objects', 'people', 'textDetected', 'navigation', 'environment']
+                    required: ['summary', 'hazards', 'objects', 'people', 'textDetected', 'navigation', 'environment', 'confidence']
                 }
             }
         };
@@ -146,14 +143,15 @@ router.post('/', scanLimiter, async (req, res, next) => {
         // Save scan payload to MongoDB
         const scan = new Scan({
             userId: userId || null,
-            imageUrl: '', // optional storage url placeholder
+            imageUrl: '',
             summary: parsedResult.summary || 'Scene scanned.',
             hazards: parsedResult.hazards || [],
             objects: parsedResult.objects || [],
             people: parsedResult.people || [],
             textDetected: parsedResult.textDetected || [],
             navigation: parsedResult.navigation || '',
-            environment: parsedResult.environment || ''
+            environment: parsedResult.environment || '',
+            confidence: parsedResult.confidence || 0.0
         });
 
         await scan.save();
@@ -184,6 +182,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
             textDetected: scan.textDetected,
             navigation: scan.navigation,
             environment: scan.environment,
+            confidence: scan.confidence,
             timestamp: scan.createdAt
         });
 

@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v16';
+    const CURRENT_VERSION = 'v17';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -1464,10 +1464,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                if (transcript.includes("describe surroundings") || transcript.includes("describe")) {
+                if (transcript.includes("describe surroundings") || transcript.includes("describe") || transcript.includes("scan now")) {
                     this.updateUI("Voice command recognized");
                     triggerDescribeSurroundings(false);
-                } else if (transcript.includes("repeat description") || transcript.includes("repeat")) {
+                } else if (transcript.includes("repeat description") || transcript.includes("repeat") || transcript.includes("repeat last scan")) {
                     this.updateUI("Voice command recognized");
                     SpeechService.repeat();
                 } else if (transcript.includes("stop speaking") || transcript.includes("silence") || transcript.includes("stop speech")) {
@@ -1785,10 +1785,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
 
-            // Confidence filtering >= 0.70
-            const filterConfidence = items => (items || []).filter(item => item.confidence >= 0.70).map(item => item.name);
-            const filteredHazards = filterConfidence(data.hazards);
-            const filteredObjects = filterConfidence(data.objects);
+            const filteredHazards = data.hazards || [];
+            const filteredObjects = data.objects || [];
 
             // Change detection
             if (isContinuous) {
@@ -1814,10 +1812,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Emergency Hazard Prioritization Override
             const criticalHazardList = [
                 'stairs', 'vehicle', 'vehicles', 'bicycle', 'bicycles', 
-                'road crossing', 'road crossings', 'construction zone', 
-                'construction zones', 'open pit', 'open pits', 'fire', 
-                'smoke', 'low-hanging obstacle', 'low-hanging obstacles', 
-                'moving object', 'moving objects', 'wet floor', 'wet floors'
+                'road crossing', 'road crossings', 'construction zone', 'construction zones', 
+                'open pit', 'open pits', 'fire', 'smoke', 'wet floor', 'wet floors',
+                'low hanging obstacle', 'low hanging obstacles', 'moving object', 'moving objects',
+                'crowded pathway', 'crowded pathways'
             ];
 
             let speechAnnouncement = data.summary;
