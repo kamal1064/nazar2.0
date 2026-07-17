@@ -635,13 +635,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Trigger model loading inside background worker
                 this.worker.postMessage({ type: 'load' });
 
-                // Worker Startup Safety Timeout: If worker fails to load model in 4 seconds, fallback to main thread
+                // Worker Startup Safety Timeout: Allow 15s for CDN-loaded TF.js model before falling back
                 setTimeout(() => {
                     if (!this.isWorkerReady && !this.workerLoadFailed) {
-                        console.warn("Worker initialization timed out. Triggering main-thread fallback.");
+                        console.warn("Worker initialization timed out after 15s. Triggering main-thread fallback.");
                         this.fallbackToMainThread();
                     }
-                }, 4000);
+                }, 15000);
 
             } catch (err) {
                 console.warn("Browser Web Worker instantiation blocked. Using main thread fallback: ", err);
@@ -1309,13 +1309,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const userName = 'Kamal';
                 const timestamp = new Date().toLocaleString();
                 const mapUrl = `https://maps.google.com/?q=${lat},${lon}`;
+                const liveMessage = `Live Location Update\n\n${userName} is at:\n${mapUrl}\n\nTime: ${timestamp}`;
                 const payload = {
                     userName,
                     timestamp,
                     locationLink: mapUrl,
                     latitude: lat,
                     longitude: lon,
-                    contactNumber: SettingsService.state.emergencyContactNumber || ''
+                    contactNumber: SettingsService.state.emergencyContactNumber || '',
+                    message: liveMessage
                 };
 
                 await EmergencyService.dispatch(payload);
@@ -1692,9 +1694,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     userId = result.data._id;
                     localStorage.setItem("userId", userId);
                     console.log("[User Session] Successfully registered dynamic userId:", userId);
+                } else if (response.status === 404) {
+                    // Backend API not deployed in this environment (e.g. static hosting).
+                    // Generate a local-only ID so the app continues to function offline.
+                    console.warn("[User Session] /api/users returned 404. Backend unavailable — running in offline-only mode.");
+                    userId = 'local-' + deviceId;
+                    localStorage.setItem("userId", userId);
+                } else {
+                    console.warn("[User Session] Unexpected response from /api/users:", response.status);
                 }
             } catch (err) {
-                console.error("[User Session] Failed to register user profile dynamically:", err);
+                console.warn("[User Session] Could not reach backend — running in offline-only mode.", err.message);
+                userId = 'local-' + deviceId;
+                localStorage.setItem("userId", userId);
             }
         } else {
             console.log("[User Session] Resolved dynamic userId from cache:", userId);
