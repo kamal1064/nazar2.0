@@ -1320,7 +1320,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     message: liveMessage
                 };
 
-                await EmergencyService.dispatch(payload);
+                // Live location: notify via push/webhook only.
+                // SMS is reserved for real SOS emergencies (triggerSOSDispatch).
+                const liveDispatchers = ['push', 'webhook'];
+                for (const name of liveDispatchers) {
+                    if (EmergencyService.dispatchers[name]) {
+                        EmergencyService.dispatchers[name].sendAlert(payload).catch(e =>
+                            console.warn(`[LocationSystem] ${name} dispatcher failed:`, e.message)
+                        );
+                    }
+                }
 
             }, (err) => {
                 console.warn("[LocationSystem] Live sharing geolocation query failed:", err);

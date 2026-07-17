@@ -33,13 +33,16 @@ const OCR_INSTRUCTION = `Extract all visible text from the image, preserving wor
 // POST /api/scan - Analyze camera frame using Gemini Vision
 router.post('/', scanLimiter, async (req, res, next) => {
     try {
-        const { userId, image, ocrMode } = req.body;
+        const { image, ocrMode } = req.body;
+        // Strip local-only IDs (generated when backend was unreachable) — treat as anonymous
+        const rawUserId = req.body.userId || null;
+        const userId = (rawUserId && rawUserId.startsWith('local-')) ? null : rawUserId;
 
         if (!image) {
             return res.status(400).json({ success: false, message: 'Missing base64 image data' });
         }
 
-        // Validate userId if provided
+        // Validate userId if provided and not already nulled above
         if (userId && !validateObjectId(userId)) {
             return res.status(400).json({ success: false, message: 'Invalid User ID format' });
         }
