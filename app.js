@@ -178,6 +178,27 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Bind Emergency Settings Inputs
+            const inputName = document.getElementById('input-emergency-name');
+            const inputPhone = document.getElementById('input-emergency-phone');
+
+            if (inputName) {
+                inputName.value = this.state.emergencyContactName;
+                inputName.addEventListener('change', (e) => {
+                    const val = e.target.value.trim();
+                    this.save('emergencyContactName', val);
+                    syncEmergencyContact(val, this.state.emergencyContactNumber);
+                });
+            }
+
+            if (inputPhone) {
+                inputPhone.value = this.state.emergencyContactNumber;
+                inputPhone.addEventListener('change', (e) => {
+                    const val = e.target.value.trim();
+                    this.save('emergencyContactNumber', val);
+                    syncEmergencyContact(this.state.emergencyContactName, val);
+                });
+            }
+
             this.initAccordions();
         },
 
@@ -479,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 }
             } catch (e) {
-                console.warn("navigator.permissions query not supported", e);
+                console.warn("navigator.permissions query not supported:", e.message || e);
             }
         },
 
@@ -1424,12 +1445,15 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentTab = tabId;
 
         if (tabId === 'camera') {
-            CameraPermissionManager.checkStatus();
-            if (CameraPermissionManager.state === 'granted') {
-                CameraService.start();
-            } else {
+            CameraService.start().then(hasStream => {
+                if (hasStream) {
+                    CameraPermissionManager.state = 'granted';
+                }
                 CameraPermissionManager.updateUI();
-            }
+            }).catch(err => {
+                console.warn("Camera start on tab switch failed:", err);
+                CameraPermissionManager.updateUI();
+            });
         } else {
             CameraService.stop();
             VoiceCommandService.stop();
@@ -1572,6 +1596,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem("emergencyContactDbId", contact._id);
                     localStorage.setItem("nazar-emergency-contact-name", contact.name);
                     localStorage.setItem("nazar-emergency-contact-number", contact.phone);
+
+                    const inputName = document.getElementById('input-emergency-name');
+                    const inputPhone = document.getElementById('input-emergency-phone');
+                    if (inputName) inputName.value = contact.name;
+                    if (inputPhone) inputPhone.value = contact.phone;
                 }
             }
         } catch (err) {
