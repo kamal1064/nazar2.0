@@ -6,7 +6,9 @@ const settingsSchema = new mongoose.Schema({
     speechRate: { type: Number, default: 1.0 },
     speechVolume: { type: Number, default: 1.0 },
     locationSharing: { type: Boolean, default: false },
-    darkMode: { type: Boolean, default: false }
+    darkMode: { type: Boolean, default: false },
+    continuousScanning: { type: Boolean, default: false },
+    preferredScanMode: { type: String, enum: ['scene', 'ocr'], default: 'scene' }
 }, {
     timestamps: true
 });

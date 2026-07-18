@@ -30,7 +30,7 @@ const contactValidator = (req, res, next) => {
 };
 
 const settingsValidator = (req, res, next) => {
-    const { voiceEnabled, speechRate, speechVolume, locationSharing, darkMode } = req.body;
+    const { voiceEnabled, speechRate, speechVolume, locationSharing, darkMode, continuousScanning, preferredScanMode } = req.body;
     
     if (voiceEnabled !== undefined && typeof voiceEnabled !== 'boolean') {
         return res.status(400).json({ success: false, message: 'voiceEnabled must be a boolean' });
@@ -46,6 +46,12 @@ const settingsValidator = (req, res, next) => {
     }
     if (darkMode !== undefined && typeof darkMode !== 'boolean') {
         return res.status(400).json({ success: false, message: 'darkMode must be a boolean' });
+    }
+    if (continuousScanning !== undefined && typeof continuousScanning !== 'boolean') {
+        return res.status(400).json({ success: false, message: 'continuousScanning must be a boolean' });
+    }
+    if (preferredScanMode !== undefined && !['scene', 'ocr'].includes(preferredScanMode)) {
+        return res.status(400).json({ success: false, message: 'preferredScanMode must be scene or ocr' });
     }
     next();
 };
