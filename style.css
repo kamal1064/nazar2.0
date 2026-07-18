@@ -1448,10 +1448,15 @@ input:checked + .toggle-slider:before {
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     box-shadow: 0 -8px 30px rgba(15, 23, 42, 0.06);
+    pointer-events: none;
+    visibility: hidden;
 }
 
-.app-drawer-backdrop.drawer-active + .app-drawer-sheet {
+.app-drawer-backdrop.drawer-active + .app-drawer-sheet,
+.app-drawer-sheet.drawer-active {
     transform: translateY(0);
+    pointer-events: auto;
+    visibility: visible;
 }
 
 .drawer-header-row {

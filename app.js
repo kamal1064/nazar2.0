@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v19';
+    const CURRENT_VERSION = 'v20';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -1506,10 +1506,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    console.log(`[Navigation] Found ${navItems.length} bottom navigation buttons.`);
     navItems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
-        switchTab(item.getAttribute('data-target'));
+            const target = item.getAttribute('data-target');
+            console.log(`[Navigation] Nav item clicked: ${target}`);
+            switchTab(target);
         });
     });
 
@@ -2241,6 +2244,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Activity Drawer close
     function closeActivityDrawer() {
         drawerOverlay.classList.remove('drawer-active');
+        drawerContent.classList.remove('drawer-active');
         drawerContent.style.transform = 'translateY(100%)';
     }
     if (drawerCloseBtn) drawerCloseBtn.addEventListener('click', closeActivityDrawer);
@@ -2248,6 +2252,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (notificationBtn) {
         notificationBtn.addEventListener('click', () => {
             drawerOverlay.classList.add('drawer-active');
+            drawerContent.classList.add('drawer-active');
             drawerContent.style.transform = 'translateY(0)';
             SpeechService.announce("Opening activity logs.");
         });
