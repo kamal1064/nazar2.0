@@ -1,10 +1,5 @@
 const mongoose = require('mongoose');
 
-const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-};
-
 const validateObjectId = (id) => {
     return mongoose.Types.ObjectId.isValid(id);
 };
@@ -13,20 +8,6 @@ const userValidator = (req, res, next) => {
     const { deviceId } = req.body;
     if (!deviceId || typeof deviceId !== 'string' || !deviceId.trim()) {
         return res.status(400).json({ success: false, message: 'Invalid or missing deviceId' });
-    }
-    next();
-};
-
-const scanValidator = (req, res, next) => {
-    const { userId, imageUrl, aiDescription } = req.body;
-    if (!userId || !validateObjectId(userId)) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing userId' });
-    }
-    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.trim()) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing imageUrl' });
-    }
-    if (!aiDescription || typeof aiDescription !== 'string' || !aiDescription.trim()) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing aiDescription' });
     }
     next();
 };
@@ -71,7 +52,6 @@ const settingsValidator = (req, res, next) => {
 
 module.exports = {
     userValidator,
-    scanValidator,
     contactValidator,
     settingsValidator,
     validateObjectId

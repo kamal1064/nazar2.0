@@ -988,55 +988,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    class WebhookDispatcher extends EmergencyDispatcher {
-        async sendAlert(payload) {
-            const url = SettingsService.state.emergencyWebhookUrl || '';
-            if (!url) return { success: false, error: 'No webhook URL configured' };
-            
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-            return { success: true, type: 'webhook' };
-        }
-    }
-
-    class PushDispatcher extends EmergencyDispatcher {
-        async sendAlert(payload) {
-            console.log("[EmergencyService] Dispatching push notification alert:", payload);
-            return { success: true, type: 'push' };
-        }
-    }
-
-    const EmergencyService = {
-        dispatchers: {},
-
-        registerDispatcher(name, dispatcherInstance) {
-            this.dispatchers[name] = dispatcherInstance;
-        },
-
-        async dispatch(payload) {
-            const results = {};
-            for (const [name, dispatcher] of Object.entries(this.dispatchers)) {
-                try {
-                    results[name] = await dispatcher.sendAlert(payload);
-                } catch (err) {
-                    console.error(`[EmergencyService] Dispatcher ${name} failed:`, err);
-                    results[name] = { success: false, error: err.message };
-                }
-            }
-            return results;
-        }
-    };
-
     // Register active providers and dispatchers
     LocationService.registerProvider("osm", new OSMProvider());
     LocationService.setProvider("osm");
 
     EmergencyService.registerDispatcher("sms", new SMSDispatcher());
-    EmergencyService.registerDispatcher("webhook", new WebhookDispatcher());
     EmergencyService.registerDispatcher("push", new PushDispatcher());
 
     // --- 4.9 LOCATION & EMERGENCY HELPER FUNCTIONS ---
@@ -1197,17 +1153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function handleNavigation() {
-        const homeAddr = SettingsService.state.homeAddress;
-        if (!homeAddr) {
-            SpeechService.announce("Home address is not configured. Please say: set home address to, followed by your address.");
-            return;
-        }
 
-        SpeechService.announce(`Starting navigation to ${homeAddr} via Google Maps.`);
-        const navUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(homeAddr)}`;
-        window.open(navUrl, "_blank");
-    }
 
     function handleVoiceSettings(transcript) {
         if (transcript.includes("set emergency contact name to")) {
@@ -1349,125 +1295,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 5. FLORENCE SERVICE (Inference client + Description Caching) ---
-    const FlorenceService = {
-        lastDetectionsStr: '',
-        lastDescription: '',
-        lastDescriptionTimestamp: 0,
 
-        async describe(canvas) {
-            if (!canvas) return "Unable to analyze surroundings. Please try again.";
-
-            // Cloud AI mode enabled
-            if (SettingsService.state.cloudAiEnabled && SettingsService.state.florenceEndpoint) {
-                // Optimization Check: Smart Description Caching (8-second window)
-                const currentDetectionsStr = DetectionService.activeDetections
-                    .map(d => `${d.class}_${d.bbox[0].toFixed(0)}`)
-                    .sort()
-                    .join(',');
-
-                const now = Date.now();
-                if (this.lastDetectionsStr === currentDetectionsStr && 
-                    this.lastDescription && 
-                    (now - this.lastDescriptionTimestamp < 8000)) {
-                    console.log("Reusing cached scene description (no environment change).");
-                    return this.lastDescription;
-                }
-
-                // Setup request timeouts
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => {
-                    controller.abort();
-                }, 8000); // 8 second timeout
-
-                try {
-                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-                    
-                    const response = await fetch(SettingsService.state.florenceEndpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/octet-stream'
-                        },
-                        body: blob,
-                        signal: controller.signal
-                    });
-
-                    clearTimeout(timeoutId);
-
-                    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
-                    
-                    const data = await response.json();
-                    let description = '';
-
-                    if (data && data.description) {
-                        description = data.description;
-                    } else if (data && typeof data === 'string') {
-                        description = data;
-                    } else {
-                        throw new Error("Invalid description format.");
-                    }
-
-                    // Save to cache
-                    this.lastDetectionsStr = currentDetectionsStr;
-                    this.lastDescription = description;
-                    this.lastDescriptionTimestamp = Date.now();
-
-                    return description;
-
-                } catch (err) {
-                    clearTimeout(timeoutId);
-                    
-                    if (err.name === 'AbortError') {
-                        console.warn("Cloud description request timed out.");
-                        SpeechService.announce("Cloud description request timed out. Using local detection mode.");
-                    } else {
-                        console.error("Cloud Florence-2 API failure: ", err);
-                        SpeechService.announce("Cloud AI unavailable. Using local detection mode.");
-                    }
-                    
-                    return this.generateLocalDescription();
-                }
-            } else {
-                return this.generateLocalDescription();
-            }
-        },
-
-        generateLocalDescription() {
-            const detections = DetectionService.activeDetections;
-            if (!detections || detections.length === 0) {
-                return "Unable to analyze surroundings. Please try again.";
-            }
-
-            const elWidth = 640;
-            const sentences = detections.map(pred => {
-                const boxX = pred.bbox[0];
-                const boxW = pred.bbox[2];
-                const centerX = boxX + boxW / 2;
-
-                let direction = "ahead";
-                if (centerX < elWidth * 0.35) {
-                    direction = "on your left";
-                } else if (centerX > elWidth * 0.65) {
-                    direction = "on your right";
-                }
-
-                let friendlyLabel = pred.class;
-                if (['car', 'bus', 'truck'].includes(pred.class)) {
-                    friendlyLabel = "vehicle";
-                }
-
-                return `${friendlyLabel.charAt(0).toUpperCase() + friendlyLabel.slice(1)} detected ${direction}`;
-            });
-
-            return sentences.join(". ") + ".";
-        }
-    };
-
-    const VisionServiceAdapter = {
-        async describeImage(canvas) {
-            return await VisionService.analyze(canvas, 'describe');
-        }
-    };
 
     function checkConfirmationResponse(transcript) {
         return false;
@@ -1561,9 +1389,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (transcript.includes("find nearby")) {
                     this.updateUI("Voice command recognized");
                     handleNearbySearch(transcript);
-                } else if (transcript.includes("navigate") || transcript.includes("take me")) {
-                    this.updateUI("Voice command recognized");
-                    handleNavigation(transcript);
                 } else {
                     const matchedSetting = handleVoiceSettings(transcript);
                     if (matchedSetting) {
