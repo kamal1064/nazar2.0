@@ -5,6 +5,12 @@ const cors = require('cors');
 const connectDB = require('./db');
 const errorHandler = require('./middleware/errorHandler');
 
+console.log("[SERVER STARTUP]", {
+  commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
+  model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
+  hasApiKey: !!process.env.GEMINI_API_KEY
+});
+
 const app = express();
 
 // Security and utility middleware
