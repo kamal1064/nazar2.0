@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v20';
+    const CURRENT_VERSION = 'v21';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -1535,8 +1535,8 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem("deviceId", deviceId);
         }
 
-        if (!userId) {
-            console.log("[User Session] Registering new user profile dynamically for device:", deviceId);
+        if (!userId || userId.startsWith('local-')) {
+            console.log("[User Session] Registering/upgrading user profile dynamically for device:", deviceId);
             try {
                 const response = await fetch('/api/users', {
                     method: 'POST',
@@ -1552,19 +1552,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     userId = result.data._id;
                     localStorage.setItem("userId", userId);
                     console.log("[User Session] Successfully registered dynamic userId:", userId);
-                } else if (response.status === 404) {
-                    // Backend API not deployed in this environment (e.g. static hosting).
-                    // Generate a local-only ID so the app continues to function offline.
-                    console.warn("[User Session] /api/users returned 404. Backend unavailable — running in offline-only mode.");
+                } else if (!userId) {
                     userId = 'local-' + deviceId;
                     localStorage.setItem("userId", userId);
-                } else {
-                    console.warn("[User Session] Unexpected response from /api/users:", response.status);
                 }
             } catch (err) {
-                console.warn("[User Session] Could not reach backend — running in offline-only mode.", err.message);
-                userId = 'local-' + deviceId;
-                localStorage.setItem("userId", userId);
+                if (!userId) {
+                    userId = 'local-' + deviceId;
+                    localStorage.setItem("userId", userId);
+                }
             }
         } else {
             console.log("[User Session] Resolved dynamic userId from cache:", userId);
@@ -1755,7 +1751,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function performBackendSync(action) {
         const userId = localStorage.getItem("userId");
-        if (!userId) return false;
+        if (!userId || userId.startsWith('local-')) return true;
 
         if (action.type === 'settings') {
             const response = await fetch(`/api/settings/${userId}`, {
