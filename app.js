@@ -86,8 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- 1. SETTINGS SERVICE ---
     const SettingsService = {
         state: {
-            cloudAiEnabled: false,
-            florenceEndpoint: '',
             voiceCommandsEnabled: false,
             speechOutputEnabled: true,
             vibrationAlertsEnabled: true,
@@ -102,8 +100,6 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         load() {
-            this.state.cloudAiEnabled = localStorage.getItem('nazar-cloud-ai') === 'true';
-            this.state.florenceEndpoint = localStorage.getItem('nazar-florence-endpoint') || '';
             this.state.voiceCommandsEnabled = localStorage.getItem('nazar-voice-commands') === 'true';
             this.state.speechOutputEnabled = localStorage.getItem('nazar-speech-output') !== 'false';
             this.state.vibrationAlertsEnabled = localStorage.getItem('nazar-vibration-alerts') !== 'false';
@@ -122,7 +118,6 @@ document.addEventListener('DOMContentLoaded', () => {
         save(key, value) {
             this.state[key] = value;
             localStorage.setItem(`nazar-${this.kebabCase(key)}`, value);
-            this.syncStatusBadge();
             if (typeof queueSettingsSync === 'function') {
                 queueSettingsSync();
             }
@@ -135,27 +130,10 @@ document.addEventListener('DOMContentLoaded', () => {
         initUI() {
             this.load();
             
-            const toggleCloudAi = document.getElementById('toggle-cloud-ai');
-            const inputEndpoint = document.getElementById('input-florence-endpoint');
             const toggleVoice = document.getElementById('toggle-voice-commands');
             const toggleSpeech = document.getElementById('toggle-speech-output');
             const toggleVibrate = document.getElementById('toggle-vibration-alerts');
             const toggleDark = document.getElementById('toggle-dark-mode');
-
-            if (toggleCloudAi) {
-                toggleCloudAi.checked = this.state.cloudAiEnabled;
-                toggleCloudAi.addEventListener('change', (e) => {
-                    this.save('cloudAiEnabled', e.target.checked);
-                    SpeechService.announce(e.target.checked ? "Cloud AI description enabled" : "Cloud AI description disabled");
-                });
-            }
-
-            if (inputEndpoint) {
-                inputEndpoint.value = this.state.florenceEndpoint;
-                inputEndpoint.addEventListener('input', (e) => {
-                    this.save('florenceEndpoint', e.target.value.trim());
-                });
-            }
 
             if (toggleVoice) {
                 toggleVoice.checked = this.state.voiceCommandsEnabled;
@@ -200,26 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Bind Emergency Settings Inputs
-            this.syncStatusBadge();
             this.initAccordions();
-        },
-
-        syncStatusBadge() {
-            const badge = document.getElementById('cloud-ai-status-badge');
-            if (!badge) return;
-
-            if (this.state.cloudAiEnabled) {
-                if (this.state.florenceEndpoint) {
-                    badge.innerText = "Active Proxy";
-                    badge.className = "status-indicator-badge status-connected";
-                } else {
-                    badge.innerText = "Config Required";
-                    badge.className = "status-indicator-badge status-error";
-                }
-            } else {
-                badge.innerText = "Inactive";
-                badge.className = "status-indicator-badge";
-            }
         },
 
         initAccordions() {
