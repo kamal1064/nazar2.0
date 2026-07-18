@@ -1441,19 +1441,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.nav-item');
     const screenPanels = document.querySelectorAll('.screen-panel');
 
-    function switchTab(tabId) {
+    async function switchTab(tabId) {
         state.currentTab = tabId;
 
         if (tabId === 'camera') {
-            CameraService.start().then(hasStream => {
+            await CameraPermissionManager.checkStatus();
+            if (CameraPermissionManager.state === 'granted') {
+                await CameraService.start();
+            } else {
+                const hasStream = await CameraService.start();
                 if (hasStream) {
                     CameraPermissionManager.state = 'granted';
                 }
                 CameraPermissionManager.updateUI();
-            }).catch(err => {
-                console.warn("Camera start on tab switch failed:", err);
-                CameraPermissionManager.updateUI();
-            });
+            }
         } else {
             CameraService.stop();
             VoiceCommandService.stop();
