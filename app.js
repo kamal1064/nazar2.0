@@ -968,6 +968,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    class PushDispatcher extends EmergencyDispatcher {
+        async sendAlert(payload) {
+            console.log("[EmergencyService] Dispatching push notification alert:", payload);
+            return { success: true, type: 'push' };
+        }
+    }
+
+    const EmergencyService = {
+        dispatchers: {},
+
+        registerDispatcher(name, dispatcherInstance) {
+            this.dispatchers[name] = dispatcherInstance;
+        },
+
+        async dispatch(payload) {
+            const results = {};
+            for (const [name, dispatcher] of Object.entries(this.dispatchers)) {
+                try {
+                    results[name] = await dispatcher.sendAlert(payload);
+                } catch (err) {
+                    console.error(`[EmergencyService] Dispatcher ${name} failed:`, err);
+                    results[name] = { success: false, error: err.message };
+                }
+            }
+            return results;
+        }
+    };
+
     // Register active providers and dispatchers
     LocationService.registerProvider("osm", new OSMProvider());
     LocationService.setProvider("osm");
