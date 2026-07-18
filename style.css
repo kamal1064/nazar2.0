@@ -28,6 +28,7 @@
     --text-main: #0b1b2b;
     --text-muted: #3b556b;
     --border-color: rgba(11, 27, 43, 0.08);
+    --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.06);
     --shadow-soft: 0 1px 0 rgba(255,255,255,0.9) inset, 0 10px 30px -12px rgba(13,42,82,0.12), 0 2px 6px -2px rgba(13,42,82,0.06);
     --shadow-medium: 0 10px 30px -12px rgba(13,42,82,0.18), 0 2px 6px -2px rgba(13,42,82,0.08);
     --shadow-glow: 0 0 35px rgba(10, 77, 140, 0.15);
@@ -39,36 +40,29 @@
 
 /* Dark Mode Theme */
 .dark-mode {
-    --bg-body: #0B0F19;
-    
-    --bg-app: #111827;
-    --bg-card: #1E293B;
-    --bg-card-hover: #334155;
-    --text-main: #F8FAFC;
-    --text-muted: #94A3B8;
-    --border-color: #374151;
-    --shadow-soft: 0 12px 35px rgba(0, 0, 0, 0.15);
-    --shadow-medium: 0 20px 45px rgba(0, 0, 0, 0.25);
-    --shadow-glow: 0 0 45px rgba(59, 130, 246, 0.2);
-    --glass-bg: rgba(30, 41, 59, 0.85);
-    --glass-border: rgba(55, 65, 81, 0.5);
+    --bg-body: #0B132B;
+    --bg-app: #1C2541;
+    --bg-card: #1C2541;
+    --bg-card-hover: #2A3656;
+    --text-main: #FFFFFF;
+    --text-muted: #8D99AE;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --shadow-soft: 0 10px 30px -12px rgba(0,0,0,0.5);
+    --shadow-medium: 0 10px 30px -12px rgba(0,0,0,0.7);
+    --shadow-glow: 0 0 35px rgba(29, 111, 219, 0.25);
+    --glass-bg: rgba(28, 37, 65, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.15);
 }
 
-/* Global Reset and Flex Setup */
+/* Resets & Global Foundation */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background:
-      radial-gradient(1200px 700px at 15% 0%, #eef4fb 0%, rgba(238,244,251,0) 60%),
-      radial-gradient(1000px 600px at 100% 100%, #e7eef9 0%, rgba(231,238,249,0) 55%),
-      linear-gradient(180deg,#f7f9fc 0%, #eaf1f8 100%);
-    color: var(--text-main);
-    display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
@@ -1194,8 +1188,8 @@ body {
 }
 
 /* Categorized background shades */
-.icon-voice { background-color: var(--primary-light); color: var(--primary); }
-.icon-a11y { background-color: var(--success-light); color: var(--success); }
+.icon-voice, .icon-speech { background-color: var(--primary-light); color: var(--primary); }
+.icon-a11y, .icon-accessibility { background-color: var(--success-light); color: var(--success); }
 .icon-sos { background-color: var(--danger-light); color: var(--danger); }
 .icon-account { background-color: var(--warning-light); color: var(--warning); }
 .icon-about { background-color: rgba(148, 163, 184, 0.08); color: var(--text-muted); }

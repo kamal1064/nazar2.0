@@ -1,9 +1,11 @@
 {
   "name": "n1",
   "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
+  "description": "NAZAR - AI Navigation Companion",
+  "main": "server/server.js",
   "scripts": {
+    "start": "node server/server.js",
+    "dev": "node server/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -24,7 +26,6 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.0",
     "helmet": "^8.3.0",
-    "mongodb": "^7.5.0",
     "mongoose": "^9.7.4"
   }
 }

@@ -4,13 +4,14 @@ const CACHE_NAME = 'nazar-vision-cache-v18';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/style.css',
-  '/app.js',
+  '/style.css?v=18',
+  '/app.js?v=18',
+  '/detection-worker.js',
   '/manifest.json',
   '/nazar_icon.png'
 ];
 
-// Install Event - Pre-cache core local assets only (keeps initial install payload under 120KB)
+// Install Event - Pre-cache core local assets only
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -40,8 +41,13 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
+  // Never cache API endpoint requests
+  if (url.includes('/api/')) {
+    return;
+  }
+
   // Intercept CDN library files & Google storage model weights
-  if (url.includes('cdn.jsdelivr.net') || url.includes('storage.googleapis.com') || url.includes('localhost') || url.includes('github.io') || url.includes('street_scene.png')) {
+  if (url.includes('cdn.jsdelivr.net') || url.includes('storage.googleapis.com') || url.includes('github.io')) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) {
@@ -62,7 +68,10 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         }).catch((err) => {
           console.warn("Failed to fetch asset from network: ", url, err);
-          return null; // Graceful offline fallback
+          return new Response(JSON.stringify({ error: 'Offline' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          });
         });
       })
     );

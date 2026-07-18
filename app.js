@@ -294,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
+            utterance.rate = SettingsService.state.speechRate || 1.0;
             utterance.pitch = 1.05;
 
             const voices = window.speechSynthesis.getVoices();
@@ -636,7 +636,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.worker.postMessage({ type: 'load' });
 
                 // Worker Startup Safety Timeout: Allow 15s for CDN-loaded TF.js model before falling back
-                setTimeout(() => {
+                this.workerTimeoutTimer = setTimeout(() => {
                     if (!this.isWorkerReady && !this.workerLoadFailed) {
                         console.warn("Worker initialization timed out after 15s. Triggering main-thread fallback.");
                         this.fallbackToMainThread();
@@ -650,6 +650,10 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         fallbackToMainThread() {
+            if (this.workerTimeoutTimer) {
+                clearTimeout(this.workerTimeoutTimer);
+                this.workerTimeoutTimer = null;
+            }
             this.workerLoadFailed = true;
             this.isWorkerReady = false;
             if (this.worker) {
@@ -1465,7 +1469,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // --- 6. VOICE COMMAND SERVICE (Web Speech Recognition API) ---
+    function checkConfirmationResponse(transcript) {
+        return false;
+    }
+
+    // --- 9. VOICE COMMAND SERVICE ---(Web Speech Recognition API) ---
     const VoiceCommandService = {
         recognition: null,
         isListening: false,
@@ -1641,6 +1649,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             CameraService.stop();
             VoiceCommandService.stop();
+            stopContinuousScanning();
         }
 
         navItems.forEach(item => {
@@ -1756,9 +1765,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateContinuousButtonUI();
                     updateModeButtonUI();
                     if (SettingsService.state.darkModeEnabled) {
-                        document.body.classList.add('dark-theme');
+                        document.body.classList.add('dark-mode');
                     } else {
-                        document.body.classList.remove('dark-theme');
+                        document.body.classList.remove('dark-mode');
                     }
                 }
             }
@@ -2032,6 +2041,7 @@ document.addEventListener('DOMContentLoaded', () => {
             SpeechService.announce(isOcrMode ? "Reading text." : "Analyzing surroundings.");
         }
 
+        console.log("[VISION] Camera capture started");
         const rawCanvas = CameraService.captureFrame();
         if (!rawCanvas) {
             isAnalyzing = false;
@@ -2043,10 +2053,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Scale canvas to 1280x720 and compress as JPEG quality 0.8
-        const resizedCanvas = document.createElement('canvas');
-        resizedCanvas.width = 1280;
-        resizedCanvas.height = 720;
+        // Reuse shared canvas to avoid reallocation churn
+        if (!this._resizeCanvas) {
+            this._resizeCanvas = document.createElement('canvas');
+            this._resizeCanvas.width = 1280;
+            this._resizeCanvas.height = 720;
+        }
+        const resizedCanvas = this._resizeCanvas;
         const ctx = resizedCanvas.getContext('2d');
         ctx.drawImage(rawCanvas, 0, 0, 1280, 720);
 
@@ -2065,6 +2078,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const base64Img = resizedCanvas.toDataURL(formatType, 0.8);
         const payloadSize = (base64Img.length * (3/4)) / (1024 * 1024); // in MB
+        console.log(`[VISION] Image compressed, size: ${payloadSize.toFixed(2)} MB`);
         if (payloadSize > 5) {
             console.warn(`[Vision System] Image size ${payloadSize.toFixed(2)}MB exceeds 5MB limit. Aborting.`);
             isAnalyzing = false;
@@ -2081,6 +2095,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+            console.log("[VISION] Sending request to Gemini via /api/scan...");
             let response;
             try {
                 response = await fetch(endpoint, {
@@ -2107,6 +2122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
+            console.log("[VISION] Gemini response received:", data);
 
             const filteredHazards = data.hazards || [];
             const filteredObjects = data.objects || [];
