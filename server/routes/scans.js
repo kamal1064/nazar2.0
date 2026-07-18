@@ -32,33 +32,54 @@ const OCR_INSTRUCTION = `Extract all visible text from the image, preserving wor
 
 // POST /api/scan - Analyze camera frame using Gemini Vision
 router.post('/', scanLimiter, async (req, res, next) => {
+    // 1. Request received
+    console.log("Received POST /api/scan");
+
     try {
         const { image, ocrMode } = req.body;
         // Strip local-only IDs (generated when backend was unreachable) — treat as anonymous
         const rawUserId = req.body.userId || null;
         const userId = (rawUserId && rawUserId.startsWith('local-')) ? null : rawUserId;
 
+        // 2. Validate request
+        const isImagePresent = !!image;
+        const base64Data = isImagePresent ? (image.includes(',') ? image.split(',')[1] : image) : '';
+        const imageSizeBytes = isImagePresent ? Buffer.byteLength(base64Data, 'base64') : 0;
+        const imageSizeMB = (imageSizeBytes / (1024 * 1024)).toFixed(2);
+
+        console.log(`[Validation] Is image present? ${isImagePresent}`);
+        console.log(`[Validation] Image size: ${imageSizeMB} MB (${imageSizeBytes} bytes)`);
+        console.log(`[Validation] MIME type: image/jpeg`);
+        console.log(`[Validation] User ID: ${userId || 'anonymous'}`);
+
         if (!image) {
+            console.warn("[Validation Error] Missing base64 image data");
             return res.status(400).json({ success: false, message: 'Missing base64 image data' });
         }
 
         // Validate userId if provided and not already nulled above
         if (userId && !validateObjectId(userId)) {
+            console.warn(`[Validation Error] Invalid User ID format: ${userId}`);
             return res.status(400).json({ success: false, message: 'Invalid User ID format' });
         }
 
+        // 3. Environment
         const apiKey = process.env.GEMINI_API_KEY;
-        const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+        console.log(`Gemini API Key Present: ${!!apiKey}`);
         
         if (!apiKey) {
+            console.error("[Environment Error] Gemini API Key is not configured");
             return res.status(500).json({ success: false, message: 'Gemini API Key is not configured' });
         }
 
+        // 4. Gemini configuration
+        let modelName = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+        if (modelName === 'gemini-2.5-flash' || modelName === 'gemini-2.5-flash-lite') {
+            console.warn(`[Config] Model ${modelName} is non-existent/unsupported by Gemini API. Falling back to gemini-flash-latest.`);
+            modelName = 'gemini-flash-latest';
+        }
+
         const systemInstruction = ocrMode ? OCR_INSTRUCTION : SCENE_INSTRUCTION;
-
-        // Strip base64 metadata headers if present
-        const base64Data = image.includes(',') ? image.split(',')[1] : image;
-
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
         const requestBody = {
@@ -106,6 +127,14 @@ router.post('/', scanLimiter, async (req, res, next) => {
             }
         };
 
+        const payloadSizeKB = (Buffer.byteLength(JSON.stringify(requestBody)) / 1024).toFixed(2);
+        console.log(`[Config] Model name: ${modelName}`);
+        console.log(`[Config] Endpoint URL: https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=[HIDDEN]`);
+        console.log(`[Config] Request payload size: ${payloadSizeKB} KB`);
+
+        // 5. Before API call
+        console.log("Sending request to Gemini...");
+
         // Enforce 15-second request timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -120,6 +149,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
             });
         } catch (fetchErr) {
             if (fetchErr.name === 'AbortError') {
+                console.error("[Fetch Error] Scan request timed out after 15s");
                 return res.status(408).json({ success: false, message: 'Scan timed out' });
             }
             throw fetchErr;
@@ -127,12 +157,18 @@ router.post('/', scanLimiter, async (req, res, next) => {
             clearTimeout(timeoutId);
         }
 
+        // 6. Gemini response
+        console.log(`[Gemini Response Status]: ${response.status} ${response.statusText}`);
+
         if (!response.ok) {
             const errText = await response.text();
+            console.error(`[Gemini Error Body]:`, errText);
             throw new Error(`Gemini API responded with status ${response.status}: ${errText}`);
         }
 
         const rawData = await response.json();
+        console.log(`[Gemini Response Body]:`, JSON.stringify(rawData).substring(0, 300) + "...");
+
         let parsedResult;
 
         try {
@@ -201,7 +237,15 @@ router.post('/', scanLimiter, async (req, res, next) => {
         });
 
     } catch (err) {
-        next(err);
+        // 7. Exception handling
+        console.error("Gemini Scan Error:", err);
+        console.error(err.stack);
+
+        res.status(500).json({
+            success: false,
+            message: err.message,
+            stack: err.stack
+        });
     }
 });
 
