@@ -8,7 +8,8 @@ const userLimiter = rateLimit({
         message: 'Too many authentication/user requests, please try again after 15 minutes.'
     },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false }
 });
 
 const scanLimiter = rateLimit({
@@ -19,7 +20,8 @@ const scanLimiter = rateLimit({
         message: 'Too many scan requests, please try again after 15 minutes.'
     },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false }
 });
 
 const settingsLimiter = rateLimit({
@@ -30,7 +32,8 @@ const settingsLimiter = rateLimit({
         message: 'Too many settings adjustments, please try again after 15 minutes.'
     },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false }
 });
 
 module.exports = {

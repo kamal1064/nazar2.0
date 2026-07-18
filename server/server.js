@@ -12,6 +12,7 @@ console.log("[SERVER STARTUP]", {
 });
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Security and utility middleware
 app.use(helmet());
