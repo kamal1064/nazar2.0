@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v21';
+    const CURRENT_VERSION = 'v22';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -106,8 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.state.darkModeEnabled = localStorage.getItem('nazar-dark-mode') === 'true';
             
             // Safety values configurations
-            this.state.emergencyContactName = localStorage.getItem('nazar-emergency-contact-name') || 'Emergency Contact';
+            this.state.emergencyContactName = localStorage.getItem('nazar-emergency-contact-name') || '';
             this.state.emergencyContactNumber = localStorage.getItem('nazar-emergency-contact-number') || '';
+            this.state.emergencyContactRelationship = localStorage.getItem('nazar-emergency-contact-relationship') || '';
             this.state.emergencyWebhookUrl = localStorage.getItem('nazar-emergency-webhook-url') || '';
             this.state.homeAddress = localStorage.getItem('nazar-home-address') || '';
             this.state.preferredLocationProvider = localStorage.getItem('nazar-preferred-location-provider') || 'osm';
@@ -177,29 +178,116 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.classList.add('dark-mode');
             }
 
-            // Bind Emergency Settings Inputs
-            const inputName = document.getElementById('input-emergency-name');
-            const inputPhone = document.getElementById('input-emergency-phone');
+            // Bind Emergency Settings Inputs & Buttons
+            this.updateSavedContactCard();
 
-            if (inputName) {
-                inputName.value = this.state.emergencyContactName;
-                inputName.addEventListener('change', (e) => {
-                    const val = e.target.value.trim();
-                    this.save('emergencyContactName', val);
-                    syncEmergencyContact(val, this.state.emergencyContactNumber);
+            const saveBtn = document.getElementById('btn-save-emergency');
+            const deleteBtn = document.getElementById('btn-delete-emergency');
+            const testSosBtn = document.getElementById('btn-test-sos');
+            const errorBox = document.getElementById('emergency-contact-error');
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', () => {
+                    const inputName = document.getElementById('input-emergency-name');
+                    const inputPhone = document.getElementById('input-emergency-phone');
+                    const inputRel = document.getElementById('input-emergency-rel');
+
+                    const name = inputName ? inputName.value.trim() : '';
+                    const phone = inputPhone ? inputPhone.value.trim() : '';
+                    const rel = inputRel ? inputRel.value.trim() : '';
+
+                    if (!name) {
+                        if (errorBox) {
+                            errorBox.innerText = 'Contact name cannot be empty.';
+                            errorBox.style.display = 'block';
+                        }
+                        SpeechService.announce('Contact name cannot be empty.');
+                        return;
+                    }
+
+                    const phoneClean = phone.replace(/[^0-9+]/g, '');
+                    if (!phone || phoneClean.length < 7) {
+                        if (errorBox) {
+                            errorBox.innerText = 'Please enter a valid phone number.';
+                            errorBox.style.display = 'block';
+                        }
+                        SpeechService.announce('Please enter a valid phone number.');
+                        return;
+                    }
+
+                    if (errorBox) errorBox.style.display = 'none';
+
+                    this.save('emergencyContactName', name);
+                    this.save('emergencyContactNumber', phone);
+                    this.save('emergencyContactRelationship', rel || 'Emergency Contact');
+
+                    syncEmergencyContact(name, phone);
+                    this.updateSavedContactCard();
+                    SpeechService.announce('Emergency contact saved successfully.');
                 });
             }
 
-            if (inputPhone) {
-                inputPhone.value = this.state.emergencyContactNumber;
-                inputPhone.addEventListener('change', (e) => {
-                    const val = e.target.value.trim();
-                    this.save('emergencyContactNumber', val);
-                    syncEmergencyContact(this.state.emergencyContactName, val);
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => {
+                    this.save('emergencyContactName', '');
+                    this.save('emergencyContactNumber', '');
+                    this.save('emergencyContactRelationship', '');
+
+                    localStorage.removeItem('nazar-emergency-contact-name');
+                    localStorage.removeItem('nazar-emergency-contact-number');
+                    localStorage.removeItem('nazar-emergency-contact-relationship');
+
+                    syncEmergencyContact('', '');
+                    this.updateSavedContactCard();
+                    SpeechService.announce('Emergency contact deleted.');
+                });
+            }
+
+            if (testSosBtn) {
+                testSosBtn.addEventListener('click', () => {
+                    const contactNumber = this.state.emergencyContactNumber || localStorage.getItem("nazar-emergency-contact-number") || '';
+                    if (!contactNumber) {
+                        SpeechService.announce("Emergency contact not configured. Please add an emergency contact in Settings.");
+                        if (errorBox) {
+                            errorBox.innerText = 'Emergency contact not configured. Please add contact in Settings.';
+                            errorBox.style.display = 'block';
+                        }
+                        return;
+                    }
+                    SpeechService.announce("Testing emergency SOS. Getting your current location.");
+                    executeEmergencySOS(true);
                 });
             }
 
             this.initAccordions();
+        },
+
+        updateSavedContactCard() {
+            const card = document.getElementById('saved-contact-card');
+            const nameEl = document.getElementById('saved-contact-name');
+            const phoneEl = document.getElementById('saved-contact-phone');
+            const relEl = document.getElementById('saved-contact-relationship');
+
+            const inputName = document.getElementById('input-emergency-name');
+            const inputPhone = document.getElementById('input-emergency-phone');
+            const inputRel = document.getElementById('input-emergency-rel');
+
+            const name = this.state.emergencyContactName;
+            const phone = this.state.emergencyContactNumber;
+            const rel = this.state.emergencyContactRelationship;
+
+            if (inputName) inputName.value = name || '';
+            if (inputPhone) inputPhone.value = phone || '';
+            if (inputRel) inputRel.value = rel || '';
+
+            if (card && name && phone) {
+                card.style.display = 'flex';
+                if (nameEl) nameEl.innerText = name;
+                if (phoneEl) phoneEl.innerText = phone;
+                if (relEl) relEl.innerText = rel || 'Emergency Contact';
+            } else if (card) {
+                card.style.display = 'none';
+            }
         },
 
         initAccordions() {
@@ -962,7 +1050,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!payload.contactNumber) {
                 return { success: false, error: 'No contact number configured' };
             }
-            const smsUri = `sms:${payload.contactNumber}?body=${encodeURIComponent(payload.message)}`;
+            const cleanPhone = payload.contactNumber.replace(/[^0-9+]/g, '');
+            const encodedBody = encodeURIComponent(payload.message);
+            const isIOS = /iP(hone|od|ad)/i.test(navigator.userAgent);
+            const smsUri = isIOS ? `sms:${cleanPhone};body=${encodedBody}` : `sms:${cleanPhone}?body=${encodedBody}`;
+            console.log("[SMSDispatcher] Opening native SMS URI:", smsUri);
             window.location.href = smsUri;
             return { success: true, type: 'sms' };
         }
@@ -1033,7 +1125,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const loc = await LocationService.getAddress(lat, lon);
                 let announcement = `You are near ${loc.address}.`;
                 
-                // Find closest landmark from the Overpass API
                 let minDistance = Infinity;
                 let closestLandmark = null;
                 const categories = ['hospital', 'pharmacy', 'police', 'bus', 'metro', 'atm'];
@@ -1068,51 +1159,82 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleEmergencySOS() {
-        if (!navigator.geolocation) {
-            SpeechService.announce("Location services not supported. Initiating local emergency alert.");
-            triggerSOSDispatch(0, 0);
+        const sosModal = document.getElementById('sos-modal');
+        if (sosModal) {
+            sosModal.classList.add('modal-active');
+            SpeechService.announce("Emergency SOS triggered. Press and hold to confirm.");
+        } else {
+            executeEmergencySOS(false);
+        }
+    }
+
+    function executeEmergencySOS(isTestMode = false) {
+        const contactNumber = SettingsService.state.emergencyContactNumber || localStorage.getItem("nazar-emergency-contact-number") || '';
+        
+        if (!contactNumber) {
+            SpeechService.announce("Emergency contact not configured. Please add an emergency contact in Settings.");
+            const errorBox = document.getElementById('emergency-contact-error');
+            if (errorBox) {
+                errorBox.innerText = "Emergency contact not configured. Please add contact in Settings.";
+                errorBox.style.display = 'block';
+            }
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
             return;
         }
-        
-        SpeechService.announce("Retrieving location for emergency dispatch.");
+
+        if (!navigator.geolocation) {
+            SpeechService.announce("Unable to determine your location.");
+            if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+            return;
+        }
+
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
-            triggerSOSDispatch(lat, lon);
+            const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+            const timestamp = new Date().toLocaleString();
+
+            let message = '';
+            if (isTestMode) {
+                message = `This is a NAZAR emergency test.\n\nNo assistance is required.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
+            } else {
+                message = `🚨 EMERGENCY ALERT\n\nI may need immediate assistance.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
+            }
+
+            SpeechService.announce("Location found. Opening messages.");
+            if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+
+            const payload = {
+                contactNumber: contactNumber,
+                message: message,
+                userName: 'Kamal',
+                timestamp: timestamp,
+                locationLink: mapUrl,
+                latitude: lat,
+                longitude: lon
+            };
+
+            await EmergencyService.dispatch(payload);
+
+            const sosModal = document.getElementById('sos-modal');
+            if (sosModal) {
+                setTimeout(() => {
+                    sosModal.classList.remove('modal-active');
+                }, 1500);
+            }
         }, (err) => {
-            console.warn("[EmergencySystem] Geolocation failed:", err);
-            SpeechService.announce("Location retrieval failed. Dispatching emergency alert.");
-            triggerSOSDispatch(0, 0);
-        }, { enableHighAccuracy: true, timeout: 5000 });
+            console.warn("[EmergencySystem] GPS Error:", err);
+            if (err.code === err.PERMISSION_DENIED) {
+                SpeechService.announce("Location permission is required to send an emergency message.");
+            } else {
+                SpeechService.announce("Unable to determine your location.");
+            }
+            if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
 
     async function triggerSOSDispatch(lat, lon) {
-        const name = SettingsService.state.emergencyContactName || 'Emergency Contact';
-        const contactNumber = SettingsService.state.emergencyContactNumber || '';
-        const userName = 'Kamal';
-        const timestamp = new Date().toLocaleString();
-        const mapUrl = lat !== 0 && lon !== 0 ? `https://maps.google.com/?q=${lat},${lon}` : 'Location unavailable';
-
-        const message = `Emergency Alert\n\n${userName} may require assistance.\n\nCurrent Location:\n${mapUrl}\n\nTime:\n${timestamp}`;
-
-        const payload = {
-            contactNumber: contactNumber,
-            message: message,
-            userName: userName,
-            timestamp: timestamp,
-            locationLink: mapUrl,
-            latitude: lat,
-            longitude: lon
-        };
-
-        console.log("[EmergencySystem] Dispatching alert: ", payload);
-        
-        const dispatchResults = await EmergencyService.dispatch(payload);
-        console.log("[EmergencySystem] Dispatch results: ", dispatchResults);
-        
-        SpeechService.announce(`Emergency alert sent to ${name}. Location coordinates shared.`);
-        
-        if (navigator.vibrate) navigator.vibrate([500, 100, 500, 100, 500]);
+        executeEmergencySOS(false);
     }
 
     async function handleNearbySearch(transcript) {
@@ -1619,16 +1741,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 if (result.success && result.data && result.data.length > 0) {
                     const contact = result.data[0];
-                    SettingsService.state.emergencyContactName = contact.name;
-                    SettingsService.state.emergencyContactNumber = contact.phone;
+                    SettingsService.state.emergencyContactName = contact.name || '';
+                    SettingsService.state.emergencyContactNumber = contact.phone || '';
+                    SettingsService.state.emergencyContactRelationship = contact.relationship || 'Emergency Contact';
                     localStorage.setItem("emergencyContactDbId", contact._id);
-                    localStorage.setItem("nazar-emergency-contact-name", contact.name);
-                    localStorage.setItem("nazar-emergency-contact-number", contact.phone);
+                    localStorage.setItem("nazar-emergency-contact-name", contact.name || '');
+                    localStorage.setItem("nazar-emergency-contact-number", contact.phone || '');
+                    localStorage.setItem("nazar-emergency-contact-relationship", contact.relationship || 'Emergency Contact');
 
-                    const inputName = document.getElementById('input-emergency-name');
-                    const inputPhone = document.getElementById('input-emergency-phone');
-                    if (inputName) inputName.value = contact.name;
-                    if (inputPhone) inputPhone.value = contact.phone;
+                    if (typeof SettingsService.updateSavedContactCard === 'function') {
+                        SettingsService.updateSavedContactCard();
+                    }
                 }
             }
         } catch (err) {
@@ -1663,19 +1786,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     }
 
-    async function syncEmergencyContact(name, phone, relationship = 'Primary') {
+    async function syncEmergencyContact(name, phone, relationship) {
+        const rel = relationship || SettingsService.state.emergencyContactRelationship || 'Emergency Contact';
         const contactId = localStorage.getItem("emergencyContactDbId");
         if (contactId) {
             await executeOrQueueSync({
                 type: 'update-contact',
                 contactId,
-                payload: { name, phone, relationship },
+                payload: { name, phone, relationship: rel },
                 timestamp: Date.now()
             });
         } else {
             await executeOrQueueSync({
                 type: 'create-contact',
-                payload: { name, phone, relationship },
+                payload: { name, phone, relationship: rel },
                 timestamp: Date.now()
             });
         }
@@ -2175,23 +2299,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const startHold = (e) => {
             e.preventDefault();
+
+            const contactNumber = SettingsService.state.emergencyContactNumber || localStorage.getItem("nazar-emergency-contact-number") || '';
+            if (!contactNumber) {
+                SpeechService.announce("Emergency contact not configured. Please add an emergency contact in Settings.");
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                return;
+            }
+
             countdownVal = 3;
-            confirmSosBtn.innerText = `Holding... (3)`;
+            confirmSosBtn.innerText = `Holding... (3s)`;
             confirmSosBtn.style.backgroundColor = 'var(--danger)';
             
             if (navigator.vibrate) navigator.vibrate([100]);
-            SpeechService.announce("Emergency alert will be sent in 3...");
+            SpeechService.announce("Hold to activate emergency.");
 
             sosTimer = setInterval(() => {
                 countdownVal--;
                 if (countdownVal > 0) {
-                    confirmSosBtn.innerText = `Holding... (${countdownVal})`;
+                    confirmSosBtn.innerText = `Holding... (${countdownVal}s)`;
                     if (navigator.vibrate) navigator.vibrate([100]);
                     SpeechService.announce(`${countdownVal}...`);
                 } else {
                     clearInterval(sosTimer);
                     sosTimer = null;
-                    dispatchSOS();
+                    confirmSosBtn.innerText = "Emergency Activated!";
+                    confirmSosBtn.style.backgroundColor = 'var(--success)';
+                    
+                    if (navigator.vibrate) navigator.vibrate([400, 100, 400]);
+                    SpeechService.announce("Emergency activated.");
+                    
+                    setTimeout(() => {
+                        SpeechService.announce("Getting your current location.");
+                        executeEmergencySOS(false);
+                    }, 400);
                 }
             }, 1000);
         };
@@ -2202,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 sosTimer = null;
                 confirmSosBtn.innerText = "Press & Hold to Confirm (3s)";
                 confirmSosBtn.style.backgroundColor = '';
-                SpeechService.announce("SOS dispatch aborted.");
+                SpeechService.announce("Emergency cancelled.");
             }
         };
 
@@ -2211,30 +2352,6 @@ document.addEventListener('DOMContentLoaded', () => {
         confirmSosBtn.addEventListener('mouseup', cancelHold);
         confirmSosBtn.addEventListener('mouseleave', cancelHold);
         confirmSosBtn.addEventListener('touchend', cancelHold);
-    }
-
-    function dispatchSOS() {
-        confirmSosBtn.innerText = "SOS Dispatched!";
-        confirmSosBtn.style.backgroundColor = 'var(--success)';
-        
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(async (pos) => {
-                const lat = pos.coords.latitude;
-                const lon = pos.coords.longitude;
-                await triggerSOSDispatch(lat, lon);
-            }, async (err) => {
-                console.warn("[EmergencySystem] SOS Geolocation failed: ", err);
-                await triggerSOSDispatch(0, 0);
-            }, { enableHighAccuracy: true, timeout: 5000 });
-        } else {
-            triggerSOSDispatch(0, 0);
-        }
-
-        setTimeout(() => {
-            sosModal.classList.remove('modal-active');
-            confirmSosBtn.innerText = "Press & Hold to Confirm (3s)";
-            confirmSosBtn.style.backgroundColor = '';
-        }, 2000);
     }
 
     // Activity Drawer close
