@@ -66,12 +66,19 @@ router.post('/', scanLimiter, async (req, res, next) => {
             return res.status(500).json({ success: false, error: 'Gemini API Key is not configured' });
         }
 
-        const modelName = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+        const primaryModel = process.env.GEMINI_MODEL || 'gemini-flash-latest';
         const timeoutMs = parseInt(process.env.GEMINI_TIMEOUT || '60000', 10);
         const systemInstruction = ocrMode ? OCR_INSTRUCTION : SCENE_INSTRUCTION;
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-        const requestBody = {
+        // Fallback model chain if primary model hits 429 quota or 404
+        const modelChain = Array.from(new Set([
+            primaryModel,
+            'gemini-flash-lite-latest',
+            'gemini-2.0-flash-lite',
+            'gemini-flash-latest'
+        ]));
+
+        const buildRequestBody = () => ({
             contents: [
                 {
                     parts: [
@@ -114,17 +121,18 @@ router.post('/', scanLimiter, async (req, res, next) => {
                     required: ['summary', 'hazards', 'objects', 'people', 'textDetected', 'navigation', 'environment', 'confidence']
                 }
             }
-        };
+        });
 
+        const requestBody = buildRequestBody();
         const payloadSizeKB = (Buffer.byteLength(JSON.stringify(requestBody)) / 1024).toFixed(2);
-        console.log(`[Config] Model: ${modelName}`);
         console.log(`[Config] Timeout: ${timeoutMs}ms (${timeoutMs / 1000}s)`);
         console.log(`[Config] Payload size: ${payloadSizeKB} KB`);
 
-        // Helper function for single request with explicit timeout
-        const makeSingleGeminiCall = async (attemptNum) => {
-            console.log(`[Gemini] Request started (Attempt ${attemptNum}/2, Model: ${modelName}, Timeout: ${timeoutMs / 1000}s)`);
+        // Helper function for single request with explicit model & timeout
+        const makeSingleGeminiCall = async (targetModel, attemptNum) => {
+            console.log(`[Gemini] Request started (Attempt ${attemptNum}, Model: ${targetModel}, Timeout: ${timeoutMs / 1000}s)`);
             const startTime = Date.now();
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -140,23 +148,25 @@ router.post('/', scanLimiter, async (req, res, next) => {
 
                 if (!response.ok) {
                     const errText = await response.text();
-                    console.error(`[Gemini] Request failed with HTTP ${response.status} (${duration}ms):`, errText);
+                    console.warn(`[Gemini] Model ${targetModel} HTTP ${response.status} (${duration}ms):`, errText.substring(0, 250));
                     const errorObj = new Error(`HTTP ${response.status}: ${errText}`);
                     errorObj.status = response.status;
                     errorObj.duration = duration;
+                    errorObj.model = targetModel;
                     throw errorObj;
                 }
 
-                console.log(`[Gemini] Request completed in ${duration} ms`);
+                console.log(`[Gemini] Request completed using model ${targetModel} in ${duration} ms`);
                 const rawData = await response.json();
-                return { rawData, duration };
+                return { rawData, duration, model: targetModel };
             } catch (err) {
                 const duration = Date.now() - startTime;
                 if (err.name === 'AbortError') {
-                    console.error(`[Gemini] Request timed out after ${timeoutMs / 1000} seconds (Attempt ${attemptNum})`);
+                    console.error(`[Gemini] Request timed out after ${timeoutMs / 1000} seconds (Model: ${targetModel})`);
                     const timeoutError = new Error(`Gemini request timed out after ${timeoutMs / 1000} seconds.`);
                     timeoutError.isTimeout = true;
                     timeoutError.duration = duration;
+                    timeoutError.model = targetModel;
                     throw timeoutError;
                 }
                 throw err;
@@ -165,37 +175,52 @@ router.post('/', scanLimiter, async (req, res, next) => {
             }
         };
 
-        // 3. Execute request with Automatic 1x Retry logic
-        let apiResult;
-        try {
-            apiResult = await makeSingleGeminiCall(1);
-        } catch (firstErr) {
-            // Retry on timeout, network failure, or 429 rate limit
-            const shouldRetry = firstErr.isTimeout || !firstErr.status || firstErr.status === 429 || firstErr.status >= 500;
-            if (shouldRetry) {
-                console.warn(`[Gemini] Primary attempt failed (${firstErr.message}). Automatically retrying once in 1000ms...`);
-                await new Promise(r => setTimeout(r, 1000));
-                try {
-                    apiResult = await makeSingleGeminiCall(2);
-                } catch (secondErr) {
-                    console.error(`[Gemini] Retry attempt failed:`, secondErr.message);
-                    if (secondErr.isTimeout) {
-                        return res.status(408).json({ success: false, error: secondErr.message });
-                    }
-                    if (secondErr.status === 401 || secondErr.status === 403) {
-                        return res.status(401).json({ success: false, error: 'Invalid or unauthorized Gemini API key.' });
-                    }
-                    if (secondErr.status === 429) {
-                        return res.status(429).json({ success: false, error: 'Gemini rate limit or quota exceeded.' });
-                    }
-                    return res.status(502).json({ success: false, error: secondErr.message || 'Gemini API request failed' });
+        // 3. Execute request with Multi-Model Fallback & Retry
+        let apiResult = null;
+        let lastError = null;
+        let globalAttempt = 0;
+
+        for (const currentModel of modelChain) {
+            globalAttempt++;
+            try {
+                apiResult = await makeSingleGeminiCall(currentModel, globalAttempt);
+                if (apiResult) break; // Success!
+            } catch (err) {
+                lastError = err;
+                // If error is 429 (Quota exceeded) or 404 (Not found), seamlessly try next fallback model in chain
+                if (err.status === 429 || err.status === 404) {
+                    console.warn(`[Gemini] Model ${currentModel} encountered HTTP ${err.status}. Seamlessly falling back to next available model...`);
+                    continue;
                 }
-            } else {
-                if (firstErr.status === 401 || firstErr.status === 403) {
-                    return res.status(401).json({ success: false, error: 'Invalid or unauthorized Gemini API key.' });
+                // For transient network errors, retry once after 500ms
+                if (err.isTimeout || !err.status || err.status >= 500) {
+                    console.warn(`[Gemini] Transient error with model ${currentModel} (${err.message}). Retrying once...`);
+                    await new Promise(r => setTimeout(r, 500));
+                    try {
+                        globalAttempt++;
+                        apiResult = await makeSingleGeminiCall(currentModel, globalAttempt);
+                        if (apiResult) break;
+                    } catch (retryErr) {
+                        lastError = retryErr;
+                        console.warn(`[Gemini] Retry failed for ${currentModel}. Trying fallback model...`);
+                        continue;
+                    }
                 }
-                return res.status(firstErr.status || 500).json({ success: false, error: firstErr.message });
             }
+        }
+
+        if (!apiResult) {
+            console.error('[Gemini] All models in fallback chain failed. Last error:', lastError?.message);
+            if (lastError?.isTimeout) {
+                return res.status(408).json({ success: false, error: lastError.message });
+            }
+            if (lastError?.status === 401 || lastError?.status === 403) {
+                return res.status(401).json({ success: false, error: 'Invalid or unauthorized Gemini API key.' });
+            }
+            if (lastError?.status === 429) {
+                return res.status(429).json({ success: false, error: 'Gemini rate limit or daily quota exceeded across all models.' });
+            }
+            return res.status(502).json({ success: false, error: lastError?.message || 'Gemini Vision API request failed.' });
         }
 
         // 4. Parse response JSON
