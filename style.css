@@ -967,56 +967,77 @@ body {
     background: rgba(255, 255, 255, 0.08);
 }
 
-.vision-text-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    min-width: 0;
-}
-
-.vision-brand-label {
-    font-size: 0.775rem;
-    font-weight: 800;
-    color: #3b82f6;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.vision-subtext {
-    font-size: 0.7rem;
-    color: #94a3b8;
-    font-weight: 500;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Audio Waveform Indicator */
-.small-waveform {
+/* Eye Circle Icon Badge */
+.vision-eye-circle {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.22);
+    border: 1px solid rgba(59, 130, 246, 0.4);
     display: flex;
     align-items: center;
-    gap: 2.5px;
-    height: 16px;
-    margin-left: auto;
-    padding-right: 0.25rem;
+    justify-content: center;
+    color: #60a5fa;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
 }
 
-.small-waveform span {
-    width: 2.5px;
-    background: #3b82f6;
+.vision-eye-circle svg {
+    width: 18px;
+    height: 18px;
+}
+
+.vision-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.announce-status-pill {
+    font-size: 0.575rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #94a3b8;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.announce-status-pill.active {
+    background-color: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+}
+
+.dot-green {
+    color: #4ade80;
+    font-size: 0.75rem;
+    line-height: 1;
+}
+
+/* Top Pill Waveform */
+.top-waveform {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 12px;
+    margin-left: 4px;
+}
+
+.top-waveform span {
+    width: 2px;
+    background: #60a5fa;
     border-radius: 2px;
 }
 
-.small-waveform span:nth-child(1) { height: 8px; animation: waveBar 1.2s infinite ease-in-out; }
-.small-waveform span:nth-child(2) { height: 14px; animation: waveBar 1.2s infinite ease-in-out 0.2s; }
-.small-waveform span:nth-child(3) { height: 10px; animation: waveBar 1.2s infinite ease-in-out 0.4s; }
-.small-waveform span:nth-child(4) { height: 6px; animation: waveBar 1.2s infinite ease-in-out 0.6s; }
-
-@keyframes waveBar {
-    0%, 100% { transform: scaleY(0.5); opacity: 0.5; }
-    50% { transform: scaleY(1.3); opacity: 1; }
-}
+.top-waveform span:nth-child(1) { height: 6px; animation: waveBar 1.2s infinite ease-in-out; }
+.top-waveform span:nth-child(2) { height: 12px; animation: waveBar 1.2s infinite ease-in-out 0.2s; }
+.top-waveform span:nth-child(3) { height: 8px; animation: waveBar 1.2s infinite ease-in-out 0.4s; }
+.top-waveform span:nth-child(4) { height: 12px; animation: waveBar 1.2s infinite ease-in-out 0.6s; }
+.top-waveform span:nth-child(5) { height: 6px; animation: waveBar 1.2s infinite ease-in-out 0.8s; }
 
 /* Right Section Controls inside bar */
 .vision-right-controls {
@@ -1039,6 +1060,7 @@ body {
     color: #ffffff;
     cursor: pointer;
     transition: all 0.15s ease;
+    position: relative;
 }
 
 .compact-control-btn:hover {
@@ -1071,6 +1093,37 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
     color: #ffffff !important;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+/* Active Scanning State Feedback Animation */
+.btn-scan-blue.scanning {
+    background: #1d4ed8 !important;
+    box-shadow: 0 0 16px rgba(37, 99, 235, 0.7) !important;
+}
+
+.btn-scan-blue.scanning .control-icon {
+    animation: spinScanReticle 1.6s linear infinite;
+}
+
+@keyframes spinScanReticle {
+    0% { transform: rotate(0deg) scale(1); }
+    50% { transform: rotate(180deg) scale(1.18); }
+    100% { transform: rotate(360deg) scale(1); }
+}
+
+.btn-scan-blue.scanning::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 14px;
+    border: 2px solid rgba(96, 165, 250, 0.8);
+    animation: scanPulseGlow 1.4s infinite cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+@keyframes scanPulseGlow {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1.25); opacity: 0; }
 }
 
 /* 2. Scene Mode Button: Neutral Gray (#6B7280) */

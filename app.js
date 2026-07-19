@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v26';
+    const CURRENT_VERSION = 'v27';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -2221,6 +2221,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const announceTitle = document.getElementById('announce-title');
         const announceDistance = document.getElementById('announce-distance');
         const repeatBtn = document.getElementById('repeat-btn');
+        const scanBtn = document.getElementById('btn-scan-action');
+        const scanLabel = scanBtn?.querySelector('.control-label');
+
+        if (scanBtn) {
+            scanBtn.disabled = true;
+            scanBtn.classList.add('scanning');
+        }
+        if (scanLabel) {
+            scanLabel.innerText = "Scanning...";
+        }
 
         if (describeBtn && !isContinuous) {
             describeBtn.disabled = true;
@@ -2406,6 +2416,15 @@ document.addEventListener('DOMContentLoaded', () => {
             SpeechService.announce(errDescription);
         } finally {
             isAnalyzing = false;
+            const scanBtn = document.getElementById('btn-scan-action');
+            const scanLabel = scanBtn?.querySelector('.control-label');
+            if (scanBtn) {
+                scanBtn.disabled = false;
+                scanBtn.classList.remove('scanning');
+            }
+            if (scanLabel) {
+                scanLabel.innerText = "Scan";
+            }
             if (announceStatus) announceStatus.classList.remove('active');
             if (describeBtn) {
                 describeBtn.disabled = false;

@@ -7,7 +7,7 @@
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=26">
+    <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
 
@@ -212,6 +212,13 @@
                         <div class="scan-pill">
                             <span class="pulse-dot"></span>
                             <span id="scan-status-text">Scanning surroundings...</span>
+                            <div class="top-waveform" aria-hidden="true">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
                         </div>
                     </div>
 
@@ -235,21 +242,23 @@
                         <!-- Compact Floating Vision System Card Bar -->
                         <div class="announcement-card compact-vision-bar glass" id="vision-system-bar">
                             
-                            <!-- Left Section: Vision System Info & Audio Narration Trigger -->
-                            <button class="vision-left-trigger" id="describe-btn" aria-label="Analyze and describe surroundings. Tap for audio narration.">
+                            <!-- Left Section: Vision System Eye Badge & Info Trigger -->
+                            <button class="vision-left-trigger" id="describe-btn" aria-label="Vision System Active. Tap to describe surroundings.">
+                                <!-- Eye Icon Circle Badge -->
+                                <div class="vision-eye-circle">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </div>
+
                                 <div class="vision-text-group">
                                     <span class="vision-brand-label">VISION SYSTEM</span>
+                                    <div class="vision-status-row">
+                                        <span class="announce-status-pill active" id="announce-status">ACTIVE <span class="dot-green">•</span></span>
+                                    </div>
                                     <span class="vision-subtext" id="announce-title">Tap to describe</span>
-                                    <span id="announce-status" style="display: none;"></span>
                                     <span id="announce-distance" style="display: none;"></span>
-                                </div>
-                                
-                                <!-- Small Waveform / Audio Indicator -->
-                                <div class="small-waveform" aria-hidden="true">
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
-                                    <span></span>
                                 </div>
                             </button>
 
@@ -643,6 +652,6 @@
     </main>
 
     <!-- JS Logic -->
-    <script src="app.js?v=26"></script>
+    <script src="app.js?v=27"></script>
 </body>
 </html>
