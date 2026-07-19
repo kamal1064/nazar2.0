@@ -931,19 +931,20 @@ body {
     -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
     border: 1px solid rgba(255, 255, 255, 0.16) !important;
     border-radius: 18px !important;
-    padding: 10px 14px !important;
+    padding: 8px 10px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 10px !important;
+    gap: 8px !important;
     height: 68px !important;
-    min-height: 64px !important;
-    max-height: 72px !important;
+    min-height: 68px !important;
+    max-height: 68px !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
     pointer-events: auto;
     margin-bottom: 0 !important;
     width: 100% !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
 }
 
 /* Left CTA Trigger Area */
@@ -953,7 +954,7 @@ body {
     padding: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     cursor: pointer;
     text-align: left;
     flex: 1;
@@ -962,6 +963,7 @@ body {
     outline: none;
     border-radius: 12px;
     transition: background-color 0.15s ease;
+    overflow: hidden;
 }
 
 .vision-left-trigger:hover {
@@ -993,15 +995,19 @@ body {
     flex-direction: column;
     gap: 1px;
     min-width: 0;
+    flex: 1;
+    overflow: hidden;
 }
 
 .vision-brand-label {
-    font-size: 0.725rem;
+    font-size: 0.68rem;
     font-weight: 800;
     color: #3b82f6;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
     line-height: 1.1;
 }
 
@@ -1013,10 +1019,10 @@ body {
 }
 
 .announce-status-pill {
-    font-size: 0.575rem;
+    font-size: 0.55rem;
     font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 10px;
+    padding: 1px 5px;
+    border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.15);
     color: #94a3b8;
     text-transform: uppercase;
@@ -1033,12 +1039,12 @@ body {
 
 .dot-green {
     color: #4ade80;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     line-height: 1;
 }
 
 .vision-subtext {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     color: #94a3b8;
     font-weight: 500;
     white-space: nowrap;
@@ -1072,7 +1078,7 @@ body {
 .vision-right-controls {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-shrink: 0;
 }
 
@@ -1081,9 +1087,9 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 0 8px;
-    min-width: 56px;
+    gap: 2px;
+    padding: 0 6px;
+    min-width: 52px;
     height: 48px;
     border-radius: 12px;
     border: none;
