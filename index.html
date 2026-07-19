@@ -7,7 +7,7 @@
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=31">
+    <link rel="stylesheet" href="style.css?v=32">
 </head>
 <body>
 
@@ -239,59 +239,35 @@
                     <!-- Bottom compact controls wrapper -->
                     <div class="camera-bottom-wrapper">
                         
-                        <!-- Compact Floating Vision System Card Bar -->
+                        <!-- Compact Floating Control Pill (3 Action Buttons Centered) -->
                         <div class="announcement-card compact-vision-bar glass" id="vision-system-bar">
-                            
-                            <!-- Left Section: Vision System Eye Badge & Info Trigger -->
-                            <button class="vision-left-trigger" id="describe-btn" aria-label="Vision System Active. Tap to describe surroundings.">
-                                <!-- Eye Icon Circle Badge -->
-                                <div class="vision-eye-circle">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </div>
-
-                                <div class="vision-text-group">
-                                    <span class="vision-brand-label">VISION SYSTEM</span>
-                                    <div class="vision-status-row">
-                                        <span class="announce-status-pill active" id="announce-status"><span class="dot-green">•</span> ANALYZED</span>
-                                    </div>
-                                    <span class="vision-subtext" id="announce-title">Tap to describe</span>
-                                    <span id="announce-distance" style="display: none;"></span>
-                                </div>
+                            <!-- 1. Scan Button (Primary Blue) -->
+                            <button class="compact-control-btn btn-scan-blue" id="btn-scan-action" aria-label="Scan Surroundings">
+                                <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                <span class="control-label">Scan</span>
                             </button>
 
-                            <!-- Right Section: 3 Action Buttons -->
-                            <div class="vision-right-controls">
-                                <!-- 1. Scan Button (Primary Blue) -->
-                                <button class="compact-control-btn btn-scan-blue" id="btn-scan-action" aria-label="Scan Surroundings">
-                                    <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                    <span class="control-label">Scan</span>
-                                </button>
+                            <!-- 2. Scene Mode Toggle (Gray/Neutral) -->
+                            <button class="compact-control-btn btn-scene-gray" id="btn-mode-toggle" aria-label="Toggle between OCR and Scene analysis">
+                                <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                                    <polyline points="21 15 16 10 5 21"/>
+                                </svg>
+                                <span class="control-label" id="mode-label-text">Scene Mode</span>
+                            </button>
 
-                                <!-- 2. Scene Mode Toggle (Gray/Neutral) -->
-                                <button class="compact-control-btn btn-scene-gray" id="btn-mode-toggle" aria-label="Toggle between OCR and Scene analysis">
-                                    <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                        <circle cx="8.5" cy="8.5" r="1.5"/>
-                                        <polyline points="21 15 16 10 5 21"/>
-                                    </svg>
-                                    <span class="control-label" id="mode-label-text">Scene Mode</span>
-                                </button>
-
-                                <!-- 3. Stop Speech Button (Red Accent) -->
-                                <button class="compact-control-btn btn-stop-speech-red" id="btn-stop-speech" aria-label="Stop Speech Output">
-                                    <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                        <line x1="2" y1="2" x2="22" y2="22"/>
-                                    </svg>
-                                    <span class="control-label">Stop Speech</span>
-                                </button>
-                            </div>
+                            <!-- 3. Stop Speech Button (Red Accent) -->
+                            <button class="compact-control-btn btn-stop-speech-red" id="btn-stop-speech" aria-label="Stop Speech Output">
+                                <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                    <line x1="2" y1="2" x2="22" y2="22"/>
+                                </svg>
+                                <span class="control-label">Stop Speech</span>
+                            </button>
                         </div>
 
                         <!-- Secondary floating action keys (Centered mic, right swap, no menu) -->
@@ -652,6 +628,6 @@
     </main>
 
     <!-- JS Logic -->
-    <script src="app.js?v=31"></script>
+    <script src="app.js?v=32"></script>
 </body>
 </html>
