@@ -7,7 +7,7 @@
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=23">
+    <link rel="stylesheet" href="style.css?v=24">
 </head>
 <body>
 
@@ -566,16 +566,20 @@
         <!-- SOS Trigger Confirmation Modal -->
         <div class="app-modal-layer" id="sos-modal">
             <div class="modal-card">
-                <div class="modal-icon-holder">
+                <div class="modal-icon-holder" id="sos-modal-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="30" height="30">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                 </div>
-                <h3 class="modal-title-text">Dispatch SOS Alert?</h3>
-                <p class="modal-description-text">This will immediately send your current GPS coordinates to your emergency contacts.</p>
+                <h3 class="modal-title-text" id="sos-modal-title">Dispatch SOS Alert?</h3>
+                <p class="modal-description-text" id="sos-modal-desc">This will immediately send your current GPS coordinates via email to your emergency contacts.</p>
+                <div id="sos-cooldown-notice" style="display: none; font-size: 0.85rem; color: var(--danger); font-weight: 700; margin-bottom: 0.75rem;" role="alert"></div>
                 <div class="modal-buttons-group">
                     <button class="btn-modal-trigger-now" id="confirm-sos" aria-describedby="sos-instructions">Press & Hold to Confirm (3s)</button>
                     <div id="sos-instructions" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Press and hold this button for three seconds to confirm emergency dispatch.</div>
+                    <button type="button" id="btn-im-safe" style="display: none; width: 100%; padding: 0.85rem; background: var(--success, #22c55e); color: #ffffff; border: none; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);" aria-label="Mark yourself safe and notify emergency contacts">
+                        ✅ I'm Safe
+                    </button>
                     <button class="btn-modal-cancel" id="cancel-sos">Cancel</button>
                 </div>
             </div>
@@ -628,6 +632,6 @@
     </main>
 
     <!-- JS Logic -->
-    <script src="app.js?v=23"></script>
+    <script src="app.js?v=24"></script>
 </body>
 </html>

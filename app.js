@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v23';
+    const CURRENT_VERSION = 'v24';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -1205,6 +1205,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { enableHighAccuracy: true, timeout: 8000 });
     }
 
+    function logEmergencyEvent(details) {
+        let history = [];
+        try {
+            history = JSON.parse(localStorage.getItem('nazar-emergency-history-log') || '[]');
+        } catch (e) {
+            history = [];
+        }
+        const entry = {
+            id: Date.now(),
+            timestamp: new Date().toLocaleString(),
+            latitude: details.latitude || 0,
+            longitude: details.longitude || 0,
+            accuracy: details.accuracy || 0,
+            googleMapsUrl: details.googleMapsUrl || '',
+            contactCount: details.contactCount || 0,
+            status: details.status || 'unknown',
+            failureReason: details.failureReason || null,
+            isTest: !!details.isTest
+        };
+        history.unshift(entry);
+        if (history.length > 50) history = history.slice(0, 50);
+        localStorage.setItem('nazar-emergency-history-log', JSON.stringify(history));
+    }
+
     function handleEmergencySOS() {
         const sosModal = document.getElementById('sos-modal');
         if (sosModal) {
@@ -1232,20 +1256,38 @@ document.addEventListener('DOMContentLoaded', () => {
             contactsList.push({ name, phone, email, relationship: rel });
         }
 
-        if (contactsList.length === 0) {
-            SpeechService.announce("Emergency contact not configured. Please add an emergency contact in Settings.");
+        const emailContacts = contactsList.filter(c => c.email && c.email.includes('@'));
+
+        if (emailContacts.length === 0) {
+            SpeechService.announce("Emergency contact email not configured. Please add contact email in Settings.");
             const errorBox = document.getElementById('emergency-contact-error');
             if (errorBox) {
-                errorBox.innerText = "Emergency contact not configured. Please add contact in Settings.";
+                errorBox.innerText = "Emergency contact email not configured. Please add contact email in Settings.";
                 errorBox.style.display = 'block';
             }
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            logEmergencyEvent({ status: 'failure', failureReason: 'No emergency contact email configured', isTest: isTestMode });
+            return;
+        }
+
+        // 1. Internet Connectivity Check
+        SpeechService.announce("Checking internet connection.");
+        if (!navigator.onLine) {
+            SpeechService.announce("No internet connection. Emergency email cannot be sent.");
+            const errorBox = document.getElementById('emergency-contact-error');
+            if (errorBox) {
+                errorBox.innerText = "No internet connection. Emergency email cannot be sent.";
+                errorBox.style.display = 'block';
+            }
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            logEmergencyEvent({ status: 'offline', failureReason: 'Device is offline', contactCount: emailContacts.length, isTest: isTestMode });
             return;
         }
 
         if (!navigator.geolocation) {
             SpeechService.announce("Unable to determine your location.");
             if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+            logEmergencyEvent({ status: 'failure', failureReason: 'Geolocation not supported', contactCount: emailContacts.length, isTest: isTestMode });
             return;
         }
 
@@ -1258,7 +1300,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
             const dateStr = new Date().toLocaleDateString();
             const timeStr = new Date().toLocaleTimeString();
-            const timestamp = `${dateStr}, ${timeStr}`;
 
             SpeechService.announce("Location found.");
             if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
@@ -1273,74 +1314,105 @@ document.addEventListener('DOMContentLoaded', () => {
                 batteryLevel = 'N/A';
             }
 
-            // 1. Send Emergency Email via Backend API
-            const emailContacts = contactsList.filter(c => c.email && c.email.includes('@'));
-            if (emailContacts.length > 0) {
-                SpeechService.announce(isTestMode ? "Sending emergency test email." : "Sending emergency email.");
-                try {
-                    const response = await fetch('/api/emergency/send-email', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            contacts: emailContacts,
-                            userName: 'Kamal',
-                            latitude: lat,
-                            longitude: lon,
-                            accuracy: accuracy,
-                            googleMapsUrl: mapUrl,
-                            date: dateStr,
-                            time: timeStr,
-                            battery: batteryLevel,
-                            deviceInfo: navigator.userAgent,
-                            isTest: isTestMode
-                        })
-                    });
-                    const resData = await response.json();
-                    if (resData.success) {
-                        SpeechService.announce("Emergency email sent successfully.");
-                    } else {
-                        console.warn("[EmergencySystem] Email dispatch returned error:", resData);
-                        SpeechService.announce("Unable to send emergency email.");
-                    }
-                } catch (emailErr) {
-                    console.error("[EmergencySystem] Email dispatch network error:", emailErr);
-                    SpeechService.announce("Unable to send emergency email.");
-                }
-            } else if (emailOnly) {
-                SpeechService.announce("Emergency contact email not configured. Please add contact email in Settings.");
-                return;
-            }
+            SpeechService.announce(isTestMode ? "Sending emergency test email." : "Sending emergency email.");
 
-            // 2. Open Native SMS Application if not emailOnly
-            if (!emailOnly) {
-                const primaryPhone = phone || (contactsList.find(c => c.phone) ? contactsList.find(c => c.phone).phone : '');
-                if (primaryPhone) {
-                    let message = '';
-                    if (isTestMode) {
-                        message = `This is a NAZAR emergency test.\n\nNo assistance is required.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
-                    } else {
-                        message = `🚨 EMERGENCY ALERT\n\nI may need immediate assistance.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
-                    }
+            // 15-Second Abort Controller Timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-                    const payload = {
-                        contactNumber: primaryPhone,
-                        message: message,
+            try {
+                const response = await fetch('/api/emergency/send-email', {
+                    signal: controller.signal,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contacts: emailContacts,
                         userName: 'Kamal',
-                        timestamp: timestamp,
-                        locationLink: mapUrl,
                         latitude: lat,
-                        longitude: lon
-                    };
+                        longitude: lon,
+                        accuracy: accuracy,
+                        googleMapsUrl: mapUrl,
+                        date: dateStr,
+                        time: timeStr,
+                        battery: batteryLevel,
+                        deviceInfo: navigator.userAgent,
+                        isTest: isTestMode
+                    })
+                });
 
-                    await EmergencyService.dispatch(payload);
+                clearTimeout(timeoutId);
+                const resData = await response.json();
+
+                if (response.ok && resData.success) {
+                    SpeechService.announce("Emergency email sent successfully.");
+                    localStorage.setItem('nazar-last-emergency-timestamp', Date.now().toString());
+
+                    logEmergencyEvent({
+                        latitude: lat,
+                        longitude: lon,
+                        accuracy: accuracy,
+                        googleMapsUrl: mapUrl,
+                        contactCount: emailContacts.length,
+                        status: 'success',
+                        isTest: isTestMode
+                    });
+
+                    // Present "I'm Safe" button if real emergency
+                    if (!isTestMode) {
+                        const confirmBtn = document.getElementById('confirm-sos');
+                        const safeBtn = document.getElementById('btn-im-safe');
+                        if (confirmBtn && safeBtn) {
+                            confirmBtn.style.display = 'none';
+                            safeBtn.style.display = 'block';
+                        }
+                    } else {
+                        const sosModal = document.getElementById('sos-modal');
+                        if (sosModal) setTimeout(() => sosModal.classList.remove('modal-active'), 1500);
+                    }
+                } else {
+                    console.warn("[EmergencySystem] Email dispatch server error:", resData);
+                    SpeechService.announce("Unable to send emergency email.");
+                    logEmergencyEvent({
+                        latitude: lat,
+                        longitude: lon,
+                        accuracy: accuracy,
+                        googleMapsUrl: mapUrl,
+                        contactCount: emailContacts.length,
+                        status: 'failure',
+                        failureReason: resData.message || 'Server error',
+                        isTest: isTestMode
+                    });
                 }
-            }
+            } catch (emailErr) {
+                clearTimeout(timeoutId);
+                console.error("[EmergencySystem] Email dispatch error:", emailErr);
 
-            const sosModal = document.getElementById('sos-modal');
-            if (sosModal) {
-                setTimeout(() => {
-                    sosModal.classList.remove('modal-active');
-                }, 1500);
+                if (emailErr.name === 'AbortError') {
+                    SpeechService.announce("Emergency timeout.");
+                    SpeechService.announce("Unable to send emergency email. Please try again.");
+                    logEmergencyEvent({
+                        latitude: lat,
+                        longitude: lon,
+                        accuracy: accuracy,
+                        googleMapsUrl: mapUrl,
+                        contactCount: emailContacts.length,
+                        status: 'timeout',
+                        failureReason: 'Request timed out after 15 seconds',
+                        isTest: isTestMode
+                    });
+                } else {
+                    SpeechService.announce("Unable to send emergency email.");
+                    logEmergencyEvent({
+                        latitude: lat,
+                        longitude: lon,
+                        accuracy: accuracy,
+                        googleMapsUrl: mapUrl,
+                        contactCount: emailContacts.length,
+                        status: 'failure',
+                        failureReason: emailErr.message,
+                        isTest: isTestMode
+                    });
+                }
             }
         }, (err) => {
             console.warn("[EmergencySystem] GPS Error:", err);
@@ -1350,6 +1422,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 SpeechService.announce("Unable to determine your location.");
             }
             if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+            logEmergencyEvent({
+                status: 'failure',
+                failureReason: err.code === err.PERMISSION_DENIED ? 'Location permission denied' : 'GPS position unavailable',
+                isTest: isTestMode
+            });
         }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
 
@@ -2399,6 +2476,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // SOS modal handlers
     const cancelSosBtn = document.getElementById('cancel-sos');
     const confirmSosBtn = document.getElementById('confirm-sos');
+    const imSafeBtn = document.getElementById('btn-im-safe');
     const sosModal = document.getElementById('sos-modal');
     const drawerOverlay = document.getElementById('drawer-overlay');
     const drawerContent = document.getElementById('drawer-content');
@@ -2412,6 +2490,53 @@ document.addEventListener('DOMContentLoaded', () => {
             SpeechService.announce("SOS cancelled.");
         });
     }
+
+    if (imSafeBtn) {
+        imSafeBtn.addEventListener('click', async () => {
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+            SpeechService.announce("Emergency mode ended.");
+
+            imSafeBtn.style.display = 'none';
+            if (confirmSosBtn) {
+                confirmSosBtn.style.display = 'block';
+                confirmSosBtn.innerText = "Press & Hold to Confirm (3s)";
+                confirmSosBtn.style.backgroundColor = '';
+            }
+
+            if (sosModal) sosModal.classList.remove('modal-active');
+
+            let contactsList = [];
+            try {
+                contactsList = JSON.parse(localStorage.getItem('nazar-emergency-contacts-list') || '[]');
+            } catch (e) {
+                contactsList = [];
+            }
+            if (contactsList.length === 0) {
+                const email = SettingsService.state.emergencyContactEmail || localStorage.getItem("nazar-emergency-contact-email");
+                const name = SettingsService.state.emergencyContactName || localStorage.getItem("nazar-emergency-contact-name");
+                if (email) contactsList.push({ name, email });
+            }
+
+            const validEmailContacts = contactsList.filter(c => c.email && c.email.includes('@'));
+            if (validEmailContacts.length > 0 && navigator.onLine) {
+                try {
+                    await fetch('/api/emergency/send-safe-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contacts: validEmailContacts,
+                            userName: 'Kamal',
+                            date: new Date().toLocaleDateString(),
+                            time: new Date().toLocaleTimeString()
+                        })
+                    });
+                    SpeechService.announce("Safety update email sent to emergency contacts.");
+                } catch (safeErr) {
+                    console.warn("[EmergencySystem] Safe update email error:", safeErr);
+                }
+            }
+        });
+    }
     
     if (confirmSosBtn) {
         let sosTimer = null;
@@ -2420,9 +2545,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const startHold = (e) => {
             e.preventDefault();
 
-            const contactNumber = SettingsService.state.emergencyContactNumber || localStorage.getItem("nazar-emergency-contact-number") || '';
-            if (!contactNumber) {
-                SpeechService.announce("Emergency contact not configured. Please add an emergency contact in Settings.");
+            // 60-Second Cooldown Check
+            const lastTs = parseInt(localStorage.getItem('nazar-last-emergency-timestamp') || '0');
+            const now = Date.now();
+            const elapsed = Math.floor((now - lastTs) / 1000);
+            const cooldownRemaining = 60 - elapsed;
+
+            if (cooldownRemaining > 0) {
+                SpeechService.announce("An emergency alert was recently sent. Please wait before sending another.");
+                const notice = document.getElementById('sos-cooldown-notice');
+                if (notice) {
+                    notice.innerText = `Please wait ${cooldownRemaining}s before sending another alert.`;
+                    notice.style.display = 'block';
+                }
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                return;
+            } else {
+                const notice = document.getElementById('sos-cooldown-notice');
+                if (notice) notice.style.display = 'none';
+            }
+
+            const email = SettingsService.state.emergencyContactEmail || localStorage.getItem("nazar-emergency-contact-email") || '';
+            let contactsList = [];
+            try {
+                contactsList = JSON.parse(localStorage.getItem('nazar-emergency-contacts-list') || '[]');
+            } catch (e) {
+                contactsList = [];
+            }
+            const hasEmail = email || contactsList.some(c => c.email && c.email.includes('@'));
+
+            if (!hasEmail) {
+                SpeechService.announce("Emergency contact email not configured. Please add contact email in Settings.");
                 if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
                 return;
             }
