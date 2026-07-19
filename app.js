@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v25';
+    const CURRENT_VERSION = 'v26';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -2144,6 +2144,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let popupTimeoutId = null;
+
+    function showScanPopup(text) {
+        const popup = document.getElementById('scan-result-popup');
+        const popupText = document.getElementById('scan-popup-text');
+        if (!popup || !popupText || !text) return;
+
+        popupText.innerText = text;
+        popup.classList.add('visible');
+
+        if (popupTimeoutId) clearTimeout(popupTimeoutId);
+        popupTimeoutId = setTimeout(() => {
+            hideScanPopup();
+        }, 4500);
+    }
+
+    function hideScanPopup() {
+        const popup = document.getElementById('scan-result-popup');
+        if (popup) {
+            popup.classList.remove('visible');
+        }
+        if (popupTimeoutId) {
+            clearTimeout(popupTimeoutId);
+            popupTimeoutId = null;
+        }
+    }
+
     function updateContinuousButtonUI() {
         const btn = document.getElementById('btn-continuous-toggle');
         if (btn) {
@@ -2369,6 +2396,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             SpeechService.announce(speechAnnouncement);
+            showScanPopup(speechAnnouncement);
 
         } catch (err) {
             console.error("[Vision System] Advanced vision request failed:", err);
@@ -2805,22 +2833,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Bind scanner controls row (compact vision bar buttons)
-    const continuousBtn = document.getElementById('btn-continuous-toggle');
-    if (continuousBtn) {
-        continuousBtn.addEventListener('click', (e) => {
+    const scanBtn = document.getElementById('btn-scan-action');
+    if (scanBtn) {
+        scanBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            isContinuousScanning = !isContinuousScanning;
-            if (isContinuousScanning) {
-                startContinuousScanning();
-                SpeechService.announce("Continuous scanning activated.");
-            } else {
-                stopContinuousScanning();
-                SpeechService.announce("Continuous scanning deactivated.");
-            }
-            updateContinuousButtonUI();
-            if (typeof queueSettingsSync === 'function') {
-                queueSettingsSync();
-            }
+            triggerDescribeSurroundings(false);
+        });
+    }
+
+    const popupCloseBtn = document.getElementById('scan-popup-close');
+    if (popupCloseBtn) {
+        popupCloseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            hideScanPopup();
         });
     }
 

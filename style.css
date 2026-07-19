@@ -810,7 +810,7 @@ body {
 }
 
 .scan-pill {
-    background: rgba(15, 23, 42, 0.75);
+    background: rgba(15, 23, 42, 0.8);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     border: 1px solid rgba(255, 255, 255, 0.18);
@@ -840,6 +840,81 @@ body {
     50% { transform: scale(1.5); opacity: 1; }
 }
 
+/* Top Scan Result Pop-up (After AI Scan Complete) */
+.scan-result-popup {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-10px);
+    width: calc(100% - 32px);
+    max-width: 420px;
+    background: rgba(15, 23, 42, 0.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 14px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.3s;
+    z-index: 30;
+}
+
+.scan-result-popup.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+.popup-ai-icon {
+    width: 20px;
+    height: 20px;
+    color: #60a5fa;
+    flex-shrink: 0;
+}
+
+.popup-text {
+    font-size: 0.875rem; /* 14px */
+    font-weight: 500;
+    color: #f8fafc;
+    line-height: 1.35;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.popup-close-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    flex-shrink: 0;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+.popup-close-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.popup-close-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
 /* Bottom Controls Wrapper */
 .camera-bottom-wrapper {
     width: 100%;
@@ -847,24 +922,24 @@ body {
     flex-direction: column;
     gap: 0.65rem;
     z-index: 25;
-    padding: 0 0.5rem 0.5rem 0.5rem;
+    padding: 0 16px 0.5rem 16px;
 }
 
 /* Translucent Compact Vision System Bar */
 .compact-vision-bar {
-    background: rgba(15, 23, 42, 0.78) !important;
+    background: rgba(15, 23, 42, 0.82) !important;
     backdrop-filter: blur(18px) saturate(140%) !important;
     -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
     border: 1px solid rgba(255, 255, 255, 0.18) !important;
-    border-radius: 18px !important;
-    padding: 0.45rem 0.65rem !important;
+    border-radius: 16px !important;
+    padding: 0.4rem 0.65rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     gap: 0.5rem !important;
-    min-height: 72px;
-    max-height: 84px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4) !important;
+    min-height: 64px;
+    max-height: 72px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
     pointer-events: auto;
     margin-bottom: 0 !important;
     width: 100%;
@@ -899,38 +974,18 @@ body {
     min-width: 0;
 }
 
-.vision-header-row {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
 .vision-brand-label {
-    font-size: 0.725rem;
+    font-size: 0.775rem;
     font-weight: 800;
-    color: #60a5fa;
+    color: #3b82f6;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-}
-
-.announce-status-pill {
-    font-size: 0.575rem;
-    font-weight: 700;
-    padding: 1px 6px;
-    border-radius: 10px;
-    background-color: rgba(255, 255, 255, 0.15);
-    color: #94a3b8;
-    text-transform: uppercase;
-}
-
-.announce-status-pill.active {
-    background-color: rgba(34, 197, 94, 0.25);
-    color: #4ade80;
+    white-space: nowrap;
 }
 
 .vision-subtext {
     font-size: 0.7rem;
-    color: #cbd5e1;
+    color: #94a3b8;
     font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
@@ -949,7 +1004,7 @@ body {
 
 .small-waveform span {
     width: 2.5px;
-    background: #60a5fa;
+    background: #3b82f6;
     border-radius: 2px;
 }
 
@@ -975,20 +1030,19 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    padding: 0.45rem 0.5rem;
+    gap: 2px;
+    padding: 0.35rem 0.5rem;
     min-width: 58px;
-    height: 54px;
+    height: 48px;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #f8fafc;
+    border: none;
+    color: #ffffff;
     cursor: pointer;
     transition: all 0.15s ease;
 }
 
 .compact-control-btn:hover {
-    background: rgba(255, 255, 255, 0.16);
+    filter: brightness(1.1);
     transform: translateY(-1px);
 }
 
@@ -1009,35 +1063,66 @@ body {
     white-space: nowrap;
 }
 
-/* Stop Speech Compact Red Accent */
-.btn-stop-speech {
-    background: rgba(239, 68, 68, 0.12) !important;
-    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+/* Specific Button Color Schemes according to Design Specs */
+
+/* 1. Scan Button: Primary Blue (#2563EB) */
+.btn-scan-blue {
+    background: #2563eb !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
 }
 
-.btn-stop-speech:hover {
-    background: rgba(239, 68, 68, 0.22) !important;
+/* 2. Scene Mode Button: Neutral Gray (#6B7280) */
+.btn-scene-gray {
+    background: #4b5563 !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
 }
 
-.text-red {
-    color: #f87171 !important;
+/* 3. Stop Speech Button: Red (#EF4444) */
+.btn-stop-speech-red {
+    background: #dc2626 !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.35) !important;
 }
 
-/* Interactive Floating Controls Row */
-.camera-action-row {
+/* Centered Floating Controls Row (Centered Mic, Right Swap, No Menu) */
+.camera-action-row-centered {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: center;
+    position: relative;
     width: 100%;
-    padding: 0 0.25rem;
+    padding: 0 0.5rem;
+}
+
+.camera-action-row-centered .btn-mic-main {
+    margin: 0 auto;
+}
+
+.camera-action-row-centered #camera-swap-btn {
+    position: absolute;
+    right: 0.5rem;
 }
 
 .btn-floating-aux {
     width: 46px !important;
     height: 46px !important;
-    background: rgba(15, 23, 42, 0.7) !important;
+    background: rgba(15, 23, 42, 0.75) !important;
     border: 1px solid rgba(255, 255, 255, 0.18) !important;
     color: #ffffff !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: background-color 0.2s, transform 0.2s;
+}
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-radius: 50%;
