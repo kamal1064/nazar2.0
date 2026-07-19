@@ -810,10 +810,10 @@ body {
 }
 
 .scan-pill {
-    background: rgba(15, 23, 42, 0.8);
+    background: rgba(15, 23, 42, 0.6);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     color: #ffffff;
     font-size: 0.75rem;
     font-weight: 600;
@@ -846,13 +846,12 @@ body {
     top: 50px;
     left: 50%;
     transform: translateX(-50%) translateY(-10px);
-    width: calc(100% - 32px);
-    max-width: 420px;
-    background: rgba(15, 23, 42, 0.88);
+    width: min(90%, 420px);
+    background: rgba(15, 23, 42, 0.75);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
     padding: 10px 14px;
     display: flex;
     align-items: center;
@@ -875,15 +874,15 @@ body {
 .popup-ai-icon {
     width: 20px;
     height: 20px;
-    color: #60a5fa;
+    color: #3b82f6;
     flex-shrink: 0;
 }
 
 .popup-text {
-    font-size: 0.875rem; /* 14px */
-    font-weight: 500;
-    color: #f8fafc;
-    line-height: 1.35;
+    font-size: 0.85rem; /* 13-14px */
+    font-weight: 400;
+    color: #ffffff;
+    line-height: 1.4;
     flex: 1;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -894,9 +893,9 @@ body {
 .popup-close-btn {
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: #cbd5e1;
     cursor: pointer;
-    padding: 2px;
+    padding: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -927,18 +926,18 @@ body {
 
 /* Translucent Compact Vision System Bar */
 .compact-vision-bar {
-    background: rgba(15, 23, 42, 0.82) !important;
-    backdrop-filter: blur(18px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    background: rgba(15, 23, 42, 0.6) !important;
+    backdrop-filter: blur(16px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-radius: 16px !important;
     padding: 0.4rem 0.65rem !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     gap: 0.5rem !important;
-    min-height: 64px;
-    max-height: 72px;
+    min-height: 72px;
+    max-height: 84px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
     pointer-events: auto;
     margin-bottom: 0 !important;
