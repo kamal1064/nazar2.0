@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v32';
+    const CURRENT_VERSION = 'v33';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -2298,7 +2298,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const endpoint = '/api/scan';
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            const timeoutId = setTimeout(() => controller.abort(), 60000);
 
             console.log("[VISION] Sending request to Gemini via /api/scan...");
             let response;

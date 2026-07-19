@@ -43,12 +43,19 @@ const healthHandler = (req, res) => {
     const mongoose = require('mongoose');
     const dbConnected = mongoose.connection.readyState === 1;
     const geminiAvailable = !!process.env.GEMINI_API_KEY;
+    const geminiModel = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+    const geminiTimeoutMs = parseInt(process.env.GEMINI_TIMEOUT || '60000', 10);
+
     res.status(200).json({
         success: true,
+        status: dbConnected ? "healthy" : "degraded",
+        uptimeSeconds: Math.floor(process.uptime()),
         database: dbConnected ? "connected" : "disconnected",
-        gemini: geminiAvailable ? "available" : "unavailable",
+        geminiConfigured: geminiAvailable,
+        geminiModel: geminiModel,
+        geminiTimeoutMs: geminiTimeoutMs,
         timestamp: new Date().toISOString(),
-        version: "v32"
+        version: "v33"
     });
 };
 app.get('/health', healthHandler);
