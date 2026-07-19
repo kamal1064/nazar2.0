@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v28';
+    const CURRENT_VERSION = 'v29';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -2208,8 +2208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!navigator.onLine) {
             const offlineMsg = "No internet connection. Vision analysis unavailable.";
             SpeechService.announce(offlineMsg);
-            const announceTitle = document.getElementById('announce-title');
-            if (announceTitle) announceTitle.innerText = offlineMsg;
+            showScanPopup(offlineMsg);
             return;
         }
 
@@ -2392,7 +2391,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (announceTitle) {
-                announceTitle.innerText = speechAnnouncement;
+                announceTitle.innerText = "Tap to describe";
             }
 
             const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2412,8 +2411,8 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("[Vision System] Advanced vision request failed:", err);
             const errDescription = err.message === 'timeout' ? 'Scan timed out' : 'Analysis failed';
             
-            if (announceTitle) announceTitle.innerText = errDescription;
             SpeechService.announce(errDescription);
+            showScanPopup(errDescription);
         } finally {
             isAnalyzing = false;
             const scanBtn = document.getElementById('btn-scan-action');

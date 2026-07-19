@@ -48,7 +48,7 @@ const healthHandler = (req, res) => {
         database: dbConnected ? "connected" : "disconnected",
         gemini: geminiAvailable ? "available" : "unavailable",
         timestamp: new Date().toISOString(),
-        version: "v28"
+        version: "v29"
     });
 };
 app.get('/health', healthHandler);
