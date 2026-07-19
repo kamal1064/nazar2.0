@@ -926,32 +926,34 @@ body {
 
 /* Translucent Compact Vision System Bar */
 .compact-vision-bar {
-    background: rgba(15, 23, 42, 0.6) !important;
-    backdrop-filter: blur(16px) saturate(140%) !important;
-    -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    border-radius: 16px !important;
-    padding: 0.4rem 0.65rem !important;
+    background: rgba(15, 23, 42, 0.75) !important;
+    backdrop-filter: blur(20px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16) !important;
+    border-radius: 18px !important;
+    padding: 10px 14px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 0.5rem !important;
-    min-height: 72px;
-    max-height: 84px;
+    gap: 10px !important;
+    height: 68px !important;
+    min-height: 64px !important;
+    max-height: 72px !important;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45) !important;
     pointer-events: auto;
     margin-bottom: 0 !important;
-    width: 100%;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 /* Left CTA Trigger Area */
 .vision-left-trigger {
     background: transparent;
     border: none;
-    padding: 0.25rem 0.35rem;
+    padding: 0;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 10px;
     cursor: pointer;
     text-align: left;
     flex: 1;
@@ -968,17 +970,17 @@ body {
 
 /* Eye Circle Icon Badge */
 .vision-eye-circle {
-    width: 34px;
-    height: 34px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: rgba(37, 99, 235, 0.22);
+    background: rgba(37, 99, 235, 0.25);
     border: 1px solid rgba(59, 130, 246, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
     color: #60a5fa;
     flex-shrink: 0;
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
 }
 
 .vision-eye-circle svg {
@@ -986,10 +988,28 @@ body {
     height: 18px;
 }
 
+.vision-text-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.vision-brand-label {
+    font-size: 0.725rem;
+    font-weight: 800;
+    color: #3b82f6;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.1;
+}
+
 .vision-status-row {
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    margin: 1px 0;
 }
 
 .announce-status-pill {
@@ -1017,6 +1037,16 @@ body {
     line-height: 1;
 }
 
+.vision-subtext {
+    font-size: 0.65rem;
+    color: #94a3b8;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.1;
+}
+
 /* Top Pill Waveform */
 .top-waveform {
     display: flex;
@@ -1042,7 +1072,8 @@ body {
 .vision-right-controls {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 8px;
+    flex-shrink: 0;
 }
 
 .compact-control-btn {
@@ -1050,9 +1081,9 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
-    padding: 0.35rem 0.5rem;
-    min-width: 58px;
+    gap: 3px;
+    padding: 0 8px;
+    min-width: 56px;
     height: 48px;
     border-radius: 12px;
     border: none;
