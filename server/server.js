@@ -5,11 +5,16 @@ const cors = require('cors');
 const connectDB = require('./db');
 const errorHandler = require('./middleware/errorHandler');
 
+const { verifyTransporterConnection } = require('./services/emailService');
+
 console.log("[SERVER STARTUP]", {
   commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
   model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
-  hasApiKey: !!process.env.GEMINI_API_KEY
+  hasApiKey: !!process.env.GEMINI_API_KEY,
+  hasEmailUser: !!process.env.EMAIL_USER
 });
+
+verifyTransporterConnection();
 
 const app = express();
 app.set('trust proxy', 1);
