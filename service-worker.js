@@ -1,11 +1,11 @@
 /* NAZAR - Production PWA Service Worker Pre-Caching System */
 
-const CACHE_NAME = 'nazar-vision-cache-v24';
+const CACHE_NAME = 'nazar-vision-cache-v25';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/style.css?v=24',
-  '/app.js?v=24',
+  '/style.css?v=25',
+  '/app.js?v=25',
   '/detection-worker.js',
   '/manifest.json',
   '/nazar_icon.png'

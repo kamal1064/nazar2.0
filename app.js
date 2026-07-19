@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v24';
+    const CURRENT_VERSION = 'v25';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -2146,23 +2146,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateContinuousButtonUI() {
         const btn = document.getElementById('btn-continuous-toggle');
-        const dot = btn?.querySelector('.indicator-dot');
-        if (dot) {
-            dot.style.backgroundColor = isContinuousScanning ? '#2ecc71' : '#888';
+        if (btn) {
+            if (isContinuousScanning) {
+                btn.style.background = 'rgba(34, 197, 94, 0.25)';
+                btn.style.borderColor = 'rgba(34, 197, 94, 0.4)';
+            } else {
+                btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                btn.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+            }
         }
     }
 
     function updateModeButtonUI() {
         const btn = document.getElementById('btn-mode-toggle');
-        const descBtn = document.getElementById('describe-btn');
-        if (btn) {
-            btn.innerText = isOcrMode ? "Text Mode" : "Scene Mode";
+        const modeLabel = document.getElementById('mode-label-text');
+        if (modeLabel) {
+            modeLabel.innerText = isOcrMode ? "Text Mode" : "Scene Mode";
         }
-        if (descBtn) {
-            descBtn.innerText = isOcrMode ? "Read Text aloud" : "Describe Surroundings";
-            const descLabel = descBtn.querySelector('span span span:last-child');
-            if (descLabel) {
-                descLabel.innerText = isOcrMode ? "Tap for text reading" : "Tap for an audio narration";
+        if (btn) {
+            if (isOcrMode) {
+                btn.style.background = 'rgba(59, 130, 246, 0.25)';
+                btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+            } else {
+                btn.style.background = 'rgba(255, 255, 255, 0.08)';
+                btn.style.borderColor = 'rgba(255, 255, 255, 0.12)';
             }
         }
     }
@@ -2797,66 +2804,50 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Dynamically inject the new scanner controls row to maintain UI Freeze compliance
-    const card = document.querySelector('.announcement-card');
-    if (card) {
-        const controlsRow = document.createElement('div');
-        controlsRow.style = 'display: flex; gap: 0.5rem; justify-content: space-between; width: 100%; margin-top: 0.5rem;';
-        controlsRow.innerHTML = `
-            <button class="btn-secondary" id="btn-continuous-toggle" style="flex: 1; padding: 0.6rem; font-size: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border: 1px solid var(--border-color); background: var(--glass-bg); color: var(--text-main); cursor: pointer;" aria-label="Toggle Continuous Scanning Mode">
-                <span class="indicator-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: #888; display: inline-block;"></span>
-                Continuous
-            </button>
-            <button class="btn-secondary" id="btn-mode-toggle" style="flex: 1; padding: 0.6rem; font-size: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border: 1px solid var(--border-color); background: var(--glass-bg); color: var(--text-main); cursor: pointer;" aria-label="Toggle between OCR and Scene analysis">
-                Scene Mode
-            </button>
-            <button class="btn-secondary" id="btn-stop-speech" style="flex: 1; padding: 0.6rem; font-size: 0.75rem; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 0.35rem; border: 1px solid rgba(255, 74, 74, 0.2); background: var(--glass-bg); color: #ff4a4a; cursor: pointer;" aria-label="Stop Speaking">
-                Stop Speech
-            </button>
-        `;
-        card.appendChild(controlsRow);
+    // Bind scanner controls row (compact vision bar buttons)
+    const continuousBtn = document.getElementById('btn-continuous-toggle');
+    if (continuousBtn) {
+        continuousBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isContinuousScanning = !isContinuousScanning;
+            if (isContinuousScanning) {
+                startContinuousScanning();
+                SpeechService.announce("Continuous scanning activated.");
+            } else {
+                stopContinuousScanning();
+                SpeechService.announce("Continuous scanning deactivated.");
+            }
+            updateContinuousButtonUI();
+            if (typeof queueSettingsSync === 'function') {
+                queueSettingsSync();
+            }
+        });
+    }
 
-        // Bind events
-        const continuousBtn = document.getElementById('btn-continuous-toggle');
-        if (continuousBtn) {
-            continuousBtn.addEventListener('click', () => {
-                isContinuousScanning = !isContinuousScanning;
-                if (isContinuousScanning) {
-                    startContinuousScanning();
-                    SpeechService.announce("Continuous scanning activated.");
-                } else {
-                    stopContinuousScanning();
-                    SpeechService.announce("Continuous scanning deactivated.");
-                }
-                updateContinuousButtonUI();
-                if (typeof queueSettingsSync === 'function') {
-                    queueSettingsSync();
-                }
-            });
-        }
+    const modeBtn = document.getElementById('btn-mode-toggle');
+    if (modeBtn) {
+        modeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isOcrMode = !isOcrMode;
+            if (isOcrMode) {
+                SpeechService.announce("OCR text reading mode active.");
+            } else {
+                SpeechService.announce("Scene description mode active.");
+            }
+            updateModeButtonUI();
+            if (typeof queueSettingsSync === 'function') {
+                queueSettingsSync();
+            }
+        });
+    }
 
-        const modeBtn = document.getElementById('btn-mode-toggle');
-        if (modeBtn) {
-            modeBtn.addEventListener('click', () => {
-                isOcrMode = !isOcrMode;
-                if (isOcrMode) {
-                    SpeechService.announce("OCR text reading mode active.");
-                } else {
-                    SpeechService.announce("Scene description mode active.");
-                }
-                updateModeButtonUI();
-                if (typeof queueSettingsSync === 'function') {
-                    queueSettingsSync();
-                }
-            });
-        }
-
-        const stopSpeechBtn = document.getElementById('btn-stop-speech');
-        if (stopSpeechBtn) {
-            stopSpeechBtn.addEventListener('click', () => {
-                window.speechSynthesis.cancel();
-            });
-        }
+    const stopSpeechBtn = document.getElementById('btn-stop-speech');
+    if (stopSpeechBtn) {
+        stopSpeechBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            window.speechSynthesis.cancel();
+            SpeechService.announce("Speech stopped.");
+        });
     }
 
     // Resolve user session and sync settings/contacts
