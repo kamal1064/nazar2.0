@@ -24,12 +24,14 @@ const usersRouter = require('./routes/users');
 const scansRouter = require('./routes/scans');
 const contactsRouter = require('./routes/contacts');
 const settingsRouter = require('./routes/settings');
+const emergencyRouter = require('./routes/emergency');
 
 // Route bindings
 app.use('/api/users', usersRouter);
 app.use('/api/scan', scansRouter);
 app.use('/api/emergency-contacts', contactsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/emergency', emergencyRouter);
 
 // Base healthcheck route
 const healthHandler = (req, res) => {
@@ -41,7 +43,7 @@ const healthHandler = (req, res) => {
         database: dbConnected ? "connected" : "disconnected",
         gemini: geminiAvailable ? "available" : "unavailable",
         timestamp: new Date().toISOString(),
-        version: "v22"
+        version: "v23"
     });
 };
 app.get('/health', healthHandler);

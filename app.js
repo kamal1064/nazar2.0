@@ -2,7 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // Programmatic PWA cache invalidation and reloading on version mismatch
-    const CURRENT_VERSION = 'v22';
+    const CURRENT_VERSION = 'v23';
     if (localStorage.getItem('nazar-app-version') !== CURRENT_VERSION) {
         localStorage.setItem('nazar-app-version', CURRENT_VERSION);
         if ('caches' in window) {
@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Safety values configurations
             this.state.emergencyContactName = localStorage.getItem('nazar-emergency-contact-name') || '';
             this.state.emergencyContactNumber = localStorage.getItem('nazar-emergency-contact-number') || '';
+            this.state.emergencyContactEmail = localStorage.getItem('nazar-emergency-contact-email') || '';
             this.state.emergencyContactRelationship = localStorage.getItem('nazar-emergency-contact-relationship') || '';
             this.state.emergencyWebhookUrl = localStorage.getItem('nazar-emergency-webhook-url') || '';
             this.state.homeAddress = localStorage.getItem('nazar-home-address') || '';
@@ -184,16 +185,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const saveBtn = document.getElementById('btn-save-emergency');
             const deleteBtn = document.getElementById('btn-delete-emergency');
             const testSosBtn = document.getElementById('btn-test-sos');
+            const testEmailBtn = document.getElementById('btn-test-email');
             const errorBox = document.getElementById('emergency-contact-error');
 
             if (saveBtn) {
                 saveBtn.addEventListener('click', () => {
                     const inputName = document.getElementById('input-emergency-name');
                     const inputPhone = document.getElementById('input-emergency-phone');
+                    const inputEmail = document.getElementById('input-emergency-email');
                     const inputRel = document.getElementById('input-emergency-rel');
 
                     const name = inputName ? inputName.value.trim() : '';
                     const phone = inputPhone ? inputPhone.value.trim() : '';
+                    const email = inputEmail ? inputEmail.value.trim() : '';
                     const rel = inputRel ? inputRel.value.trim() : '';
 
                     if (!name) {
@@ -215,13 +219,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
 
+                    if (email && (!email.includes('@') || !email.includes('.'))) {
+                        if (errorBox) {
+                            errorBox.innerText = 'Please enter a valid email address.';
+                            errorBox.style.display = 'block';
+                        }
+                        SpeechService.announce('Please enter a valid email address.');
+                        return;
+                    }
+
                     if (errorBox) errorBox.style.display = 'none';
 
                     this.save('emergencyContactName', name);
                     this.save('emergencyContactNumber', phone);
+                    this.save('emergencyContactEmail', email);
                     this.save('emergencyContactRelationship', rel || 'Emergency Contact');
 
-                    syncEmergencyContact(name, phone);
+                    const contactObj = { name, phone, email, relationship: rel || 'Emergency Contact' };
+                    localStorage.setItem('nazar-emergency-contacts-list', JSON.stringify([contactObj]));
+
+                    syncEmergencyContact(name, phone, rel || 'Emergency Contact', email);
                     this.updateSavedContactCard();
                     SpeechService.announce('Emergency contact saved successfully.');
                 });
@@ -231,15 +248,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 deleteBtn.addEventListener('click', () => {
                     this.save('emergencyContactName', '');
                     this.save('emergencyContactNumber', '');
+                    this.save('emergencyContactEmail', '');
                     this.save('emergencyContactRelationship', '');
 
                     localStorage.removeItem('nazar-emergency-contact-name');
                     localStorage.removeItem('nazar-emergency-contact-number');
+                    localStorage.removeItem('nazar-emergency-contact-email');
                     localStorage.removeItem('nazar-emergency-contact-relationship');
+                    localStorage.removeItem('nazar-emergency-contacts-list');
 
-                    syncEmergencyContact('', '');
+                    syncEmergencyContact('', '', '', '');
                     this.updateSavedContactCard();
                     SpeechService.announce('Emergency contact deleted.');
+                });
+            }
+
+            if (testEmailBtn) {
+                testEmailBtn.addEventListener('click', () => {
+                    const email = this.state.emergencyContactEmail || localStorage.getItem("nazar-emergency-contact-email") || '';
+                    let contactsList = [];
+                    try {
+                        contactsList = JSON.parse(localStorage.getItem('nazar-emergency-contacts-list') || '[]');
+                    } catch (e) {
+                        contactsList = [];
+                    }
+                    const hasEmail = email || contactsList.some(c => c.email && c.email.includes('@'));
+                    if (!hasEmail) {
+                        SpeechService.announce("Emergency contact email not configured. Please add contact email in Settings.");
+                        if (errorBox) {
+                            errorBox.innerText = 'Emergency contact email not configured. Please add contact email in Settings.';
+                            errorBox.style.display = 'block';
+                        }
+                        return;
+                    }
+                    executeEmergencySOS(true, true);
                 });
             }
 
@@ -255,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         return;
                     }
                     SpeechService.announce("Testing emergency SOS. Getting your current location.");
-                    executeEmergencySOS(true);
+                    executeEmergencySOS(true, false);
                 });
             }
 
@@ -266,24 +308,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.getElementById('saved-contact-card');
             const nameEl = document.getElementById('saved-contact-name');
             const phoneEl = document.getElementById('saved-contact-phone');
+            const emailEl = document.getElementById('saved-contact-email');
             const relEl = document.getElementById('saved-contact-relationship');
 
             const inputName = document.getElementById('input-emergency-name');
             const inputPhone = document.getElementById('input-emergency-phone');
+            const inputEmail = document.getElementById('input-emergency-email');
             const inputRel = document.getElementById('input-emergency-rel');
 
             const name = this.state.emergencyContactName;
             const phone = this.state.emergencyContactNumber;
+            const email = this.state.emergencyContactEmail;
             const rel = this.state.emergencyContactRelationship;
 
             if (inputName) inputName.value = name || '';
             if (inputPhone) inputPhone.value = phone || '';
+            if (inputEmail) inputEmail.value = email || '';
             if (inputRel) inputRel.value = rel || '';
 
-            if (card && name && phone) {
+            if (card && (name || phone || email)) {
                 card.style.display = 'flex';
-                if (nameEl) nameEl.innerText = name;
-                if (phoneEl) phoneEl.innerText = phone;
+                if (nameEl) nameEl.innerText = name || 'Emergency Contact';
+                if (phoneEl) phoneEl.innerText = phone ? `Phone: ${phone}` : '';
+                if (emailEl) emailEl.innerText = email ? `Email: ${email}` : '';
                 if (relEl) relEl.innerText = rel || 'Emergency Contact';
             } else if (card) {
                 card.style.display = 'none';
@@ -1168,10 +1215,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function executeEmergencySOS(isTestMode = false) {
-        const contactNumber = SettingsService.state.emergencyContactNumber || localStorage.getItem("nazar-emergency-contact-number") || '';
-        
-        if (!contactNumber) {
+    async function executeEmergencySOS(isTestMode = false, emailOnly = false) {
+        const name = SettingsService.state.emergencyContactName || localStorage.getItem("nazar-emergency-contact-name") || 'Emergency Contact';
+        const phone = SettingsService.state.emergencyContactNumber || localStorage.getItem("nazar-emergency-contact-number") || '';
+        const email = SettingsService.state.emergencyContactEmail || localStorage.getItem("nazar-emergency-contact-email") || '';
+        const rel = SettingsService.state.emergencyContactRelationship || localStorage.getItem("nazar-emergency-contact-relationship") || 'Emergency Contact';
+
+        let contactsList = [];
+        try {
+            contactsList = JSON.parse(localStorage.getItem('nazar-emergency-contacts-list') || '[]');
+        } catch (e) {
+            contactsList = [];
+        }
+
+        if (contactsList.length === 0 && (email || phone)) {
+            contactsList.push({ name, phone, email, relationship: rel });
+        }
+
+        if (contactsList.length === 0) {
             SpeechService.announce("Emergency contact not configured. Please add an emergency contact in Settings.");
             const errorBox = document.getElementById('emergency-contact-error');
             if (errorBox) {
@@ -1188,33 +1249,92 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        SpeechService.announce("Getting location.");
+
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const lat = pos.coords.latitude;
             const lon = pos.coords.longitude;
+            const accuracy = Math.round(pos.coords.accuracy || 10);
             const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
-            const timestamp = new Date().toLocaleString();
+            const dateStr = new Date().toLocaleDateString();
+            const timeStr = new Date().toLocaleTimeString();
+            const timestamp = `${dateStr}, ${timeStr}`;
 
-            let message = '';
-            if (isTestMode) {
-                message = `This is a NAZAR emergency test.\n\nNo assistance is required.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
-            } else {
-                message = `🚨 EMERGENCY ALERT\n\nI may need immediate assistance.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
-            }
-
-            SpeechService.announce("Location found. Opening messages.");
+            SpeechService.announce("Location found.");
             if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
 
-            const payload = {
-                contactNumber: contactNumber,
-                message: message,
-                userName: 'Kamal',
-                timestamp: timestamp,
-                locationLink: mapUrl,
-                latitude: lat,
-                longitude: lon
-            };
+            let batteryLevel = 'N/A';
+            try {
+                if (navigator.getBattery) {
+                    const b = await navigator.getBattery();
+                    batteryLevel = Math.round(b.level * 100) + '%';
+                }
+            } catch (e) {
+                batteryLevel = 'N/A';
+            }
 
-            await EmergencyService.dispatch(payload);
+            // 1. Send Emergency Email via Backend API
+            const emailContacts = contactsList.filter(c => c.email && c.email.includes('@'));
+            if (emailContacts.length > 0) {
+                SpeechService.announce(isTestMode ? "Sending emergency test email." : "Sending emergency email.");
+                try {
+                    const response = await fetch('/api/emergency/send-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contacts: emailContacts,
+                            userName: 'Kamal',
+                            latitude: lat,
+                            longitude: lon,
+                            accuracy: accuracy,
+                            googleMapsUrl: mapUrl,
+                            date: dateStr,
+                            time: timeStr,
+                            battery: batteryLevel,
+                            deviceInfo: navigator.userAgent,
+                            isTest: isTestMode
+                        })
+                    });
+                    const resData = await response.json();
+                    if (resData.success) {
+                        SpeechService.announce("Emergency email sent successfully.");
+                    } else {
+                        console.warn("[EmergencySystem] Email dispatch returned error:", resData);
+                        SpeechService.announce("Unable to send emergency email.");
+                    }
+                } catch (emailErr) {
+                    console.error("[EmergencySystem] Email dispatch network error:", emailErr);
+                    SpeechService.announce("Unable to send emergency email.");
+                }
+            } else if (emailOnly) {
+                SpeechService.announce("Emergency contact email not configured. Please add contact email in Settings.");
+                return;
+            }
+
+            // 2. Open Native SMS Application if not emailOnly
+            if (!emailOnly) {
+                const primaryPhone = phone || (contactsList.find(c => c.phone) ? contactsList.find(c => c.phone).phone : '');
+                if (primaryPhone) {
+                    let message = '';
+                    if (isTestMode) {
+                        message = `This is a NAZAR emergency test.\n\nNo assistance is required.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
+                    } else {
+                        message = `🚨 EMERGENCY ALERT\n\nI may need immediate assistance.\n\nMy current location:\n${mapUrl}\n\nTime:\n${timestamp}\n\nSent via NAZAR Accessibility Assistant.`;
+                    }
+
+                    const payload = {
+                        contactNumber: primaryPhone,
+                        message: message,
+                        userName: 'Kamal',
+                        timestamp: timestamp,
+                        locationLink: mapUrl,
+                        latitude: lat,
+                        longitude: lon
+                    };
+
+                    await EmergencyService.dispatch(payload);
+                }
+            }
 
             const sosModal = document.getElementById('sos-modal');
             if (sosModal) {
@@ -1225,7 +1345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, (err) => {
             console.warn("[EmergencySystem] GPS Error:", err);
             if (err.code === err.PERMISSION_DENIED) {
-                SpeechService.announce("Location permission is required to send an emergency message.");
+                SpeechService.announce("Location permission is required.");
             } else {
                 SpeechService.announce("Unable to determine your location.");
             }

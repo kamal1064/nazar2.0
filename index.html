@@ -7,7 +7,7 @@
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=22">
+    <link rel="stylesheet" href="style.css?v=23">
 </head>
 <body>
 
@@ -452,12 +452,17 @@
                                 <span id="saved-contact-relationship" style="font-size: 0.75rem; background: var(--danger); color: white; padding: 2px 8px; border-radius: 12px; font-weight: 600;"></span>
                             </div>
                             <span id="saved-contact-phone" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+                            <span id="saved-contact-email" style="font-size: 0.8rem; color: var(--primary); word-break: break-all;"></span>
                         </div>
 
                         <!-- Form Inputs -->
                         <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
                             <label class="settings-label-name" for="input-emergency-name" style="font-size: 0.85rem;">Full Name</label>
                             <input class="settings-text-input" type="text" id="input-emergency-name" placeholder="Full Name (e.g. Jane Doe)">
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
+                            <label class="settings-label-name" for="input-emergency-email" style="font-size: 0.85rem;">Email Address</label>
+                            <input class="settings-text-input" type="email" id="input-emergency-email" placeholder="Email Address (e.g. contact@example.com)">
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
                             <label class="settings-label-name" for="input-emergency-phone" style="font-size: 0.85rem;">Phone Number</label>
@@ -477,14 +482,20 @@
                             <button type="button" id="btn-delete-emergency" class="btn-secondary" style="flex: 1; padding: 0.65rem; font-size: 0.8rem; border-radius: 8px; background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; cursor: pointer;">Delete Contact</button>
                         </div>
 
-                        <!-- Test Emergency SOS Button -->
-                        <div style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.85rem;">
+                        <!-- Test Action Buttons Grid -->
+                        <div style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                            <button type="button" id="btn-test-email" class="btn-secondary" style="width: 100%; padding: 0.7rem; font-size: 0.8rem; border-radius: 8px; background: rgba(59, 130, 246, 0.12); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" aria-label="Test Emergency Email Workflow">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Test Emergency Email
+                            </button>
                             <button type="button" id="btn-test-sos" class="btn-secondary" style="width: 100%; padding: 0.7rem; font-size: 0.8rem; border-radius: 8px; background: var(--glass-bg); color: var(--text-main); border: 1px solid var(--border-color); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" aria-label="Test Emergency SOS Workflow">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
-                                Test Emergency SOS
+                                Test Emergency SMS
                             </button>
                         </div>
                     </div>
@@ -617,6 +628,6 @@
     </main>
 
     <!-- JS Logic -->
-    <script src="app.js?v=22"></script>
+    <script src="app.js?v=23"></script>
 </body>
 </html>
