@@ -1331,7 +1331,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contacts: emailContacts,
-                        userName: 'Kamal',
                         latitude: lat,
                         longitude: lon,
                         accuracy: accuracy,
@@ -1587,12 +1586,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const lon = pos.coords.longitude;
                 console.log(`[LocationSystem] Live location updated: ${lat}, ${lon}`);
                 
-                const userName = 'Kamal';
                 const timestamp = new Date().toLocaleString();
                 const mapUrl = `https://maps.google.com/?q=${lat},${lon}`;
-                const liveMessage = `Live Location Update\n\n${userName} is at:\n${mapUrl}\n\nTime: ${timestamp}`;
+                const liveMessage = `Live Location Update\n\nNAZAR location update:\n${mapUrl}\n\nTime: ${timestamp}`;
                 const payload = {
-                    userName,
                     timestamp,
                     locationLink: mapUrl,
                     latitude: lat,
@@ -2614,7 +2611,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contacts: validEmailContacts,
-                            userName: 'Kamal',
                             date: new Date().toLocaleDateString(),
                             time: new Date().toLocaleTimeString()
                         })

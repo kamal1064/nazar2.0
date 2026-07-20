@@ -68,14 +68,17 @@
             </nav>
 
             <div class="desktop-sidebar-footer">
-                <div class="desktop-user-card">
-                    <div class="desktop-avatar">K</div>
-                    <div class="desktop-user-info">
-                        <span class="user-name">Kamal</span>
-                        <span class="user-role">Accessibility Enabled</span>
+                <div class="desktop-user-card" style="align-items: flex-start;">
+                    <div class="desktop-user-info" style="gap: 0.35rem;">
+                        <span class="user-name" style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">System Status</span>
+                        <div style="display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
+                            <span>✓ AI Vision Ready</span>
+                            <span>✓ Voice Ready</span>
+                            <span>✓ Emergency Ready</span>
+                        </div>
                     </div>
                 </div>
-                <div class="desktop-version-text">Version 3.0.0</div>
+                <div class="desktop-version-text" style="margin-top: 0.5rem;">Version 3.0.0</div>
             </div>
         </aside>
 
@@ -101,7 +104,7 @@
                                 </svg>
                                 <span>NAZAR</span>
                             </div>
-                            <span class="greeting-text">Good Morning, Kamal</span>
+                            <span class="greeting-text">Ready to Assist</span>
                         </div>
                         <!-- Notification Bell -->
                         <button class="noti-btn" id="notification-btn" aria-label="Recent activity notifications">
@@ -421,18 +424,21 @@
             <!-- Single-column grouped settings list elements -->
             <div class="settings-menu-list">
                 
-                <!-- 1. Profile Card -->
+                <!-- 1. Application Card -->
                 <div class="profile-card" style="margin-bottom: 1.5rem;">
                     <div class="profile-avatar-wrap">
-                        <div class="profile-avatar-letters">K</div>
+                        <div class="profile-avatar-letters" style="background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </div>
                         <div style="display: flex; flex-direction: column; gap: 0.15rem;">
-                            <span class="profile-name">Kamal</span>
-                            <span class="profile-tagline">Accessibility Enabled</span>
+                            <span class="profile-name">NAZAR</span>
+                            <span class="profile-tagline">AI Navigation Companion • Version 3.0</span>
                         </div>
                     </div>
-                    <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
-                        <path d="m9 18 6-6-6-6"/>
-                    </svg>
+                    <span class="app-status-pill" style="font-size: 0.75rem; font-weight: 700; color: var(--success); background: var(--success-light); padding: 0.25rem 0.65rem; border-radius: 20px;">Accessibility Ready</span>
                 </div>
 
                 <!-- Dark Mode Toggle Switch Card directly in column list -->

@@ -6,7 +6,7 @@ async function handleSendEmergencyEmail(req, res, next) {
     try {
         const {
             contacts,
-            userName = 'Kamal',
+            userName = '',
             latitude,
             longitude,
             accuracy = 10,
@@ -119,7 +119,7 @@ async function handleSendSafeEmail(req, res, next) {
     try {
         const {
             contacts,
-            userName = 'Kamal',
+            userName = '',
             date = new Date().toLocaleDateString(),
             time = new Date().toLocaleTimeString()
         } = req.body;
