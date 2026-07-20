@@ -30,6 +30,8 @@ const scansRouter = require('./routes/scans');
 const contactsRouter = require('./routes/contacts');
 const settingsRouter = require('./routes/settings');
 const emergencyRouter = require('./routes/emergency');
+const adminRouter = require('./routes/admin');
+const keyRotationService = require('./services/keyRotationService');
 
 // Route bindings
 app.use('/api/users', usersRouter);
@@ -37,25 +39,29 @@ app.use('/api/scan', scansRouter);
 app.use('/api/emergency-contacts', contactsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/emergency', emergencyRouter);
+app.use('/api/admin', adminRouter);
 
 // Base healthcheck route
-const healthHandler = (req, res) => {
+const healthHandler = async (req, res) => {
     const mongoose = require('mongoose');
     const dbConnected = mongoose.connection.readyState === 1;
-    const geminiAvailable = !!process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
-    const geminiTimeoutMs = parseInt(process.env.GEMINI_TIMEOUT || '60000', 10);
+    const analytics = await keyRotationService.getAnalyticsState();
 
     res.status(200).json({
         success: true,
         status: dbConnected ? "healthy" : "degraded",
         uptimeSeconds: Math.floor(process.uptime()),
         database: dbConnected ? "connected" : "disconnected",
-        geminiConfigured: geminiAvailable,
-        geminiModel: geminiModel,
-        geminiTimeoutMs: geminiTimeoutMs,
+        model: analytics.model,
+        activeApiKey: analytics.activeKey,
+        configuredKeys: analytics.configuredKeys,
+        availableKeys: analytics.availableKeys,
+        remainingToday: analytics.remainingToday,
+        totalCapacity: analytics.totalCapacity,
+        keyUsage: analytics.keyUsage,
+        totalScans: analytics.totalScans,
         timestamp: new Date().toISOString(),
-        version: "v33"
+        version: "v34"
     });
 };
 app.get('/health', healthHandler);

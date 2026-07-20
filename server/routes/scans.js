@@ -30,6 +30,8 @@ Focus on these critical hazards if present: stairs, vehicles, bicycles, road cro
 
 const OCR_INSTRUCTION = `Extract all visible text from the image, preserving wording precisely for documents, labels, signs, or packaging. Return it structured in JSON.`;
 
+const keyRotationService = require('../services/keyRotationService');
+
 // POST /api/scan - Analyze camera frame using Gemini Vision
 router.post('/', scanLimiter, async (req, res, next) => {
     console.log("Received POST /api/scan");
@@ -59,11 +61,14 @@ router.post('/', scanLimiter, async (req, res, next) => {
             return res.status(400).json({ success: false, error: 'Invalid User ID format' });
         }
 
-        // 2. Check environment configuration
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            console.error("[Environment Error] Gemini API Key is not configured");
-            return res.status(500).json({ success: false, error: 'Gemini API Key is not configured' });
+        // 2. Check environment and active API key from Key Rotation Service
+        let keyInfo = await keyRotationService.getActiveApiKey();
+        if (keyInfo.isExhausted || !keyInfo.apiKey) {
+            console.warn("[Quota Limit] Daily scan capacity has been reached across all configured keys.");
+            return res.status(429).json({
+                success: false,
+                error: keyInfo.message || 'Daily scan capacity has been reached. Please try again tomorrow.'
+            });
         }
 
         const targetModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
@@ -118,14 +123,15 @@ router.post('/', scanLimiter, async (req, res, next) => {
         const requestBody = buildRequestBody();
         const payloadSizeKB = (Buffer.byteLength(JSON.stringify(requestBody)) / 1024).toFixed(2);
         console.log(`[Config] Model: ${targetModel}`);
+        console.log(`[Config] Active API Key Index: #${keyInfo.keyIndex}`);
         console.log(`[Config] Timeout: ${timeoutMs}ms (${timeoutMs / 1000}s)`);
         console.log(`[Config] Payload size: ${payloadSizeKB} KB`);
 
-        // Helper function for single request with gemini-3.1-flash-lite & timeout
-        const makeSingleGeminiCall = async (attemptNum) => {
-            console.log(`[Gemini] Request started (Attempt ${attemptNum}, Model: ${targetModel}, Timeout: ${timeoutMs / 1000}s)`);
+        // Helper function for single request with explicit active key & timeout
+        const makeSingleGeminiCall = async (currentKeyIndex, currentApiKey, attemptNum) => {
+            console.log(`[Gemini] Request started (Key #${currentKeyIndex}, Attempt ${attemptNum}, Model: ${targetModel})`);
             const startTime = Date.now();
-            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${currentApiKey}`;
             const controller = new AbortController();
             const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -141,25 +147,26 @@ router.post('/', scanLimiter, async (req, res, next) => {
 
                 if (!response.ok) {
                     const errText = await response.text();
-                    console.warn(`[Gemini] Model ${targetModel} HTTP ${response.status} (${duration}ms):`, errText.substring(0, 250));
+                    console.warn(`[Gemini] Key #${currentKeyIndex} Model ${targetModel} HTTP ${response.status} (${duration}ms):`, errText.substring(0, 250));
                     const errorObj = new Error(`HTTP ${response.status}: ${errText}`);
                     errorObj.status = response.status;
                     errorObj.duration = duration;
-                    errorObj.model = targetModel;
+                    errorObj.keyIndex = currentKeyIndex;
+                    errorObj.rawErrorText = errText;
                     throw errorObj;
                 }
 
-                console.log(`[Gemini] Request completed using model ${targetModel} in ${duration} ms`);
+                console.log(`[Gemini] Request completed using Key #${currentKeyIndex} model ${targetModel} in ${duration} ms`);
                 const rawData = await response.json();
-                return { rawData, duration, model: targetModel };
+                return { rawData, duration, keyIndex: currentKeyIndex };
             } catch (err) {
                 const duration = Date.now() - startTime;
                 if (err.name === 'AbortError') {
-                    console.error(`[Gemini] Request timed out after ${timeoutMs / 1000} seconds (Model: ${targetModel})`);
+                    console.error(`[Gemini] Request timed out after ${timeoutMs / 1000} seconds (Key #${currentKeyIndex})`);
                     const timeoutError = new Error(`Gemini request timed out after ${timeoutMs / 1000} seconds.`);
                     timeoutError.isTimeout = true;
                     timeoutError.duration = duration;
-                    timeoutError.model = targetModel;
+                    timeoutError.keyIndex = currentKeyIndex;
                     throw timeoutError;
                 }
                 throw err;
@@ -168,22 +175,48 @@ router.post('/', scanLimiter, async (req, res, next) => {
             }
         };
 
-        // 3. Execute request with max 2 retries and exponential backoff for gemini-3.1-flash-lite
+        // 3. Execute request with max 2 retries per key, daily quota key failover, and exponential backoff
         let apiResult = null;
         let lastError = null;
-        const maxRetries = 2; // Total max attempts = 3 (Initial attempt + 2 retries)
-        const retryableStatuses = [429, 500, 502, 503, 504];
+        const maxRetries = 2; // Max 2 retries per key attempt
+
+        let activeKeyIndex = keyInfo.keyIndex;
+        let activeApiKeyStr = keyInfo.apiKey;
 
         for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
             try {
-                apiResult = await makeSingleGeminiCall(attempt);
+                apiResult = await makeSingleGeminiCall(activeKeyIndex, activeApiKeyStr, attempt);
                 if (apiResult) break; // Success!
             } catch (err) {
                 lastError = err;
-                const isRetryable = err.isTimeout || !err.status || retryableStatuses.includes(err.status);
-                if (isRetryable && attempt <= maxRetries) {
+                const errStr = (err.rawErrorText || err.message || '').toUpperCase();
+                const isDailyQuotaExhausted = err.status === 429 && (errStr.includes('RESOURCE_EXHAUSTED') || errStr.includes('DAILY') || errStr.includes('QUOTA'));
+
+                if (isDailyQuotaExhausted) {
+                    console.warn(`[Gemini] Daily quota exhausted for API Key #${activeKeyIndex}. Rotating key...`);
+                    await keyRotationService.rotateOnQuotaError(activeKeyIndex, 'HTTP 429 Daily Quota Exhausted');
+                    
+                    const nextKeyInfo = await keyRotationService.getActiveApiKey();
+                    if (!nextKeyInfo.isExhausted && nextKeyInfo.apiKey) {
+                        activeKeyIndex = nextKeyInfo.keyIndex;
+                        activeApiKeyStr = nextKeyInfo.apiKey;
+                        console.log(`[Gemini] Retrying request seamlessly with new active API Key #${activeKeyIndex}...`);
+                        try {
+                            apiResult = await makeSingleGeminiCall(activeKeyIndex, activeApiKeyStr, 1);
+                            if (apiResult) break;
+                        } catch (failoverErr) {
+                            lastError = failoverErr;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                // Transient rate limit or 5xx server error -> retry same key after exponential backoff
+                const isTransientError = err.isTimeout || !err.status || [429, 500, 502, 503, 504].includes(err.status);
+                if (isTransientError && attempt <= maxRetries) {
                     const backoffMs = Math.pow(2, attempt - 1) * 500; // 500ms, 1000ms
-                    console.warn(`[Gemini] Retryable error with model ${targetModel} (Attempt ${attempt}, Status: ${err.status || 'Network/Timeout'}, ${err.message}). Retrying in ${backoffMs}ms...`);
+                    console.warn(`[Gemini] Transient error with Key #${activeKeyIndex} (Attempt ${attempt}, Status: ${err.status || 'Network/Timeout'}, ${err.message}). Retrying in ${backoffMs}ms...`);
                     await new Promise(r => setTimeout(r, backoffMs));
                     continue;
                 }
@@ -192,7 +225,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
         }
 
         if (!apiResult) {
-            console.error(`[Gemini] Request failed using model ${targetModel}. Last error:`, lastError?.message);
+            console.error(`[Gemini] Request failed. Last error:`, lastError?.message);
             if (lastError?.isTimeout) {
                 return res.status(408).json({ success: false, error: lastError.message });
             }
@@ -200,7 +233,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
                 return res.status(401).json({ success: false, error: 'Invalid or unauthorized Gemini API key.' });
             }
             if (lastError?.status === 429) {
-                return res.status(429).json({ success: false, error: 'Gemini rate limit or daily quota exceeded.' });
+                return res.status(429).json({ success: false, error: 'Daily scan capacity has been reached. Please try again tomorrow.' });
             }
             return res.status(502).json({ success: false, error: lastError?.message || 'Gemini Vision API request failed.' });
         }
@@ -215,6 +248,9 @@ router.post('/', scanLimiter, async (req, res, next) => {
             console.error('[Gemini Error] Failed to parse response JSON:', jsonErr.message);
             return res.status(502).json({ success: false, error: 'Failed to parse structured JSON response from Gemini API' });
         }
+
+        // Increment scan count ONLY AFTER a valid response is received and parsed
+        await keyRotationService.recordSuccessfulScan(apiResult.keyIndex);
 
         // 5. Build and save scan result
         let savedScan = {
