@@ -15,6 +15,16 @@ console.log("[SERVER STARTUP]", {
   hasEmailUser: !!config.emailUser
 });
 
+// Process Safety Event Handlers
+process.on('uncaughtException', (err) => {
+    console.error(`[PROCESS CRITICAL] Uncaught Exception [${new Date().toISOString()}]:`, err.message);
+    if (err.stack) console.error(err.stack.split('\n').slice(0, 5).join('\n'));
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error(`[PROCESS WARNING] Unhandled Rejection at:`, promise, `reason:`, reason?.message || reason);
+});
+
 verifyTransporterConnection();
 
 const app = express();
@@ -74,7 +84,8 @@ app.use((req, res, next) => {
     res.status(404).json({
         success: false,
         message: 'Resource not found.',
-        code: 'NOT_FOUND'
+        code: 'NOT_FOUND',
+        requestId: req.id || 'req_unknown'
     });
 });
 

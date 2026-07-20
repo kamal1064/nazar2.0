@@ -5,7 +5,8 @@ const userLimiter = rateLimit({
     max: 20,
     message: {
         success: false,
-        message: 'Too many authentication/user requests, please try again after 15 minutes.'
+        message: 'Too many authentication/user requests, please try again after 15 minutes.',
+        code: 'TOO_MANY_REQUESTS'
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -17,7 +18,8 @@ const scanLimiter = rateLimit({
     max: 60,
     message: {
         success: false,
-        message: 'Too many scan requests, please try again after 15 minutes.'
+        message: 'Too many scan requests, please try again after 15 minutes.',
+        code: 'TOO_MANY_REQUESTS'
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -29,7 +31,8 @@ const settingsLimiter = rateLimit({
     max: 100,
     message: {
         success: false,
-        message: 'Too many settings adjustments, please try again after 15 minutes.'
+        message: 'Too many settings adjustments, please try again after 15 minutes.',
+        code: 'TOO_MANY_REQUESTS'
     },
     standardHeaders: true,
     legacyHeaders: false,

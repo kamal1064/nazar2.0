@@ -30,6 +30,55 @@
     <!-- Direct Render Viewport Container -->
     <main id="app-container">
 
+        <!-- Desktop Permanent Left Sidebar (≥1200px / Tablet Compact) -->
+        <aside class="desktop-sidebar" id="desktop-sidebar" aria-label="Main Navigation Sidebar">
+            <div class="desktop-sidebar-brand">
+                <div class="desktop-logo-wrap">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span>NAZAR</span>
+                </div>
+                <span class="desktop-badge">Accessibility Enabled</span>
+            </div>
+
+            <nav class="desktop-nav-menu">
+                <button class="desktop-nav-item active" data-target="home" aria-label="Navigate to Home Dashboard (Alt+1)">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                    <span>Home</span>
+                </button>
+                <button class="desktop-nav-item" data-target="camera" aria-label="Navigate to AI Vision Camera (Alt+2)">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <span>Camera</span>
+                </button>
+                <button class="desktop-nav-item" data-target="settings" aria-label="Navigate to Settings Dashboard (Alt+3)">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    <span>Settings</span>
+                </button>
+            </nav>
+
+            <div class="desktop-sidebar-footer">
+                <div class="desktop-user-card">
+                    <div class="desktop-avatar">K</div>
+                    <div class="desktop-user-info">
+                        <span class="user-name">Kamal</span>
+                        <span class="user-role">Accessibility Enabled</span>
+                    </div>
+                </div>
+                <div class="desktop-version-text">Version 3.0.0</div>
+            </div>
+        </aside>
+
         <!-- Mobile-first centered application viewport -->
         <div class="app-mobile-viewport">
             
@@ -287,6 +336,75 @@
                                 </svg>
                             </button>
                         </div>
+                    </div>
+            <!-- Desktop Live AI Results Panel (25% Split on Desktop) -->
+            <div class="desktop-live-ai-panel" id="desktop-live-ai-panel">
+                <div class="ai-panel-header">
+                    <div class="ai-panel-title">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/>
+                        </svg>
+                        <span>Live AI Results</span>
+                    </div>
+                    <span class="ai-status-badge idle" id="desktop-ai-status-badge">Idle</span>
+                </div>
+
+                <div class="ai-panel-content">
+                    <!-- Status & Latency -->
+                    <div class="ai-info-row">
+                        <span class="ai-info-label">Status</span>
+                        <span class="ai-info-val" id="desktop-ai-status-text">Waiting for scan...</span>
+                    </div>
+
+                    <!-- Scene Description -->
+                    <div class="ai-block">
+                        <div class="ai-block-title">Scene Description</div>
+                        <p class="ai-block-text" id="desktop-scene-desc">Scan results will appear here after clicking Scan or asking Nazar.</p>
+                    </div>
+
+                    <!-- Detected Objects -->
+                    <div class="ai-block">
+                        <div class="ai-block-title">Detected Objects</div>
+                        <ul class="ai-objects-list" id="desktop-detected-objects">
+                            <li class="ai-empty-item">No objects detected yet</li>
+                        </ul>
+                    </div>
+
+                    <!-- Hazards -->
+                    <div class="ai-block">
+                        <div class="ai-block-title">Hazards</div>
+                        <div class="ai-hazard-box safe" id="desktop-hazards-box">
+                            <span id="desktop-hazards-text">No immediate hazards detected</span>
+                        </div>
+                    </div>
+
+                    <!-- OCR Text -->
+                    <div class="ai-block">
+                        <div class="ai-block-title">OCR Text</div>
+                        <p class="ai-block-text ocr" id="desktop-ocr-text">No text detected</p>
+                    </div>
+
+                    <!-- Navigation Guidance -->
+                    <div class="ai-block">
+                        <div class="ai-block-title">Navigation Guidance</div>
+                        <p class="ai-block-text nav" id="desktop-nav-guidance">Path is clear. Proceed with normal caution.</p>
+                    </div>
+
+                    <!-- Confidence Progress Bar -->
+                    <div class="ai-block">
+                        <div class="ai-block-header-flex">
+                            <span class="ai-block-title">Confidence</span>
+                            <span class="ai-confidence-val" id="desktop-confidence-val">0%</span>
+                        </div>
+                        <div class="ai-progress-track">
+                            <div class="ai-progress-fill" id="desktop-confidence-bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry & Latency -->
+                    <div class="ai-telemetry-row">
+                        <span>Processing Time: <strong id="desktop-processing-time">-- ms</strong></span>
+                        <span>Updated: <strong id="desktop-last-updated">Never</strong></span>
                     </div>
                 </div>
             </div>

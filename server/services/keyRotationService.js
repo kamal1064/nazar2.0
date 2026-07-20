@@ -219,7 +219,7 @@ async function recordSuccessfulScan(keyIndex) {
                     totalScans: 1
                 }
             },
-            { new: true, upsert: true }
+            { returnDocument: 'after', upsert: true }
         );
 
         const usageMap = parseKeyUsageMap(doc);

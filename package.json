@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node server/tests/errorHandling.test.js && node server/tests/postRefactorVerification.test.js"
   },
   "repository": {
     "type": "git",

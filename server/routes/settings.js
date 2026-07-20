@@ -32,7 +32,7 @@ router.put('/:userId', settingsLimiter, settingsValidator, async (req, res, next
         const settings = await Settings.findOneAndUpdate(
             { userId },
             updateData,
-            { new: true, upsert: true, runValidators: true }
+            { returnDocument: 'after', upsert: true, runValidators: true }
         );
 
         res.status(200).json({ success: true, data: settings });

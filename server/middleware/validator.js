@@ -7,7 +7,11 @@ const validateObjectId = (id) => {
 const userValidator = (req, res, next) => {
     const { deviceId } = req.body;
     if (!deviceId || typeof deviceId !== 'string' || !deviceId.trim()) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing deviceId' });
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing device identifier.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     next();
 };
@@ -15,16 +19,32 @@ const userValidator = (req, res, next) => {
 const contactValidator = (req, res, next) => {
     const { userId, name, phone, relationship } = req.body;
     if (!userId || !validateObjectId(userId)) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing userId' });
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing user ID format.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (!name || typeof name !== 'string' || !name.trim()) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing contact name' });
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing contact name.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (!phone || typeof phone !== 'string' || !phone.trim() || phone.length < 5) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing contact phone number' });
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing contact phone number.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (!relationship || typeof relationship !== 'string' || !relationship.trim()) {
-        return res.status(400).json({ success: false, message: 'Invalid or missing contact relationship' });
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid or missing contact relationship.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     next();
 };
@@ -33,25 +53,53 @@ const settingsValidator = (req, res, next) => {
     const { voiceEnabled, speechRate, speechVolume, locationSharing, darkMode, continuousScanning, preferredScanMode } = req.body;
     
     if (voiceEnabled !== undefined && typeof voiceEnabled !== 'boolean') {
-        return res.status(400).json({ success: false, message: 'voiceEnabled must be a boolean' });
+        return res.status(400).json({
+            success: false,
+            message: 'voiceEnabled must be a boolean value.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (speechRate !== undefined && (typeof speechRate !== 'number' || speechRate < 0.1 || speechRate > 5.0)) {
-        return res.status(400).json({ success: false, message: 'speechRate must be a number between 0.1 and 5.0' });
+        return res.status(400).json({
+            success: false,
+            message: 'speechRate must be a number between 0.1 and 5.0.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (speechVolume !== undefined && (typeof speechVolume !== 'number' || speechVolume < 0.0 || speechVolume > 1.0)) {
-        return res.status(400).json({ success: false, message: 'speechVolume must be a number between 0.0 and 1.0' });
+        return res.status(400).json({
+            success: false,
+            message: 'speechVolume must be a number between 0.0 and 1.0.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (locationSharing !== undefined && typeof locationSharing !== 'boolean') {
-        return res.status(400).json({ success: false, message: 'locationSharing must be a boolean' });
+        return res.status(400).json({
+            success: false,
+            message: 'locationSharing must be a boolean value.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (darkMode !== undefined && typeof darkMode !== 'boolean') {
-        return res.status(400).json({ success: false, message: 'darkMode must be a boolean' });
+        return res.status(400).json({
+            success: false,
+            message: 'darkMode must be a boolean value.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (continuousScanning !== undefined && typeof continuousScanning !== 'boolean') {
-        return res.status(400).json({ success: false, message: 'continuousScanning must be a boolean' });
+        return res.status(400).json({
+            success: false,
+            message: 'continuousScanning must be a boolean value.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     if (preferredScanMode !== undefined && !['scene', 'ocr'].includes(preferredScanMode)) {
-        return res.status(400).json({ success: false, message: 'preferredScanMode must be scene or ocr' });
+        return res.status(400).json({
+            success: false,
+            message: 'preferredScanMode must be either scene or ocr.',
+            code: 'VALIDATION_ERROR'
+        });
     }
     next();
 };

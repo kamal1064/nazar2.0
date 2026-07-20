@@ -1752,9 +1752,501 @@ input:checked + .toggle-slider:before {
     100% { transform: rotate(360deg); }
 }
 
-/* End of settings styles */
+/* ==========================================================================
+   NAZAR RESPONSIVE DESKTOP & TABLET REDESIGN STYLESHEET
+   Mobile UI (<768px) is 100% UNTOUCHED and pixel-perfect.
+   ========================================================================== */
 
-/* End of styles */
+/* Mobile Hidden Protection (<768px) */
+@media (max-width: 767px) {
+    .desktop-sidebar,
+    .desktop-live-ai-panel,
+    .desktop-top-header {
+        display: none !important;
+    }
+}
+
+/* ==========================================================================
+   TABLET RESPONSIVE BREAKPOINT (768px - 1199px)
+   ========================================================================== */
+@media (min-width: 768px) and (max-width: 1199px) {
+    .desktop-sidebar {
+        display: none !important;
+    }
+
+    #app-container {
+        justify-content: center;
+        background-color: var(--bg-body);
+    }
+
+    .app-mobile-viewport {
+        max-width: 900px;
+        width: 100%;
+        border-left: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .app-panels-container {
+        padding: 1.5rem 2rem;
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+
+    .settings-menu-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+}
+
+/* ==========================================================================
+   DESKTOP DEDICATED WORKSPACE BREAKPOINT (≥ 1200px)
+   ========================================================================== */
+@media (min-width: 1200px) {
+    
+    /* Body & Main Layout Container */
+    body {
+        background-color: var(--bg-body);
+        display: flex;
+        overflow: hidden;
+    }
+
+    #app-container {
+        display: flex;
+        flex-direction: row;
+        width: 100vw;
+        height: 100vh;
+        max-width: 100%;
+        border-radius: 0;
+        background-color: var(--bg-body);
+    }
+
+    /* Hide Mobile Bottom Nav on Desktop */
+    .bottom-nav {
+        display: none !important;
+    }
+
+    /* 1. DESKTOP PERMANENT LEFT SIDEBAR */
+    .desktop-sidebar {
+        display: flex !important;
+        flex-direction: column;
+        width: 260px;
+        min-width: 260px;
+        height: 100vh;
+        background-color: var(--bg-app);
+        border-right: 1px solid var(--border-color);
+        padding: 2rem 1.5rem;
+        gap: 2rem;
+        box-shadow: var(--shadow-small);
+        z-index: 100;
+    }
+
+    .desktop-sidebar-brand {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .desktop-logo-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: var(--primary);
+        letter-spacing: 0.5px;
+    }
+
+    .desktop-logo-wrap svg {
+        color: var(--primary-accent);
+    }
+
+    .desktop-badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--success);
+        background: var(--success-light);
+        padding: 0.25rem 0.65rem;
+        border-radius: 20px;
+        align-self: flex-start;
+    }
+
+    .desktop-nav-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex: 1;
+    }
+
+    .desktop-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.85rem 1.15rem;
+        border-radius: 14px;
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-align: left;
+    }
+
+    .desktop-nav-item:hover {
+        background-color: var(--primary-light);
+        color: var(--primary-accent);
+        transform: translateX(4px);
+    }
+
+    .desktop-nav-item.active {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-accent) 100%);
+        color: #FFFFFF;
+        box-shadow: var(--shadow-small);
+    }
+
+    .desktop-nav-item.active svg {
+        color: #FFFFFF;
+    }
+
+    .desktop-sidebar-footer {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .desktop-user-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .desktop-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--primary-accent);
+        color: white;
+        font-weight: 700;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .desktop-user-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .desktop-user-info .user-name {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .desktop-user-info .user-role {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    .desktop-version-text {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* 2. MAIN VIEWPORT & PANELS CONTAINER */
+    .app-mobile-viewport {
+        flex: 1;
+        width: calc(100vw - 260px);
+        height: 100vh;
+        overflow: hidden;
+        background-color: var(--bg-body);
+    }
+
+    .app-panels-container {
+        height: 100vh;
+        overflow-y: auto;
+        padding: 2rem 3rem;
+    }
+
+    .screen-panel {
+        max-width: 1440px;
+        margin: 0 auto;
+    }
+
+    /* 3. HOME PAGE DESKTOP DASHBOARD */
+    #home-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .home-header {
+        margin-bottom: 0.5rem;
+    }
+
+    .assistant-card {
+        padding: 3rem 2.5rem;
+        border-radius: 24px;
+        box-shadow: var(--shadow-medium);
+        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-body) 100%);
+    }
+
+    .quick-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+        margin-top: 1rem;
+    }
+
+    .action-card {
+        padding: 1.5rem;
+        border-radius: 18px;
+        transition: all 0.25s ease;
+    }
+
+    .action-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    /* 4. CAMERA PAGE WORKSPACE (75% CAMERA / 25% AI RESULTS PANEL) */
+    #camera-panel {
+        display: flex !important;
+        flex-direction: row !important;
+        height: calc(100vh - 4rem) !important;
+        gap: 1.5rem;
+        overflow: hidden;
+        padding: 0 !important;
+    }
+
+    .camera-panel-wrapper {
+        flex: 3 !important; /* 75% Width */
+        height: 100% !important;
+        border-radius: 24px;
+        overflow: hidden;
+        position: relative;
+        box-shadow: var(--shadow-medium);
+        background-color: #000000;
+    }
+
+    /* Desktop Live AI Results Panel (25% Width) */
+    .desktop-live-ai-panel {
+        flex: 1 !important; /* 25% Width */
+        min-width: 300px;
+        height: 100%;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 24px;
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        overflow-y: auto;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .ai-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+    }
+
+    .ai-panel-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .ai-panel-title svg {
+        color: var(--primary-accent);
+    }
+
+    .ai-status-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.25rem 0.75rem;
+        border-radius: 14px;
+    }
+
+    .ai-status-badge.idle {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .ai-status-badge.scanning {
+        background: var(--warning-light);
+        color: var(--warning);
+        animation: pulseBadge 1.5s infinite;
+    }
+
+    .ai-status-badge.active {
+        background: var(--success-light);
+        color: var(--success);
+    }
+
+    @keyframes pulseBadge {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    .ai-info-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .ai-info-val {
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .ai-block {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .ai-block-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+    }
+
+    .ai-block-text {
+        font-size: 0.9rem;
+        line-height: 1.45;
+        color: var(--text-main);
+        background: var(--bg-body);
+        padding: 0.85rem;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .ai-objects-list {
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+
+    .ai-objects-list li {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--bg-body);
+        border-radius: 8px;
+        color: var(--text-main);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .ai-empty-item {
+        color: var(--text-muted) !important;
+        font-style: italic;
+    }
+
+    .ai-hazard-box {
+        padding: 0.85rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .ai-hazard-box.safe {
+        background: var(--success-light);
+        color: var(--success);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+    }
+
+    .ai-hazard-box.warning {
+        background: var(--danger-light);
+        color: var(--danger);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .ai-block-header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .ai-confidence-val {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--primary-accent);
+    }
+
+    .ai-progress-track {
+        height: 8px;
+        background: var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .ai-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary) 0%, var(--primary-accent) 100%);
+        border-radius: 4px;
+        transition: width 0.4s ease;
+    }
+
+    .ai-telemetry-row {
+        margin-top: auto;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color);
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* 5. SETTINGS PAGE DESKTOP DASHBOARD */
+    .settings-menu-list {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+    }
+}
+
+/* ==========================================================================
+   ULTRAWIDE MONITORS (≥ 1600px)
+   ========================================================================== */
+@media (min-width: 1600px) {
+    #app-container {
+        max-width: 1600px;
+        margin: 0 auto;
+        box-shadow: 0 0 50px rgba(0,0,0,0.15);
+        border-radius: 24px;
+        height: calc(100vh - 2rem);
+        margin-top: 1rem;
+    }
+}
+
+/* Respect OS Reduced Motion Preferences */
+@media (prefers-reduced-motion: reduce) {
+    *, ::before, ::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
 
 
 
