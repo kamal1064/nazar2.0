@@ -66,17 +66,9 @@ router.post('/', scanLimiter, async (req, res, next) => {
             return res.status(500).json({ success: false, error: 'Gemini API Key is not configured' });
         }
 
-        const primaryModel = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+        const targetModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
         const timeoutMs = parseInt(process.env.GEMINI_TIMEOUT || '60000', 10);
         const systemInstruction = ocrMode ? OCR_INSTRUCTION : SCENE_INSTRUCTION;
-
-        // Fallback model chain if primary model hits 429 quota or 404
-        const modelChain = Array.from(new Set([
-            primaryModel,
-            'gemini-flash-lite-latest',
-            'gemini-2.0-flash-lite',
-            'gemini-flash-latest'
-        ]));
 
         const buildRequestBody = () => ({
             contents: [
@@ -125,11 +117,12 @@ router.post('/', scanLimiter, async (req, res, next) => {
 
         const requestBody = buildRequestBody();
         const payloadSizeKB = (Buffer.byteLength(JSON.stringify(requestBody)) / 1024).toFixed(2);
+        console.log(`[Config] Model: ${targetModel}`);
         console.log(`[Config] Timeout: ${timeoutMs}ms (${timeoutMs / 1000}s)`);
         console.log(`[Config] Payload size: ${payloadSizeKB} KB`);
 
-        // Helper function for single request with explicit model & timeout
-        const makeSingleGeminiCall = async (targetModel, attemptNum) => {
+        // Helper function for single request with gemini-3.1-flash-lite & timeout
+        const makeSingleGeminiCall = async (attemptNum) => {
             console.log(`[Gemini] Request started (Attempt ${attemptNum}, Model: ${targetModel}, Timeout: ${timeoutMs / 1000}s)`);
             const startTime = Date.now();
             const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${apiKey}`;
@@ -175,42 +168,31 @@ router.post('/', scanLimiter, async (req, res, next) => {
             }
         };
 
-        // 3. Execute request with Multi-Model Fallback & Retry
+        // 3. Execute request with max 2 retries and exponential backoff for gemini-3.1-flash-lite
         let apiResult = null;
         let lastError = null;
-        let globalAttempt = 0;
+        const maxRetries = 2; // Total max attempts = 3 (Initial attempt + 2 retries)
+        const retryableStatuses = [429, 500, 502, 503, 504];
 
-        for (const currentModel of modelChain) {
-            globalAttempt++;
+        for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
             try {
-                apiResult = await makeSingleGeminiCall(currentModel, globalAttempt);
+                apiResult = await makeSingleGeminiCall(attempt);
                 if (apiResult) break; // Success!
             } catch (err) {
                 lastError = err;
-                // If error is 429 (Quota exceeded) or 404 (Not found), seamlessly try next fallback model in chain
-                if (err.status === 429 || err.status === 404) {
-                    console.warn(`[Gemini] Model ${currentModel} encountered HTTP ${err.status}. Seamlessly falling back to next available model...`);
+                const isRetryable = err.isTimeout || !err.status || retryableStatuses.includes(err.status);
+                if (isRetryable && attempt <= maxRetries) {
+                    const backoffMs = Math.pow(2, attempt - 1) * 500; // 500ms, 1000ms
+                    console.warn(`[Gemini] Retryable error with model ${targetModel} (Attempt ${attempt}, Status: ${err.status || 'Network/Timeout'}, ${err.message}). Retrying in ${backoffMs}ms...`);
+                    await new Promise(r => setTimeout(r, backoffMs));
                     continue;
                 }
-                // For transient network errors, retry once after 500ms
-                if (err.isTimeout || !err.status || err.status >= 500) {
-                    console.warn(`[Gemini] Transient error with model ${currentModel} (${err.message}). Retrying once...`);
-                    await new Promise(r => setTimeout(r, 500));
-                    try {
-                        globalAttempt++;
-                        apiResult = await makeSingleGeminiCall(currentModel, globalAttempt);
-                        if (apiResult) break;
-                    } catch (retryErr) {
-                        lastError = retryErr;
-                        console.warn(`[Gemini] Retry failed for ${currentModel}. Trying fallback model...`);
-                        continue;
-                    }
-                }
+                break;
             }
         }
 
         if (!apiResult) {
-            console.error('[Gemini] All models in fallback chain failed. Last error:', lastError?.message);
+            console.error(`[Gemini] Request failed using model ${targetModel}. Last error:`, lastError?.message);
             if (lastError?.isTimeout) {
                 return res.status(408).json({ success: false, error: lastError.message });
             }
@@ -218,7 +200,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
                 return res.status(401).json({ success: false, error: 'Invalid or unauthorized Gemini API key.' });
             }
             if (lastError?.status === 429) {
-                return res.status(429).json({ success: false, error: 'Gemini rate limit or daily quota exceeded across all models.' });
+                return res.status(429).json({ success: false, error: 'Gemini rate limit or daily quota exceeded.' });
             }
             return res.status(502).json({ success: false, error: lastError?.message || 'Gemini Vision API request failed.' });
         }

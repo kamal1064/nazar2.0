@@ -9,7 +9,7 @@ const { verifyTransporterConnection } = require('./services/emailService');
 
 console.log("[SERVER STARTUP]", {
   commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
-  model: process.env.GEMINI_MODEL || 'gemini-flash-latest',
+  model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
   hasApiKey: !!process.env.GEMINI_API_KEY,
   hasEmailUser: !!process.env.EMAIL_USER
 });
@@ -43,7 +43,7 @@ const healthHandler = (req, res) => {
     const mongoose = require('mongoose');
     const dbConnected = mongoose.connection.readyState === 1;
     const geminiAvailable = !!process.env.GEMINI_API_KEY;
-    const geminiModel = process.env.GEMINI_MODEL || 'gemini-flash-latest';
+    const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
     const geminiTimeoutMs = parseInt(process.env.GEMINI_TIMEOUT || '60000', 10);
 
     res.status(200).json({
