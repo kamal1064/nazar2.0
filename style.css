@@ -17,6 +17,8 @@
     --radius-xl: 32px;
     --radius-md: 20px;
     --radius-sm: 10px;
+    --bottom-nav-height: 78px;
+    --safe-bottom-space: 36px;
     
     /* Desktop Presentation Background */
     --bg-body: #F8FAFC;
@@ -163,7 +165,7 @@ body {
     display: none;
     flex-direction: column;
     overflow-y: auto;
-    padding: 1.5rem 1.5rem 6.5rem 1.5rem; /* bottom padding room for bottom nav */
+    padding: 1.5rem 1.5rem calc(var(--bottom-nav-height) + var(--safe-bottom-space)) 1.5rem; /* bottom padding clears bottom nav cleanly */
     position: relative;
     scrollbar-width: none;
     box-sizing: border-box;
@@ -1770,10 +1772,7 @@ input:checked + .toggle-slider:before {
    Mobile UI (0px–767px) is 100% UNTOUCHED, PIXEL-PERFECT, and STRICTLY ISOLATED.
    ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   BASE RULE (APPLIES TO ALL VIEWPORTS BY DEFAULT):
-   Completely strip desktop-only components from layout on mobile/default views.
-   -------------------------------------------------------------------------- */
+/* Base Hiding Rule: Desktop-only elements do NOT render or consume space on mobile */
 .desktop-sidebar,
 .desktop-live-ai-panel,
 .desktop-top-header,
@@ -1781,51 +1780,12 @@ input:checked + .toggle-slider:before {
 #desktop-sidebar,
 #desktop-live-ai-panel {
     display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-    width: 0 !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    position: absolute !important;
-    top: -9999px !important;
-    left: -9999px !important;
-    overflow: hidden !important;
 }
 
-/* ==========================================================================
-   MOBILE STRICT ISOLATION & PRESERVATION (0px - 767px)
-   ========================================================================== */
+/* Mobile Bottom Navigation Clearance Guard (0px - 767px) */
 @media (max-width: 767px) {
-    #app-container {
-        display: flex !important;
-        flex-direction: column !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        height: 100vh !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-        box-shadow: none !important;
-        justify-content: flex-start !important;
-        align-items: stretch !important;
-        overflow: hidden !important;
-    }
-
-    .app-mobile-viewport {
-        width: 100% !important;
-        max-width: 100% !important;
-        height: 100vh !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        border: none !important;
-        box-shadow: none !important;
-        flex: 1 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        position: relative !important;
+    .screen-panel {
+        padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom-space)) !important;
     }
 
     .bottom-nav {
@@ -1835,18 +1795,8 @@ input:checked + .toggle-slider:before {
         bottom: 0 !important;
         left: 0 !important;
         right: 0 !important;
-        width: 100% !important;
+        height: var(--bottom-nav-height) !important;
         z-index: 1000 !important;
-    }
-
-    /* Guarantee desktop elements do NOT render or consume space on mobile */
-    .desktop-sidebar,
-    .desktop-live-ai-panel,
-    .desktop-top-header,
-    .desktop-only,
-    #desktop-sidebar,
-    #desktop-live-ai-panel {
-        display: none !important;
     }
 }
 
@@ -1854,18 +1804,6 @@ input:checked + .toggle-slider:before {
    TABLET RESPONSIVE BREAKPOINT (768px - 1199px)
    ========================================================================== */
 @media (min-width: 768px) and (max-width: 1199px) {
-    .desktop-sidebar,
-    #desktop-sidebar,
-    .desktop-live-ai-panel,
-    #desktop-live-ai-panel {
-        display: none !important;
-    }
-
-    #app-container {
-        justify-content: center;
-        background-color: var(--bg-body);
-    }
-
     .app-mobile-viewport {
         max-width: 768px;
         width: 100%;
@@ -1873,10 +1811,6 @@ input:checked + .toggle-slider:before {
         border-left: 1px solid var(--border-color);
         border-right: 1px solid var(--border-color);
         box-shadow: var(--shadow-medium);
-    }
-
-    .app-panels-container {
-        padding: 1.5rem 2rem;
     }
 
     .quick-actions {
@@ -1896,8 +1830,6 @@ input:checked + .toggle-slider:before {
    DESKTOP DEDICATED WORKSPACE BREAKPOINT (≥ 1200px)
    ========================================================================== */
 @media (min-width: 1200px) {
-    
-    /* Body & Main Layout Container */
     body {
         background-color: var(--bg-body);
         display: flex;
@@ -1907,28 +1839,19 @@ input:checked + .toggle-slider:before {
     #app-container {
         display: flex !important;
         flex-direction: row !important;
-        width: 100vw !important;
+        width: min(100%, 1600px) !important;
+        margin-inline: auto !important;
         height: 100vh !important;
-        max-width: 100% !important;
-        border-radius: 0 !important;
         background-color: var(--bg-body) !important;
     }
 
-    /* Hide Mobile Bottom Nav on Desktop */
     .bottom-nav {
         display: none !important;
     }
 
-    /* 1. DESKTOP PERMANENT LEFT SIDEBAR */
     .desktop-sidebar,
     #desktop-sidebar {
         display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
         flex-direction: column;
         width: 260px !important;
         min-width: 260px !important;
@@ -2057,10 +1980,9 @@ input:checked + .toggle-slider:before {
         color: var(--text-muted);
     }
 
-    /* 2. MAIN VIEWPORT & PANELS CONTAINER */
     .app-mobile-viewport {
         flex: 1 !important;
-        width: calc(100vw - 260px) !important;
+        width: calc(100% - 260px) !important;
         max-width: 100% !important;
         height: 100vh !important;
         overflow: hidden;
@@ -2076,9 +1998,9 @@ input:checked + .toggle-slider:before {
     .screen-panel {
         max-width: 1440px;
         margin: 0 auto;
+        padding-bottom: 2rem !important;
     }
 
-    /* 3. HOME PAGE DESKTOP DASHBOARD */
     #home-panel {
         display: flex;
         flex-direction: column;
@@ -2114,7 +2036,6 @@ input:checked + .toggle-slider:before {
         box-shadow: var(--shadow-medium);
     }
 
-    /* 4. CAMERA PAGE WORKSPACE (75% CAMERA / 25% AI RESULTS PANEL) */
     #camera-panel {
         display: flex !important;
         flex-direction: row !important;
@@ -2134,16 +2055,9 @@ input:checked + .toggle-slider:before {
         background-color: #000000;
     }
 
-    /* Desktop Live AI Results Panel (25% Width) */
     .desktop-live-ai-panel,
     #desktop-live-ai-panel {
         display: flex !important;
-        visibility: visible !important;
-        opacity: 1 !important;
-        pointer-events: auto !important;
-        position: relative !important;
-        top: auto !important;
-        left: auto !important;
         flex: 1 !important; /* 25% Width */
         min-width: 300px;
         height: 100% !important;
@@ -2320,7 +2234,6 @@ input:checked + .toggle-slider:before {
         color: var(--text-muted);
     }
 
-    /* 5. SETTINGS PAGE DESKTOP DASHBOARD */
     .settings-menu-list {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
