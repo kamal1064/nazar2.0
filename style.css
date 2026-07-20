@@ -1754,14 +1754,84 @@ input:checked + .toggle-slider:before {
 
 /* ==========================================================================
    NAZAR RESPONSIVE DESKTOP & TABLET REDESIGN STYLESHEET
-   Mobile UI (<768px) is 100% UNTOUCHED and pixel-perfect.
+   Mobile UI (0px–767px) is 100% UNTOUCHED, PIXEL-PERFECT, and STRICTLY ISOLATED.
    ========================================================================== */
 
-/* Mobile Hidden Protection (<768px) */
+/* --------------------------------------------------------------------------
+   BASE RULE (APPLIES TO ALL VIEWPORTS BY DEFAULT):
+   Completely strip desktop-only components from layout on mobile/default views.
+   -------------------------------------------------------------------------- */
+.desktop-sidebar,
+.desktop-live-ai-panel,
+.desktop-top-header,
+.desktop-only,
+#desktop-sidebar,
+#desktop-live-ai-panel {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    overflow: hidden !important;
+}
+
+/* ==========================================================================
+   MOBILE STRICT ISOLATION & PRESERVATION (0px - 767px)
+   ========================================================================== */
 @media (max-width: 767px) {
+    #app-container {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        justify-content: flex-start !important;
+        align-items: stretch !important;
+        overflow: hidden !important;
+    }
+
+    .app-mobile-viewport {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        position: relative !important;
+    }
+
+    .bottom-nav {
+        display: flex !important;
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        z-index: 1000 !important;
+    }
+
+    /* Guarantee desktop elements do NOT render or consume space on mobile */
     .desktop-sidebar,
     .desktop-live-ai-panel,
-    .desktop-top-header {
+    .desktop-top-header,
+    .desktop-only,
+    #desktop-sidebar,
+    #desktop-live-ai-panel {
         display: none !important;
     }
 }
@@ -1770,7 +1840,10 @@ input:checked + .toggle-slider:before {
    TABLET RESPONSIVE BREAKPOINT (768px - 1199px)
    ========================================================================== */
 @media (min-width: 768px) and (max-width: 1199px) {
-    .desktop-sidebar {
+    .desktop-sidebar,
+    #desktop-sidebar,
+    .desktop-live-ai-panel,
+    #desktop-live-ai-panel {
         display: none !important;
     }
 
@@ -1780,8 +1853,9 @@ input:checked + .toggle-slider:before {
     }
 
     .app-mobile-viewport {
-        max-width: 900px;
+        max-width: 768px;
         width: 100%;
+        margin: 0 auto;
         border-left: 1px solid var(--border-color);
         border-right: 1px solid var(--border-color);
         box-shadow: var(--shadow-medium);
@@ -1817,13 +1891,13 @@ input:checked + .toggle-slider:before {
     }
 
     #app-container {
-        display: flex;
-        flex-direction: row;
-        width: 100vw;
-        height: 100vh;
-        max-width: 100%;
-        border-radius: 0;
-        background-color: var(--bg-body);
+        display: flex !important;
+        flex-direction: row !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 100% !important;
+        border-radius: 0 !important;
+        background-color: var(--bg-body) !important;
     }
 
     /* Hide Mobile Bottom Nav on Desktop */
@@ -1832,12 +1906,19 @@ input:checked + .toggle-slider:before {
     }
 
     /* 1. DESKTOP PERMANENT LEFT SIDEBAR */
-    .desktop-sidebar {
+    .desktop-sidebar,
+    #desktop-sidebar {
         display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
         flex-direction: column;
-        width: 260px;
-        min-width: 260px;
-        height: 100vh;
+        width: 260px !important;
+        min-width: 260px !important;
+        height: 100vh !important;
         background-color: var(--bg-app);
         border-right: 1px solid var(--border-color);
         padding: 2rem 1.5rem;
@@ -1964,9 +2045,10 @@ input:checked + .toggle-slider:before {
 
     /* 2. MAIN VIEWPORT & PANELS CONTAINER */
     .app-mobile-viewport {
-        flex: 1;
-        width: calc(100vw - 260px);
-        height: 100vh;
+        flex: 1 !important;
+        width: calc(100vw - 260px) !important;
+        max-width: 100% !important;
+        height: 100vh !important;
         overflow: hidden;
         background-color: var(--bg-body);
     }
@@ -2039,15 +2121,22 @@ input:checked + .toggle-slider:before {
     }
 
     /* Desktop Live AI Results Panel (25% Width) */
-    .desktop-live-ai-panel {
+    .desktop-live-ai-panel,
+    #desktop-live-ai-panel {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        top: auto !important;
+        left: auto !important;
         flex: 1 !important; /* 25% Width */
         min-width: 300px;
-        height: 100%;
+        height: 100% !important;
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
         border-radius: 24px;
         padding: 1.75rem;
-        display: flex;
         flex-direction: column;
         gap: 1.25rem;
         overflow-y: auto;
