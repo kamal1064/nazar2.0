@@ -2248,17 +2248,27 @@ input:checked + .toggle-slider:before {
     }
 }
 
-/* ==========================================================================
-   ULTRAWIDE MONITORS (≥ 1600px)
-   ========================================================================== */
-@media (min-width: 1600px) {
-    #app-container {
-        max-width: 1600px;
-        margin: 0 auto;
-        box-shadow: 0 0 50px rgba(0,0,0,0.15);
-        border-radius: 24px;
-        height: calc(100vh - 2rem);
-        margin-top: 1rem;
+/* Ambient Sonar Ring Pulsing Animation */
+.sonar-ring {
+    animation: sonarPulse 5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.sonar-ring.active-scan {
+    animation: sonarPulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes sonarPulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(29, 111, 219, 0.35);
+    }
+    70% {
+        transform: scale(1.08);
+        box-shadow: 0 0 0 20px rgba(29, 111, 219, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(29, 111, 219, 0);
     }
 }
 

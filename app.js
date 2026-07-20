@@ -1854,9 +1854,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Keyboard Shortcuts (Alt+1: Home, Alt+2: Camera, Alt+3: Settings)
+    // Keyboard Shortcuts (Ctrl+Shift+1 / Alt+1: Home, Ctrl+Shift+2 / Alt+2: Camera, Ctrl+Shift+3 / Alt+3: Settings)
     window.addEventListener('keydown', (e) => {
-        if (e.altKey) {
+        if ((e.ctrlKey && e.shiftKey) || e.altKey) {
             if (e.key === '1') { switchTab('home'); }
             else if (e.key === '2') { switchTab('camera'); }
             else if (e.key === '3') { switchTab('settings'); }
@@ -2803,12 +2803,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!data) return;
         const badge = document.getElementById('desktop-ai-status-badge');
         const statusText = document.getElementById('desktop-ai-status-text');
+        const scanModeVal = document.getElementById('desktop-scan-mode-val');
+        const modelVal = document.getElementById('desktop-ai-model-val');
         const sceneDesc = document.getElementById('desktop-scene-desc');
         const objList = document.getElementById('desktop-detected-objects');
         const hazardBox = document.getElementById('desktop-hazards-box');
         const hazardText = document.getElementById('desktop-hazards-text');
         const ocrText = document.getElementById('desktop-ocr-text');
-        const navText = document.getElementById('desktop-nav-guidance');
+        const voiceOutput = document.getElementById('desktop-voice-output');
         const confVal = document.getElementById('desktop-confidence-val');
         const confBar = document.getElementById('desktop-confidence-bar');
         const procTime = document.getElementById('desktop-processing-time');
@@ -2819,6 +2821,8 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.className = 'ai-status-badge active';
         }
         if (statusText) statusText.textContent = 'Analysis Complete';
+        if (scanModeVal) scanModeVal.textContent = state.isOcrMode ? 'OCR Text Mode' : 'Scene Mode';
+        if (modelVal) modelVal.textContent = 'Gemini 3.1 Flash';
         if (sceneDesc) sceneDesc.textContent = data.summary || 'Scene analyzed successfully.';
 
         if (objList) {
@@ -2847,7 +2851,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 : 'No text detected';
         }
 
-        if (navText) navText.textContent = data.navigation || 'Path is clear. Proceed with normal caution.';
+        if (voiceOutput) {
+            voiceOutput.textContent = data.summary || 'Speech synthesis ready.';
+        }
 
         const confidenceScore = typeof data.confidence === 'number' ? Math.round(data.confidence * 100) : 92;
         if (confVal) confVal.textContent = `${confidenceScore}%`;
