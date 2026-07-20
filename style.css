@@ -128,6 +128,7 @@ body {
 /* Scrollable main panel content area */
 .app-panels-container {
     flex: 1;
+    min-height: 0;
     width: 100%;
     height: 100%;
     position: relative;
@@ -162,9 +163,12 @@ body {
 /* Base Panel Screen Setup */
 .screen-panel {
     flex: 1;
+    min-height: 0;
+    height: 100%;
     display: none;
     flex-direction: column;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 1.5rem 1.5rem calc(var(--bottom-nav-height) + var(--safe-bottom-space)) 1.5rem; /* bottom padding clears bottom nav cleanly */
     position: relative;
     scrollbar-width: none;
@@ -181,17 +185,20 @@ body {
 
 .screen-panel.active-panel {
     display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     animation: panelFadeIn var(--transition-speed) ease forwards;
 }
 
 @keyframes panelFadeIn {
     from {
         opacity: 0;
-        transform: translateY(8px);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
     }
 }
 
