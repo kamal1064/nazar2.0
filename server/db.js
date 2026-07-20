@@ -17,6 +17,15 @@ const connectDB = async () => {
         });
         isConnected = db.connections[0].readyState === 1;
         console.log('[DB] Connected successfully to MongoDB Atlas.');
+
+        // Safely sync User model indexes to update any legacy non-sparse email_1 index to sparse
+        try {
+            const User = require('./models/User');
+            await User.syncIndexes();
+        } catch (idxErr) {
+            console.warn('[DB] User index sync warning (handled):', idxErr.message);
+        }
+
         return db.connection;
     } catch (err) {
         console.error('[DB] Connection error:', err.message);

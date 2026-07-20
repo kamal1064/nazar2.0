@@ -22,8 +22,19 @@ router.post('/', userLimiter, userValidator, async (req, res, next) => {
             provider: provider || 'local'
         });
 
-        await user.save();
-        res.status(201).json({ success: true, data: user });
+        try {
+            await user.save();
+            return res.status(201).json({ success: true, data: user });
+        } catch (saveErr) {
+            // Handle E11000 duplicate key error gracefully (e.g. legacy index collision or concurrent registration)
+            if (saveErr.code === 11000 || saveErr.name === 'MongoServerError' || (saveErr.message && saveErr.message.includes('E11000'))) {
+                const existingUser = await User.findOne({ deviceId: deviceId.trim() });
+                if (existingUser) {
+                    return res.status(200).json({ success: true, data: existingUser });
+                }
+            }
+            throw saveErr;
+        }
     } catch (err) {
         next(err);
     }
