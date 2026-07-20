@@ -9,7 +9,6 @@ const getTodayDateString = () => new Date().toISOString().split('T')[0];
 /**
  * Dynamically discover configured Gemini API keys from process.env
  * Scans GEMINI_API_KEY_1, GEMINI_API_KEY_2, ... GEMINI_API_KEY_N
- * Fallback to GEMINI_API_KEY if no indexed keys are defined.
  */
 function discoverConfiguredKeys() {
     const keysMap = new Map();
@@ -21,14 +20,6 @@ function discoverConfiguredKeys() {
             keysMap.set(index, val);
         }
         index++;
-    }
-
-    // Fallback to GEMINI_API_KEY if no indexed keys were configured
-    if (keysMap.size === 0 && process.env.GEMINI_API_KEY) {
-        const val = process.env.GEMINI_API_KEY.trim();
-        if (val) {
-            keysMap.set(1, val);
-        }
     }
 
     return keysMap;

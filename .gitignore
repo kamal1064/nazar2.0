@@ -1,4 +1,32 @@
+# Dependencies
 node_modules/
+
+# Environment files and credentials
 .env
-.env.local
+.env.*
+!.env.example
+
+# Certificates and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+
+# Service accounts and credentials JSON
+service-account*.json
+credentials*.json
+secrets*.json
+
+# Logs and runtime artifacts
 logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -249,6 +249,8 @@ async function sendSafeEmail({
     });
 }
 
+const { maskSecret } = require('../config');
+
 /**
  * Verify SMTP connection on server startup
  */
@@ -256,7 +258,7 @@ async function verifyTransporterConnection() {
     try {
         const transporter = createTransporter();
         await transporter.verify();
-        console.log(`[EMAIL SERVICE] Gmail SMTP connected & ready (${process.env.EMAIL_USER})`);
+        console.log(`[EMAIL SERVICE] Gmail SMTP connected & ready (${maskSecret(process.env.EMAIL_USER)})`);
         return true;
     } catch (err) {
         console.error("[EMAIL SERVICE] Gmail SMTP connection failed:", err.message);

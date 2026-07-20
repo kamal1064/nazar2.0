@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { maskMongoUri } = require('./config');
 
 let isConnected = false;
 
@@ -9,7 +10,8 @@ const connectDB = async () => {
     }
 
     try {
-        console.log('[DB] Initiating new MongoDB connection...');
+        const maskedUri = maskMongoUri(process.env.MONGODB_URI);
+        console.log(`[DB] Initiating new MongoDB connection to ${maskedUri}...`);
         const db = await mongoose.connect(process.env.MONGODB_URI, {
             dbName: process.env.MONGODB_DB_NAME || 'nazar'
         });

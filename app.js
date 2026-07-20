@@ -2323,7 +2323,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!response.ok) {
-                throw new Error(`Server status ${response.status}`);
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || `Server status ${response.status}`);
             }
 
             const data = await response.json();

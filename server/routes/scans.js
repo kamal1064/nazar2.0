@@ -53,12 +53,12 @@ router.post('/', scanLimiter, async (req, res, next) => {
 
         if (!image) {
             console.warn("[Validation Error] Missing base64 image data");
-            return res.status(400).json({ success: false, error: 'Missing base64 image data' });
+            return res.status(400).json({ success: false, message: 'Missing base64 image data.', code: 'BAD_REQUEST' });
         }
 
         if (userId && !validateObjectId(userId)) {
             console.warn(`[Validation Error] Invalid User ID format: ${userId}`);
-            return res.status(400).json({ success: false, error: 'Invalid User ID format' });
+            return res.status(400).json({ success: false, message: 'Invalid User ID format.', code: 'INVALID_USER_ID' });
         }
 
         // 2. Check environment and active API key from Key Rotation Service
@@ -67,7 +67,8 @@ router.post('/', scanLimiter, async (req, res, next) => {
             console.warn("[Quota Limit] Daily scan capacity has been reached across all configured keys.");
             return res.status(429).json({
                 success: false,
-                error: keyInfo.message || 'Daily scan capacity has been reached. Please try again tomorrow.'
+                message: keyInfo.message || 'Daily scan capacity has been reached. Please try again tomorrow.',
+                code: 'TOO_MANY_REQUESTS'
             });
         }
 
@@ -227,15 +228,15 @@ router.post('/', scanLimiter, async (req, res, next) => {
         if (!apiResult) {
             console.error(`[Gemini] Request failed. Last error:`, lastError?.message);
             if (lastError?.isTimeout) {
-                return res.status(408).json({ success: false, error: lastError.message });
+                return res.status(408).json({ success: false, message: 'Vision request timed out. Please try scanning again.', code: 'REQUEST_TIMEOUT' });
             }
             if (lastError?.status === 401 || lastError?.status === 403) {
-                return res.status(401).json({ success: false, error: 'Invalid or unauthorized Gemini API key.' });
+                return res.status(401).json({ success: false, message: 'Vision service authorization failed.', code: 'UNAUTHORIZED' });
             }
             if (lastError?.status === 429) {
-                return res.status(429).json({ success: false, error: 'Daily scan capacity has been reached. Please try again tomorrow.' });
+                return res.status(429).json({ success: false, message: 'Daily scan capacity has been reached. Please try again tomorrow.', code: 'TOO_MANY_REQUESTS' });
             }
-            return res.status(502).json({ success: false, error: lastError?.message || 'Gemini Vision API request failed.' });
+            return res.status(502).json({ success: false, message: 'Vision service is temporarily unavailable.', code: 'BAD_GATEWAY' });
         }
 
         // 4. Parse response JSON
@@ -246,7 +247,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
             parsedResult = JSON.parse(textResponse);
         } catch (jsonErr) {
             console.error('[Gemini Error] Failed to parse response JSON:', jsonErr.message);
-            return res.status(502).json({ success: false, error: 'Failed to parse structured JSON response from Gemini API' });
+            return res.status(502).json({ success: false, message: 'Failed to process structured response from vision service.', code: 'BAD_GATEWAY' });
         }
 
         // Increment scan count ONLY AFTER a valid response is received and parsed

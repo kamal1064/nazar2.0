@@ -10,12 +10,12 @@ router.put('/:userId', settingsLimiter, settingsValidator, async (req, res, next
     try {
         const userId = req.params.userId;
         if (!validateObjectId(userId)) {
-            return res.status(400).json({ success: false, message: 'Invalid User ID format' });
+            return res.status(400).json({ success: false, message: 'Invalid User ID format.', code: 'INVALID_USER_ID' });
         }
 
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found.', code: 'USER_NOT_FOUND' });
         }
 
         const { voiceEnabled, speechRate, speechVolume, locationSharing, darkMode, continuousScanning, preferredScanMode } = req.body;
@@ -46,7 +46,7 @@ router.get('/:userId', settingsLimiter, async (req, res, next) => {
     try {
         const userId = req.params.userId;
         if (!validateObjectId(userId)) {
-            return res.status(400).json({ success: false, message: 'Invalid User ID format' });
+            return res.status(400).json({ success: false, message: 'Invalid User ID format.', code: 'INVALID_USER_ID' });
         }
 
         let settings = await Settings.findOne({ userId });

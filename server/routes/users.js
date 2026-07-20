@@ -34,12 +34,12 @@ router.get('/:id', userLimiter, async (req, res, next) => {
     try {
         const id = req.params.id;
         if (!validateObjectId(id)) {
-            return res.status(400).json({ success: false, message: 'Invalid User ID format' });
+            return res.status(400).json({ success: false, message: 'Invalid User ID format.', code: 'INVALID_USER_ID' });
         }
 
         const user = await User.findById(id);
         if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found.', code: 'USER_NOT_FOUND' });
         }
 
         res.status(200).json({ success: true, data: user });
@@ -53,12 +53,12 @@ router.get('/device/:deviceId', userLimiter, async (req, res, next) => {
     try {
         const deviceId = req.params.deviceId;
         if (!deviceId || !deviceId.trim()) {
-            return res.status(400).json({ success: false, message: 'Missing deviceId parameter' });
+            return res.status(400).json({ success: false, message: 'Missing deviceId parameter.', code: 'BAD_REQUEST' });
         }
 
         const user = await User.findOne({ deviceId: deviceId.trim() });
         if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found.', code: 'USER_NOT_FOUND' });
         }
 
         res.status(200).json({ success: true, data: user });

@@ -24,7 +24,8 @@ async function handleSendEmergencyEmail(req, res, next) {
         if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid location coordinates.'
+                message: 'Invalid location coordinates.',
+                code: 'INVALID_COORDINATES'
             });
         }
 
@@ -32,7 +33,8 @@ async function handleSendEmergencyEmail(req, res, next) {
         if (!contacts || !Array.isArray(contacts) || contacts.length === 0) {
             return res.status(400).json({
                 success: false,
-                message: 'No emergency contacts provided.'
+                message: 'No emergency contacts provided.',
+                code: 'NO_CONTACTS_PROVIDED'
             });
         }
 
@@ -107,7 +109,8 @@ async function handleSendEmergencyEmail(req, res, next) {
         console.error("[EmergencyController] Internal error during emergency email dispatch:", err);
         return res.status(500).json({
             success: false,
-            message: 'An internal server error occurred while sending emergency emails.'
+            message: 'An internal server error occurred while sending emergency emails.',
+            code: 'EMERGENCY_DISPATCH_ERROR'
         });
     }
 }
@@ -169,7 +172,8 @@ async function handleSendSafeEmail(req, res, next) {
         console.error("[EmergencyController] Internal error during Safe email dispatch:", err);
         return res.status(500).json({
             success: false,
-            message: 'An internal server error occurred while sending safety updates.'
+            message: 'An internal server error occurred while sending safety updates.',
+            code: 'EMERGENCY_DISPATCH_ERROR'
         });
     }
 }

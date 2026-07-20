@@ -1,17 +1,18 @@
-require('dotenv').config();
+const config = require('./config');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const connectDB = require('./db');
 const errorHandler = require('./middleware/errorHandler');
+const requestId = require('./middleware/requestId');
 
 const { verifyTransporterConnection } = require('./services/emailService');
 
 console.log("[SERVER STARTUP]", {
   commit: process.env.VERCEL_GIT_COMMIT_SHA || 'local',
-  model: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
-  hasApiKey: !!process.env.GEMINI_API_KEY,
-  hasEmailUser: !!process.env.EMAIL_USER
+  model: config.geminiModel,
+  hasApiKey: !!process.env.GEMINI_API_KEY_1,
+  hasEmailUser: !!config.emailUser
 });
 
 verifyTransporterConnection();
@@ -20,6 +21,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Security and utility middleware
+app.use(requestId);
 app.use(helmet());
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increased for base64 image payloads
@@ -66,6 +68,15 @@ const healthHandler = async (req, res) => {
 };
 app.get('/health', healthHandler);
 app.get('/api/health', healthHandler);
+
+// Handle unhandled 404 routes
+app.use((req, res, next) => {
+    res.status(404).json({
+        success: false,
+        message: 'Resource not found.',
+        code: 'NOT_FOUND'
+    });
+});
 
 // Global Error Handler Middleware
 app.use(errorHandler);

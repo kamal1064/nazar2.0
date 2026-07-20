@@ -12,7 +12,7 @@ router.post('/', userLimiter, contactValidator, async (req, res, next) => {
         
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ success: false, message: 'User not found' });
+            return res.status(404).json({ success: false, message: 'User not found.', code: 'USER_NOT_FOUND' });
         }
 
         const contact = new Contact({
@@ -34,14 +34,14 @@ router.put('/:contactId', userLimiter, async (req, res, next) => {
     try {
         const { contactId } = req.params;
         if (!validateObjectId(contactId)) {
-            return res.status(400).json({ success: false, message: 'Invalid Contact ID format' });
+            return res.status(400).json({ success: false, message: 'Invalid Contact ID format.', code: 'INVALID_CONTACT_ID' });
         }
 
         const { name, phone, relationship } = req.body;
         
         const contact = await Contact.findById(contactId);
         if (!contact) {
-            return res.status(404).json({ success: false, message: 'Contact not found' });
+            return res.status(404).json({ success: false, message: 'Contact not found.', code: 'CONTACT_NOT_FOUND' });
         }
 
         if (name !== undefined) contact.name = name;
@@ -60,7 +60,7 @@ router.get('/:userId', userLimiter, async (req, res, next) => {
     try {
         const userId = req.params.userId;
         if (!validateObjectId(userId)) {
-            return res.status(400).json({ success: false, message: 'Invalid User ID format' });
+            return res.status(400).json({ success: false, message: 'Invalid User ID format.', code: 'INVALID_USER_ID' });
         }
 
         const contacts = await Contact.find({ userId });
@@ -75,12 +75,12 @@ router.delete('/:contactId', userLimiter, async (req, res, next) => {
     try {
         const { contactId } = req.params;
         if (!validateObjectId(contactId)) {
-            return res.status(400).json({ success: false, message: 'Invalid Contact ID format' });
+            return res.status(400).json({ success: false, message: 'Invalid Contact ID format.', code: 'INVALID_CONTACT_ID' });
         }
 
         const contact = await Contact.findByIdAndDelete(contactId);
         if (!contact) {
-            return res.status(404).json({ success: false, message: 'Contact not found' });
+            return res.status(404).json({ success: false, message: 'Contact not found.', code: 'CONTACT_NOT_FOUND' });
         }
 
         res.status(200).json({ success: true, message: 'Contact deleted successfully' });
