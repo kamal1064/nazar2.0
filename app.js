@@ -2393,6 +2393,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         isAnalyzing = true;
+        const scanStartTime = performance.now();
         console.log("[Vision System] triggerDescribeSurroundings invoked.");
 
         const describeBtn = document.getElementById('describe-btn');
