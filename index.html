@@ -7,15 +7,15 @@
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=33">
+    <link rel="stylesheet" href="style.css?v=40">
 </head>
 <body>
 
     <!-- Accessible ARIA Live Announcer for screen readers -->
     <div id="aria-live-announcer" aria-live="assertive" aria-atomic="true" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;"></div>
 
-    <!-- Diagnostics Overlay (Visible in local Dev mode only) -->
-    <div id="diagnostics-overlay" style="display: none; position: absolute; top: 10px; right: 10px; background: rgba(15, 23, 42, 0.85); color: #22c55e; font-family: monospace; font-size: 0.7rem; padding: 0.65rem; border-radius: 8px; z-index: 1000; pointer-events: none; border: 1px solid rgba(255,255,255,0.1); line-height: 1.45; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);">
+    <!-- Diagnostics Overlay -->
+    <div id="diagnostics-overlay" style="display: none; position: absolute; top: 10px; right: 10px; background: rgba(15, 23, 42, 0.85); color: #22c55e; font-family: monospace; font-size: 0.7rem; padding: 0.65rem; border-radius: 8px; z-index: 1000; pointer-events: none; border: 1px solid rgba(255,255,255,0.1); line-height: 1.45; backdrop-filter: blur(4px);">
         <div style="font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.25rem; margin-bottom: 0.25rem;">Nazar Diagnostics</div>
         <div>Model Status: <span id="diag-model">Loading...</span></div>
         <div>Engine Mode: <span id="diag-worker">Worker</span></div>
@@ -27,657 +27,473 @@
         <div>Est. FPS: <span id="diag-fps">0</span></div>
     </div>
 
-    <!-- Direct Render Viewport Container -->
+    <!-- Main Shell Container -->
     <main id="app-container">
 
-        <!-- Desktop Permanent Left Sidebar (≥1200px / Tablet Compact) -->
+        <!-- Desktop Left Sidebar (Reference Image 2 Column 1) -->
         <aside class="desktop-sidebar" id="desktop-sidebar" aria-label="Main Navigation Sidebar">
-            <div class="desktop-sidebar-brand">
-                <div class="desktop-logo-wrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                    <span>NAZAR</span>
-                </div>
-                <span class="desktop-badge">Accessibility Enabled</span>
-            </div>
-
-            <nav class="desktop-nav-menu">
-                <button class="desktop-nav-item active" data-target="home" aria-label="Navigate to Home Dashboard (Alt+1)">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                        <polyline points="9 22 9 12 15 12 15 22"/>
-                    </svg>
-                    <span>Home</span>
-                </button>
-                <button class="desktop-nav-item" data-target="camera" aria-label="Navigate to AI Vision Camera (Alt+2)">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                    </svg>
-                    <span>Camera</span>
-                </button>
-                <button class="desktop-nav-item" data-target="settings" aria-label="Navigate to Settings Dashboard (Alt+3)">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                    <span>Settings</span>
-                </button>
-            </nav>
-
-            <div class="desktop-sidebar-footer">
-                <div class="desktop-user-card" style="align-items: flex-start;">
-                    <div class="desktop-user-info" style="gap: 0.35rem;">
-                        <span class="user-name" style="font-size: 0.95rem; font-weight: 700; color: var(--primary);">System Status</span>
-                        <div style="display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">
-                            <span>✓ AI Vision Ready</span>
-                            <span>✓ Voice Ready</span>
-                            <span>✓ Emergency Ready</span>
-                        </div>
+            <div>
+                <div class="desktop-sidebar-brand">
+                    <div class="desktop-logo-wrap">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="26" height="26">
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                            <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                        <span>NAZAR</span>
                     </div>
                 </div>
-                <div class="desktop-version-text" style="margin-top: 0.5rem;">Version 3.0.0</div>
+
+                <nav class="desktop-nav-menu">
+                    <button class="desktop-nav-item active" data-target="home" aria-label="Navigate to Home">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                            <polyline points="9 22 9 12 15 12 15 22"/>
+                        </svg>
+                        <span>Home</span>
+                    </button>
+                    <button class="desktop-nav-item" data-target="camera" aria-label="Navigate to Camera">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                            <circle cx="12" cy="13" r="4"/>
+                        </svg>
+                        <span>Camera</span>
+                    </button>
+                    <button class="desktop-nav-item" data-target="settings" aria-label="Navigate to Settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        <span>Settings</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div>
+                <!-- Desktop Quick SOS -->
+                <div class="desktop-quick-sos" id="action-sos-desktop" aria-label="Trigger Emergency SOS">
+                    <div class="sos-icon-box">SOS</div>
+                    <div>
+                        <div style="font-weight: 700; font-size: 0.9rem; color: var(--danger);">Quick SOS</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">Get help instantly</div>
+                    </div>
+                </div>
             </div>
         </aside>
 
-        <!-- Mobile-first centered application viewport -->
+        <!-- Center Application Viewport Container -->
         <div class="app-mobile-viewport">
             
-            <!-- Scrollable main panel content area -->
             <div class="app-panels-container">
 
                 <!-- ==================================================================
-                     PAGE 1: HOME SCREEN
+                     PAGE 1: HOME SCREEN (Reference Image 1)
                      ================================================================== -->
                 <section class="screen-panel active-panel" id="home-panel">
                     
-                    <!-- Nazar Header on Home View -->
                     <header class="home-header">
                         <div class="header-branding">
-                            <div class="logo-wrap">
-                                <!-- Nazar Eye Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="22" height="22">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                                    <circle cx="12" cy="12" r="3"/>
+                            <button class="mobile-menu-btn" aria-label="Menu">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                                 </svg>
+                            </button>
+                            <div class="brand-title">
                                 <span>NAZAR</span>
                             </div>
-                            <span class="greeting-text">Ready to Assist</span>
                         </div>
-                        <!-- Notification Bell -->
-                        <button class="noti-btn" id="notification-btn" aria-label="Recent activity notifications">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        <button class="voice-badge-btn" id="header-voice-btn" aria-label="Voice Assistant Status">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                             </svg>
-                            <span class="noti-dot"></span>
                         </button>
                     </header>
 
-                    <!-- Main Hero Card (Occupies 50-60% height, auto-expanding to prevent cutoff) -->
+                    <h1 class="home-headline">Your AI Assistant<br>for a <span>Smarter World</span></h1>
+                    <p class="home-subtitle">NAZAR helps you see the world, speak with ease and stay safe.</p>
+
+                    <!-- Hero CTA Card -->
                     <div class="assistant-card">
-                <div class="orb-container">
-                    <div class="orb-glow-back" id="assistant-glow"></div>
-                    <div class="orb-core" id="assistant-orb">
-                        <div class="orb-eye">
-                            <div class="orb-pupil"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="assistant-info">
-                    <span class="assistant-companion-text">Your AI Navigation Companion</span>
-                    <h2 class="assistant-title">Hello, I'm Nazar</h2>
-                    <p class="assistant-tagline-text" id="assistant-text">Ready whenever you need assistance.</p>
-                </div>
-
-                <!-- Primary CTA -->
-                <button class="btn-primary" id="start-assistant-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Start Assistant
-                </button>
-            </div>
-
-            <!-- Quick Action Cards (Visually secondary) -->
-            <div class="quick-actions">
-                <div class="action-card action-scan" id="action-scan">
-                    <div class="action-icon-wrap">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </div>
-                    <span class="action-name">Scan Surroundings</span>
-                </div>
-                <div class="action-card action-sos" id="action-sos">
-                    <div class="action-icon-wrap">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <span class="action-name">Emergency SOS</span>
-                </div>
-                <div class="action-card action-activity" id="action-activity">
-                    <div class="action-icon-wrap">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <span class="action-name">Recent Activity</span>
-                </div>
-            </div>
-
-            <!-- Daily Tip Card -->
-            <div class="tip-card">
-                <div class="tip-icon-wrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 .364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                </div>
-                <div class="tip-content">
-                    <span class="tip-title">Accessibility Tip</span>
-                    <p class="tip-text">You can activate voice assistance hands-free using "Hey Nazar".</p>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- ==================================================================
-             PAGE 2: CAMERA PANEL (Layer 1 offline + Layer 2 cloud AI)
-             ================================================================== -->
-        <section class="screen-panel" id="camera-panel" style="padding: 0;">
-            
-            <!-- Camera Permission Overlay Container -->
-            <div id="camera-permission-container" class="permission-panel">
-                
-                <!-- State A: Initial State (Permission Not Granted) -->
-                <div id="perm-state-initial" class="perm-state active">
-                    <div class="perm-icon-wrapper">
-                        <!-- Camera Icon -->
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                    </div>
-                    <h2 class="perm-heading">Camera Access Required</h2>
-                    <p class="perm-description">Allow camera access to scan and describe your surroundings.</p>
-                    <button class="btn-primary perm-btn" id="btn-enable-camera">Enable Camera</button>
-                </div>
-
-                <!-- State B: Requesting Permission -->
-                <div id="perm-state-requesting" class="perm-state">
-                    <div class="perm-spinner-wrapper">
-                        <div class="perm-spinner"></div>
-                    </div>
-                    <h2 class="perm-heading">Requesting Access</h2>
-                    <p class="perm-description">Requesting camera access... Please approve the browser prompt.</p>
-                </div>
-
-                <!-- State C: Permission Denied -->
-                <div id="perm-state-denied" class="perm-state">
-                    <div class="perm-icon-wrapper warning">
-                        <!-- Warning Exclamation Icon -->
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <h2 class="perm-heading">Access Denied</h2>
-                    <p class="perm-description">Camera access is required for object detection and scene description.</p>
-                    <div class="perm-buttons-group">
-                        <button class="btn-primary perm-btn" id="btn-try-again">Try Again</button>
-                        <button class="btn-secondary perm-btn" id="btn-open-settings">Open Settings</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="camera-panel-wrapper viewfinder" style="display: none;">
-                <!-- Viewfinder grid and decorations -->
-                <div class="viewfinder-grid"></div>
-                <div class="scan-line"></div>
-
-                <!-- Corner brackets -->
-                <div class="bracket" style="top: 20%; left: 10%; border-right: 0; border-bottom: 0;"></div>
-                <div class="bracket" style="top: 20%; right: 10%; border-left: 0; border-bottom: 0;"></div>
-                <div class="bracket" style="bottom: 30%; left: 10%; border-right: 0; border-top: 0;"></div>
-                <div class="bracket" style="bottom: 30%; right: 10%; border-left: 0; border-top: 0;"></div>
-
-                <!-- Center reticle -->
-                <div class="viewfinder-reticle">
-                    <div class="reticle-dashed"></div>
-                    <div class="reticle-core">
-                        <div class="reticle-pulse pulse-dot"></div>
-                    </div>
-                </div>
-
-                <!-- Real video stream from device camera (active but invisible) -->
-                <video id="camera-stream" autoplay playsinline style="display: none; object-fit: cover;"></video>
-
-                <!-- HUD Overlays -->
-                <div class="camera-hud-overlay">
-                    
-                    <!-- Top Status indicator pill -->
-                    <div class="camera-top-row">
-                        <div class="scan-pill">
-                            <span class="pulse-dot"></span>
-                            <span id="scan-status-text">Scanning surroundings...</span>
-                            <div class="top-waveform" aria-hidden="true">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                                <span></span>
+                        <div class="orb-container">
+                            <div class="orb-glow-back" id="assistant-glow"></div>
+                            <div class="orb-core" id="assistant-orb">
+                                <div class="orb-eye">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="32" height="32">
+                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </div>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Top Scan Result Pop-up (Appears after AI scan complete) -->
-                    <div class="scan-result-popup" id="scan-result-popup" role="status" aria-live="polite">
-                        <svg class="popup-ai-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/>
-                        </svg>
-                        <span class="popup-text" id="scan-popup-text">Scan results will appear here...</span>
-                        <button class="popup-close-btn" id="scan-popup-close" aria-label="Close notification">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                <line x1="18" y1="6" x2="6" y2="18"/>
-                                <line x1="6" y1="6" x2="18" y2="18"/>
+                        <h2 class="hero-cta-title">Start AI Vision</h2>
+                        <p class="hero-cta-tagline" id="assistant-text">Tap to scan and understand your surroundings</p>
+                        <button class="hero-arrow-btn" id="start-assistant-btn" aria-label="Start AI Vision">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                             </svg>
                         </button>
                     </div>
 
-                    <!-- Bottom compact controls wrapper -->
-                    <div class="camera-bottom-wrapper">
-                        
-                        <!-- Compact Floating Control Pill (3 Action Buttons Centered) -->
-                        <div class="announcement-card compact-vision-bar glass" id="vision-system-bar">
-                            <!-- 1. Scan Button (Primary Blue) -->
-                            <button class="compact-control-btn btn-scan-blue" id="btn-scan-action" aria-label="Scan Surroundings">
-                                <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
-                                    <circle cx="12" cy="12" r="3"/>
-                                </svg>
-                                <span class="control-label">Scan</span>
-                            </button>
-
-                            <!-- 2. Scene Mode Toggle (Gray/Neutral) -->
-                            <button class="compact-control-btn btn-scene-gray" id="btn-mode-toggle" aria-label="Toggle between OCR and Scene analysis">
-                                <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                                    <polyline points="21 15 16 10 5 21"/>
-                                </svg>
-                                <span class="control-label" id="mode-label-text">Scene Mode</span>
-                            </button>
-
-                            <!-- 3. Stop Speech Button (Red Accent) -->
-                            <button class="compact-control-btn btn-stop-speech-red" id="btn-stop-speech" aria-label="Stop Speech Output">
-                                <svg class="control-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                    <line x1="2" y1="2" x2="22" y2="22"/>
-                                </svg>
-                                <span class="control-label">Stop Speech</span>
-                            </button>
-                        </div>
-
-                        <!-- Secondary floating action keys (Centered mic, right swap, no menu) -->
-                        <div class="camera-action-row-centered">
-                            <!-- Circular mic button (Center) -->
-                            <button class="btn-mic-main" id="mic-btn" aria-label="Voice input">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <!-- What can NAZAR do? Section -->
+                    <h2 class="section-title">What can NAZAR do?</h2>
+                    <div class="feature-grid">
+                        <div class="feature-card" id="action-scan">
+                            <div class="feature-icon-box">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                 </svg>
-                            </button>
+                            </div>
+                            <span class="feature-card-name">Describe Surroundings</span>
+                            <span class="feature-card-desc">Get real-time audio descriptions</span>
+                        </div>
 
-                            <!-- Camera Swap button (Right) -->
-                            <button class="btn-floating-aux glass" id="camera-swap-btn" aria-label="Switch camera view direction">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="18" height="18">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <div class="feature-card" id="feature-ocr">
+                            <div class="feature-icon-box">T<span style="font-size: 0.85rem;">T</span></div>
+                            <span class="feature-card-name">Read Text (OCR)</span>
+                            <span class="feature-card-desc">Scan and hear any text</span>
+                        </div>
+
+                        <div class="feature-card" id="feature-places">
+                            <div class="feature-icon-box">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                 </svg>
-                            </button>
+                            </div>
+                            <span class="feature-card-name">Find Places</span>
+                            <span class="feature-card-desc">Discover nearby places around you</span>
+                        </div>
+
+                        <div class="feature-card" id="action-sos">
+                            <div class="feature-icon-box" style="background: rgba(239, 68, 68, 0.1); color: var(--danger);">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <span class="feature-card-name">Stay Safe</span>
+                            <span class="feature-card-desc">Emergency SOS and location alerts</span>
                         </div>
                     </div>
-            <!-- Desktop Live AI Results Panel (25% Split on Desktop) -->
-            <div class="desktop-live-ai-panel" id="desktop-live-ai-panel">
-                <div class="ai-panel-header">
-                    <div class="ai-panel-title">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
-                            <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/>
-                        </svg>
-                        <span>Live AI Results</span>
-                    </div>
-                    <span class="ai-status-badge idle" id="desktop-ai-status-badge">Idle</span>
-                </div>
+                </section>
 
-                <div class="ai-panel-content" style="display: flex; flex-direction: column; gap: 1rem;">
-                    <!-- Status & Scan Mode -->
-                    <div class="ai-info-row">
-                        <span class="ai-info-label">Status</span>
-                        <span class="ai-info-val" id="desktop-ai-status-text">Point camera to scan...</span>
-                    </div>
-                    <div class="ai-info-row">
-                        <span class="ai-info-label">Scan Mode</span>
-                        <span class="ai-info-val" id="desktop-scan-mode-val">Scene Mode</span>
-                    </div>
-                    <div class="ai-info-row">
-                        <span class="ai-info-label">AI Model</span>
-                        <span class="ai-info-val" id="desktop-ai-model-val">Gemini 3.1 Flash</span>
+                <!-- ==================================================================
+                     PAGE 2: CAMERA VIEW (Heart of Application - Reference Image 1)
+                     ================================================================== -->
+                <section class="screen-panel" id="camera-panel">
+                    
+                    <!-- Camera Header Bar -->
+                    <div class="camera-header-bar">
+                        <div></div>
+                        <div class="camera-header-title">AI VISION</div>
+                        <button class="btn-flip-camera" id="camera-swap-btn" aria-label="Flip Camera">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
                     </div>
 
-                    <!-- Scene Description -->
-                    <div class="ai-block">
-                        <div class="ai-block-title">Scene Summary</div>
-                        <p class="ai-block-text" id="desktop-scene-desc">Point the camera at your surroundings to begin analysis.</p>
-                    </div>
-
-                    <!-- Detected Objects -->
-                    <div class="ai-block">
-                        <div class="ai-block-title">Detected Objects</div>
-                        <ul class="ai-objects-list" id="desktop-detected-objects">
-                            <li class="ai-empty-item">No objects detected yet</li>
-                        </ul>
-                    </div>
-
-                    <!-- Hazards -->
-                    <div class="ai-block">
-                        <div class="ai-block-title">Hazards</div>
-                        <div class="ai-hazard-box safe" id="desktop-hazards-box">
-                            <span id="desktop-hazards-text">No immediate hazards detected</span>
-                        </div>
-                    </div>
-
-                    <!-- OCR Text -->
-                    <div class="ai-block">
-                        <div class="ai-block-title">Detected Text (OCR)</div>
-                        <p class="ai-block-text ocr" id="desktop-ocr-text">No text detected</p>
-                    </div>
-
-                    <!-- Voice Speech Output -->
-                    <div class="ai-block">
-                        <div class="ai-block-title">Voice Output</div>
-                        <p class="ai-block-text voice" id="desktop-voice-output">Speech synthesis ready.</p>
-                    </div>
-
-                    <!-- Confidence Progress Bar -->
-                    <div class="ai-block">
-                        <div class="ai-block-header-flex">
-                            <span class="ai-block-title">Confidence</span>
-                            <span class="ai-confidence-val" id="desktop-confidence-val">0%</span>
-                        </div>
-                        <div class="ai-progress-track">
-                            <div class="ai-progress-fill" id="desktop-confidence-bar" style="width: 0%;"></div>
-                        </div>
-                    </div>
-
-                    <!-- Telemetry & Latency -->
-                    <div class="ai-telemetry-row">
-                        <span>Response Time: <strong id="desktop-processing-time">-- ms</strong></span>
-                        <span>Updated: <strong id="desktop-last-updated">Never</strong></span>
-                    </div>
-                </div>
-            </div>
-
-        </section>
-
-        <!-- ==================================================================
-             PAGE 3: SETTINGS PANEL
-             ================================================================== -->
-        <section class="screen-panel" id="settings-panel">
-            
-            <h2 class="settings-title">Settings</h2>
-
-            <!-- Single-column grouped settings list elements -->
-            <div class="settings-menu-list">
-                
-                <!-- 1. Application Card -->
-                <div class="profile-card" style="margin-bottom: 1.5rem;">
-                    <div class="profile-avatar-wrap">
-                        <div class="profile-avatar-letters" style="background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center;">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22">
-                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
-                                <circle cx="12" cy="12" r="3"/>
+                    <!-- Top Real-Time AI Detection Overlay Banner -->
+                    <div class="ai-description-banner" id="vision-system-bar">
+                        <div class="banner-icon-box">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                             </svg>
                         </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.15rem;">
-                            <span class="profile-name">NAZAR</span>
-                            <span class="profile-tagline">AI Navigation Companion • Version 3.0</span>
+                        <div class="banner-text-wrap">
+                            <span class="banner-tag">AI Description</span>
+                            <span class="banner-desc" id="scan-popup-text">Ready to Scan. Point your camera at an object and press Scan.</span>
                         </div>
+                        <button class="banner-repeat-btn" id="repeat-btn" aria-label="Repeat speech output">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            </svg>
+                        </button>
                     </div>
-                    <span class="app-status-pill" style="font-size: 0.75rem; font-weight: 700; color: var(--success); background: var(--success-light); padding: 0.25rem 0.65rem; border-radius: 20px;">Accessibility Ready</span>
-                </div>
 
-                <!-- Dark Mode Toggle Switch Card directly in column list -->
-                <div class="settings-menu-card dark-mode-card" style="margin-bottom: 1.5rem;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                        <div class="settings-left-info">
-                            <div class="settings-icon-box icon-about">
-                                <!-- Dark Mode Moon Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-                                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
-                                </svg>
+                    <!-- Camera Stream & Bounding Boxes Canvas -->
+                    <div class="camera-panel-wrapper">
+                        <!-- Permission fallback container -->
+                        <div id="camera-permission-container" class="permission-panel" style="display: none;">
+                            <div id="perm-state-initial" class="perm-state active">
+                                <button class="btn-primary perm-btn" id="btn-enable-camera">Enable Camera</button>
                             </div>
-                            <div class="settings-label-wrap">
-                                <span class="settings-label-name">Dark Mode</span>
-                                <span class="settings-label-desc">Toggle dark theme</span>
+                            <div id="perm-state-requesting" class="perm-state">Scanning...</div>
+                            <div id="perm-state-denied" class="perm-state">
+                                <button class="btn-primary perm-btn" id="btn-try-again">Try Again</button>
+                                <button class="btn-secondary perm-btn" id="btn-open-settings">Open Settings</button>
                             </div>
                         </div>
-                        <label class="toggle-switch-wrapper" for="toggle-dark-mode">
-                            <input type="checkbox" id="toggle-dark-mode">
-                            <span class="toggle-slider"></span>
-                        </label>
+
+                        <video id="camera-stream" autoplay playsinline></video>
+                        <canvas id="detection-canvas"></canvas>
                     </div>
-                </div>
-                
-                <!-- 3. Voice & Speech Settings -->
-                <div class="settings-menu-card">
-                    <button class="settings-menu-card-header" type="button" aria-expanded="false">
-                        <div class="settings-left-info">
-                            <div class="settings-icon-box icon-speech">
-                                <!-- Megaphone / Volume Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+
+                    <!-- Bottom Controls (3 Large Buttons Side-by-Side) -->
+                    <div class="camera-controls-bar">
+                        <div class="controls-three-grid">
+                            <button class="btn-control-scan" id="btn-scan-action" aria-label="Scan Surroundings">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="26" height="26">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                 </svg>
-                            </div>
-                            <div class="settings-label-wrap">
-                                <span class="settings-label-name">Speech Settings</span>
-                                <span class="settings-label-desc">Text-to-speech output alerts & prompts</span>
-                            </div>
-                        </div>
-                        <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
-                            <path d="m9 18 6-6-6-6"/>
-                        </svg>
-                    </button>
-
-                    <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                        
-                        <!-- Toggle Speech Output -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <span class="settings-label-name" style="font-size: 0.85rem;">Enable Vocal Announcer</span>
-                            <label class="toggle-switch-wrapper" for="toggle-speech-output">
-                                <input type="checkbox" id="toggle-speech-output" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                        
-                        <!-- Toggle Voice Commands -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <div style="display: flex; flex-direction: column;">
-                                <span class="settings-label-name" style="font-size: 0.85rem;">Voice command mode</span>
-                                <span class="settings-label-desc" style="font-size: 0.7rem; margin-top: 1px;">Trigger describe surroundings with "Describe"</span>
-                            </div>
-                            <label class="toggle-switch-wrapper" for="toggle-voice-commands">
-                                <input type="checkbox" id="toggle-voice-commands">
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4. Accessibility Settings -->
-                <div class="settings-menu-card">
-                    <button class="settings-menu-card-header" type="button" aria-expanded="false">
-                        <div class="settings-left-info">
-                            <div class="settings-icon-box icon-accessibility">
-                                <!-- Person / Access Icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4a1 1 0 100-2 1 1 0 000 2zM12 14v7m-7-7h14m-10-8l3 5 3-5" />
-                                </svg>
-                            </div>
-                            <div class="settings-label-wrap">
-                                <span class="settings-label-name">Accessibility Settings</span>
-                                <span class="settings-label-desc">Vibration cues & visual contrast setups</span>
-                            </div>
-                        </div>
-                        <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
-                            <path d="m9 18 6-6-6-6"/>
-                        </svg>
-                    </button>
-
-                    <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                        
-                        <!-- Toggle Vibration alerts -->
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <span class="settings-label-name" style="font-size: 0.85rem;">Enable Vibration Alerts</span>
-                            <label class="toggle-switch-wrapper" for="toggle-vibration-alerts">
-                                <input type="checkbox" id="toggle-vibration-alerts" checked>
-                                <span class="toggle-slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 5. Emergency Contacts -->
-                <div class="settings-menu-card">
-                    <button class="settings-menu-card-header" aria-label="Manage Emergency SOS settings and contacts">
-                        <div class="settings-left-info">
-                            <div class="settings-icon-box icon-sos">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                    <circle cx="9" cy="7" r="4"/>
-                                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                                </svg>
-                            </div>
-                            <div class="settings-label-wrap">
-                                <span class="settings-label-name">Emergency Settings</span>
-                                <span class="settings-label-desc">SOS, contacts, location sharing</span>
-                            </div>
-                        </div>
-                        <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
-                            <path d="m9 18 6-6-6-6"/>
-                        </svg>
-                    </button>
-
-                    <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                        
-                        <!-- Active Contact Card Display -->
-                        <div id="saved-contact-card" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 10px; padding: 0.85rem; flex-direction: column; gap: 0.35rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span id="saved-contact-name" style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);"></span>
-                                <span id="saved-contact-relationship" style="font-size: 0.75rem; background: var(--danger); color: white; padding: 2px 8px; border-radius: 12px; font-weight: 600;"></span>
-                            </div>
-                            <span id="saved-contact-phone" style="font-size: 0.8rem; color: var(--text-muted);"></span>
-                            <span id="saved-contact-email" style="font-size: 0.8rem; color: var(--primary); word-break: break-all;"></span>
-                        </div>
-
-                        <!-- Form Inputs -->
-                        <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
-                            <label class="settings-label-name" for="input-emergency-name" style="font-size: 0.85rem;">Full Name</label>
-                            <input class="settings-text-input" type="text" id="input-emergency-name" placeholder="Full Name (e.g. Jane Doe)">
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
-                            <label class="settings-label-name" for="input-emergency-email" style="font-size: 0.85rem;">Email Address</label>
-                            <input class="settings-text-input" type="email" id="input-emergency-email" placeholder="Email Address (e.g. contact@example.com)">
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
-                            <label class="settings-label-name" for="input-emergency-phone" style="font-size: 0.85rem;">Phone Number</label>
-                            <input class="settings-text-input" type="tel" id="input-emergency-phone" placeholder="Phone Number (e.g. +1234567890)">
-                        </div>
-                        <div style="display: flex; flex-direction: column; gap: 0.35rem; width: 100%;">
-                            <label class="settings-label-name" for="input-emergency-rel" style="font-size: 0.85rem;">Relationship</label>
-                            <input class="settings-text-input" type="text" id="input-emergency-rel" placeholder="Relationship (e.g. Caregiver, Spouse, Parent)">
-                        </div>
-
-                        <!-- Error Feedback Box -->
-                        <div id="emergency-contact-error" style="display: none; font-size: 0.8rem; color: var(--danger); font-weight: 600; padding: 0.35rem 0;" role="alert"></div>
-
-                        <!-- Action Buttons Row -->
-                        <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
-                            <button type="button" id="btn-save-emergency" class="btn-primary" style="flex: 1; padding: 0.65rem; font-size: 0.8rem; border-radius: 8px; background: var(--primary); color: white; border: none; font-weight: 600; cursor: pointer;">Save Contact</button>
-                            <button type="button" id="btn-delete-emergency" class="btn-secondary" style="flex: 1; padding: 0.65rem; font-size: 0.8rem; border-radius: 8px; background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600; cursor: pointer;">Delete Contact</button>
-                        </div>
-
-                        <!-- Test Action Buttons Grid -->
-                        <div style="margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.85rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <button type="button" id="btn-test-email" class="btn-secondary" style="width: 100%; padding: 0.7rem; font-size: 0.8rem; border-radius: 8px; background: rgba(59, 130, 246, 0.12); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.3); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" aria-label="Test Emergency Email Workflow">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                Test Emergency Email
+                                <span>SCAN</span>
                             </button>
-                            <button type="button" id="btn-test-sos" class="btn-secondary" style="width: 100%; padding: 0.7rem; font-size: 0.8rem; border-radius: 8px; background: var(--glass-bg); color: var(--text-main); border: 1px solid var(--border-color); font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.4rem;" aria-label="Test Emergency SOS Workflow">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+
+                            <button class="btn-control-mode" id="btn-mode-toggle" aria-label="Toggle Mode">
+                                <div style="font-size: 1.25rem; font-weight: 800;">T<span style="font-size: 0.9rem;">T</span></div>
+                                <span id="mode-label-text">TEXT / PIC MODE</span>
+                            </button>
+
+                            <button class="btn-control-stop" id="btn-stop-speech" aria-label="Stop Voice Output">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
                                 </svg>
-                                Test Emergency SMS
+                                <span>STOP VOICE</span>
                             </button>
                         </div>
-                    </div>
-                </div>
 
-                <!-- 6. About Nazar -->
-                <div class="settings-menu-card" style="margin-bottom: 1.5rem;">
-                    <button class="settings-menu-card-header" aria-label="About Nazar version and privacy policy">
-                        <div class="settings-left-info">
-                            <div class="settings-icon-box icon-about">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <div class="live-status-pill">
+                            <span class="status-green-dot"></span>
+                            <span id="scan-status-text">Live Scanning...</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ==================================================================
+                     PAGE 3: SETTINGS VIEW (Reference Image 1)
+                     ================================================================== -->
+                <section class="screen-panel" id="settings-panel">
+                    
+                    <div class="settings-header">
+                        <h1 class="settings-page-title">Settings</h1>
+                        <button class="dark-toggle-btn" id="toggle-dark-mode-btn" aria-label="Toggle Dark Mode">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Voice Assistant Hero Card -->
+                    <div class="voice-assistant-card">
+                        <div class="voice-card-left">
+                            <div class="voice-card-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="26" height="26">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                                 </svg>
                             </div>
-                            <div class="settings-label-wrap">
-                                <span class="settings-label-name">About Nazar</span>
-                                <span class="settings-label-desc">Version, privacy, support</span>
+                            <div class="voice-card-info">
+                                <span class="voice-card-name">Voice Assistant</span>
+                                <span class="voice-card-status">NAZAR Voice is active • Listening...</span>
                             </div>
                         </div>
-                        <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
-                            <path d="m9 18 6-6-6-6"/>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
                         </svg>
-                    </button>
-
-                    <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
-                        <span class="settings-label-desc">NAZAR AI Navigation Companion v18</span>
-                        <span class="settings-label-desc">Powered by Gemini 3.1 Flash-Lite & MongoDB Atlas</span>
                     </div>
-                </div>
 
-            </div>
+                    <!-- Safety & Support Section -->
+                    <h2 class="settings-section-title">Safety & Support</h2>
+                    <div class="settings-card-group">
+                        <div class="settings-item-card" id="settings-emergency-sos">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-red">SOS</div>
+                                <div class="item-info">
+                                    <span class="item-title">Emergency SOS</span>
+                                    <span class="item-subtitle">Send alert to your contacts</span>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
 
-        </section>
+                        <div class="settings-item-card" id="settings-emergency-contacts">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-purple">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">Emergency Contacts</span>
+                                    <span class="item-subtitle">Manage your contacts</span>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
 
-        </div> <!-- End app-panels-container -->
+                        <div class="settings-item-card">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-green">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">Live Location Sharing</span>
+                                    <span class="item-subtitle">Share your location in real-time</span>
+                                </div>
+                            </div>
+                            <input type="checkbox" id="toggle-location-sharing" checked style="width: 20px; height: 20px;">
+                        </div>
+                    </div>
 
-            <!-- Sticky bottom navigation bar -->
+                    <!-- Preferences Section -->
+                    <h2 class="settings-section-title">Preferences</h2>
+                    <div class="settings-card-group">
+                        <div class="settings-item-card">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-blue">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">Voice Settings</span>
+                                    <span class="item-subtitle">Speech rate, volume & voice</span>
+                                </div>
+                            </div>
+                            <input type="checkbox" id="toggle-speech-output" checked style="display:none;">
+                            <input type="checkbox" id="toggle-voice-commands" style="display:none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+
+                        <div class="settings-item-card">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-teal">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">Scan Settings</span>
+                                    <span class="item-subtitle">Choose scan mode and alerts</span>
+                                </div>
+                            </div>
+                            <input type="checkbox" id="toggle-vibration-alerts" checked style="display:none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+
+                        <div class="settings-item-card">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-purple">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-23" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">Appearance</span>
+                                    <span class="item-subtitle">Light / Dark mode</span>
+                                </div>
+                            </div>
+                            <input type="checkbox" id="toggle-dark-mode" style="display:none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+
+                        <div class="settings-item-card">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-orange">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">Language</span>
+                                    <span class="item-subtitle">English</span>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Emergency Contact Hidden Form Hooks (Preserved IDs) -->
+                    <div style="display:none;">
+                        <input type="text" id="input-emergency-name">
+                        <input type="email" id="input-emergency-email">
+                        <input type="tel" id="input-emergency-phone">
+                        <input type="text" id="input-emergency-rel">
+                        <button type="button" id="btn-save-emergency"></button>
+                        <button type="button" id="btn-delete-emergency"></button>
+                        <button type="button" id="btn-test-email"></button>
+                        <button type="button" id="btn-test-sos"></button>
+                        <div id="saved-contact-card">
+                            <span id="saved-contact-name"></span>
+                            <span id="saved-contact-phone"></span>
+                            <span id="saved-contact-email"></span>
+                            <span id="saved-contact-relationship"></span>
+                        </div>
+                        <div id="emergency-contact-error"></div>
+                    </div>
+
+                    <!-- About Section -->
+                    <h2 class="settings-section-title">About</h2>
+                    <div class="settings-card-group">
+                        <div class="settings-item-card">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-blue">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">About NAZAR</span>
+                                    <span class="item-subtitle">App info and credits</span>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+
+                        <div class="settings-item-card">
+                            <div class="item-left">
+                                <div class="item-icon-circle icon-blue">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div class="item-info">
+                                    <span class="item-title">Help & Feedback</span>
+                                    <span class="item-subtitle">We're here to help</span>
+                                </div>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </div>
+                    </div>
+
+                </section>
+
+            </div> <!-- End app-panels-container -->
+
+            <!-- Sticky Bottom Navigation Bar -->
             <nav class="bottom-nav">
                 <button class="nav-item active" data-target="home">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                         <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
                         <polyline points="9 22 9 12 15 12 15 22"/>
                     </svg>
                     <span>Home</span>
                 </button>
                 <button class="nav-item" data-target="camera">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                         <circle cx="12" cy="13" r="4"/>
                     </svg>
                     <span>Camera</span>
                 </button>
                 <button class="nav-item" data-target="settings">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
@@ -687,72 +503,63 @@
 
         </div> <!-- End app-mobile-viewport -->
 
-        <!-- ==================================================================
-             DIALOGS, OVERLAYS & MODALS
-             ================================================================== -->
+        <!-- Desktop Right Context Panel (Reference Image 2 Column 3) -->
+        <aside class="desktop-right-panel" id="desktop-right-panel" aria-label="Desktop Context & Settings Panel">
+            <h2 class="settings-page-title" style="font-size: 1.35rem; margin-bottom: 1.25rem;">Settings</h2>
+            
+            <div class="voice-assistant-card">
+                <div class="voice-card-left">
+                    <div class="voice-card-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                    </div>
+                    <div class="voice-card-info">
+                        <span class="voice-card-name">Voice Assistant</span>
+                        <span class="voice-card-status">NAZAR Voice is active • Listening...</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="settings-section-title">Safety & Support</h3>
+            <div class="settings-card-group" style="margin-bottom: 1.25rem;">
+                <div class="settings-item-card">
+                    <div class="item-left">
+                        <div class="item-icon-circle icon-red">SOS</div>
+                        <div class="item-info">
+                            <span class="item-title">Emergency SOS</span>
+                            <span class="item-subtitle">Send alert to your contacts</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="settings-section-title">Preferences</h3>
+            <div class="settings-card-group">
+                <div class="settings-item-card">
+                    <div class="item-left">
+                        <div class="item-icon-circle icon-blue">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            </svg>
+                        </div>
+                        <div class="item-info">
+                            <span class="item-title">Voice Settings</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
 
         <!-- SOS Trigger Confirmation Modal -->
-        <div class="app-modal-layer" id="sos-modal">
-            <div class="modal-card">
-                <div class="modal-icon-holder" id="sos-modal-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="30" height="30">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <h3 class="modal-title-text" id="sos-modal-title">Dispatch SOS Alert?</h3>
-                <p class="modal-description-text" id="sos-modal-desc">This will immediately send your current GPS coordinates via email to your emergency contacts.</p>
-                <div id="sos-cooldown-notice" style="display: none; font-size: 0.85rem; color: var(--danger); font-weight: 700; margin-bottom: 0.75rem;" role="alert"></div>
-                <div class="modal-buttons-group">
-                    <button class="btn-modal-trigger-now" id="confirm-sos" aria-describedby="sos-instructions">Press & Hold to Confirm (3s)</button>
-                    <div id="sos-instructions" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Press and hold this button for three seconds to confirm emergency dispatch.</div>
-                    <button type="button" id="btn-im-safe" style="display: none; width: 100%; padding: 0.85rem; background: var(--success, #22c55e); color: #ffffff; border: none; border-radius: 12px; font-weight: 700; font-size: 0.95rem; cursor: pointer; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);" aria-label="Mark yourself safe and notify emergency contacts">
-                        ✅ I'm Safe
-                    </button>
-                    <button class="btn-modal-cancel" id="cancel-sos">Cancel</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Recent Activity Drawer Sheet -->
-        <div class="app-drawer-backdrop" id="drawer-overlay"></div>
-        <div class="app-drawer-sheet" id="drawer-content">
-            <div class="drawer-header-row">
-                <h3 class="drawer-title-label">Recent Activity</h3>
-                <button class="btn-drawer-close" id="drawer-close" aria-label="Close activity log">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="18" y1="6" x2="6" y2="18"/>
-                        <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="drawer-list-items">
-                <div class="drawer-list-item">
-                    <div class="drawer-item-icon-box" style="background-color: var(--primary-light); color: var(--primary);">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                    </div>
-                    <span class="drawer-item-title-text">Person detected in front path</span>
-                    <span class="drawer-item-time-stamp">2m ago</span>
-                </div>
-                <div class="drawer-list-item">
-                    <div class="drawer-item-icon-box" style="background-color: var(--warning-light); color: var(--warning);">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <span class="drawer-item-title-text">Obstacle warning: Bicycle</span>
-                    <span class="drawer-item-time-stamp">8m ago</span>
-                </div>
-                <div class="drawer-list-item">
-                    <div class="drawer-item-icon-box" style="background-color: var(--success-light); color: var(--success);">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="16" height="16">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <span class="drawer-item-title-text">Crosswalk confirmation annunciated</span>
-                    <span class="drawer-item-time-stamp">15m ago</span>
+        <div class="app-modal-layer" id="sos-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+            <div class="modal-card" style="background: var(--bg-card); border-radius: var(--radius-hero); padding: 2rem; max-width: 360px; width: 90%; text-align: center; box-shadow: var(--shadow-medium);">
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--danger); margin-bottom: 0.5rem;">Dispatch SOS Alert?</h3>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.5rem;">This will immediately send your current GPS coordinates to emergency contacts.</p>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <button id="confirm-sos" style="background: var(--danger); color: white; border: none; padding: 1rem; border-radius: var(--radius-btn); font-weight: 800; cursor: pointer;">Press & Hold to Confirm (3s)</button>
+                    <button id="btn-im-safe" style="display: none; background: var(--success); color: white; border: none; padding: 1rem; border-radius: var(--radius-btn); font-weight: 800; cursor: pointer;">✅ I'm Safe</button>
+                    <button id="cancel-sos" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 0.75rem; border-radius: var(--radius-btn); font-weight: 600; cursor: pointer;">Cancel</button>
                 </div>
             </div>
         </div>
@@ -760,6 +567,6 @@
     </main>
 
     <!-- JS Logic -->
-    <script src="app.js?v=33"></script>
+    <script src="app.js?v=40"></script>
 </body>
 </html>

@@ -2509,7 +2509,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Home Quick Actions binding
     const actionScan = document.getElementById('action-scan');
     const actionSos = document.getElementById('action-sos');
+    const actionSosDesktop = document.getElementById('action-sos-desktop');
     const actionActivity = document.getElementById('action-activity');
+    const featureOcr = document.getElementById('feature-ocr');
+    const featurePlaces = document.getElementById('feature-places');
 
     if (actionScan) actionScan.addEventListener('click', () => switchTab('camera'));
     if (actionSos) {
@@ -2517,6 +2520,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const sosModal = document.getElementById('sos-modal');
             if (sosModal) sosModal.classList.add('modal-active');
             SpeechService.announce("SOS emergency menu triggered. Confirmed action will share coordinates.");
+        });
+    }
+    if (actionSosDesktop) {
+        actionSosDesktop.addEventListener('click', () => {
+            const sosModal = document.getElementById('sos-modal');
+            if (sosModal) sosModal.classList.add('modal-active');
+            SpeechService.announce("SOS emergency menu triggered. Confirmed action will share coordinates.");
+        });
+    }
+    if (featureOcr) {
+        featureOcr.addEventListener('click', async () => {
+            await switchTab('camera');
+            const modeLabel = document.getElementById('mode-label-text');
+            if (modeLabel && !modeLabel.textContent.includes('OCR')) {
+                const btnModeToggle = document.getElementById('btn-mode-toggle');
+                if (btnModeToggle) btnModeToggle.click();
+            }
+        });
+    }
+    if (featurePlaces) {
+        featurePlaces.addEventListener('click', async () => {
+            SpeechService.announce("Searching nearby places around you.");
+            await switchTab('camera');
         });
     }
     if (actionActivity) {
