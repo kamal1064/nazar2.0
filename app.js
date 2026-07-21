@@ -485,8 +485,8 @@ document.addEventListener('DOMContentLoaded', () => {
         },
 
         repeat() {
-            if (this.lastAnnouncedText) {
-                this.announce(this.lastAnnouncedText);
+            if (currentScanDescription && currentScanDescription !== "Ready to Scan. Point your camera at an object and press Scan.") {
+                this.announce(currentScanDescription);
             } else {
                 this.announce("No description is cached yet.");
             }
@@ -2017,6 +2017,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isOcrMode = false;
     let isContinuousScanning = false;
     let continuousScanTimer = null;
+    let currentScanDescription = "Ready to Scan. Point your camera at an object and press Scan.";
     let lastSceneState = {
         hazards: [],
         objects: [],
@@ -2322,30 +2323,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    let popupTimeoutId = null;
-
     function showScanPopup(text) {
-        const popup = document.getElementById('scan-result-popup');
         const popupText = document.getElementById('scan-popup-text');
-        if (!popup || !popupText || !text) return;
+        if (!popupText || !text) return;
 
+        currentScanDescription = text;
         popupText.innerText = text;
-        popup.classList.add('visible');
 
-        if (popupTimeoutId) clearTimeout(popupTimeoutId);
-        popupTimeoutId = setTimeout(() => {
-            hideScanPopup();
-        }, 4500);
+        // Reset expanded state classes when new content is set
+        popupText.classList.remove('expanded');
+        const expandBtn = document.getElementById('toggle-desc-expand');
+        if (expandBtn) {
+            expandBtn.classList.remove('expanded');
+            expandBtn.style.display = 'none';
+        }
     }
 
     function hideScanPopup() {
-        const popup = document.getElementById('scan-result-popup');
-        if (popup) {
-            popup.classList.remove('visible');
+        const popupText = document.getElementById('scan-popup-text');
+        if (popupText) {
+            currentScanDescription = "Ready to Scan. Point your camera at an object and press Scan.";
+            popupText.innerText = currentScanDescription;
+            popupText.classList.remove('expanded');
         }
-        if (popupTimeoutId) {
-            clearTimeout(popupTimeoutId);
-            popupTimeoutId = null;
+        const expandBtn = document.getElementById('toggle-desc-expand');
+        if (expandBtn) {
+            expandBtn.classList.remove('expanded');
+            expandBtn.style.display = 'none';
         }
     }
 
@@ -2585,20 +2589,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 announceDistance.innerText = `Analysis complete at ${timestamp}`;
             }
 
+            // Check for empty/nothing detected case
+            const isSceneEmpty = !isOcrMode && filteredHazards.length === 0 && filteredObjects.length === 0 && (!data.summary || data.summary.trim() === '');
+            const isOcrEmpty = isOcrMode && (!data.textDetected || data.textDetected.length === 0);
+
+            if (isSceneEmpty || isOcrEmpty) {
+                speechAnnouncement = "No object detected. Try moving closer or improving the lighting.";
+            }
+
             if (repeatBtn) {
                 repeatBtn.disabled = false;
                 repeatBtn.style.opacity = '1';
             }
 
-            SpeechService.announce(speechAnnouncement);
+            // Immediately update the description banner
             showScanPopup(speechAnnouncement);
+
+            // Wait for next layout paint before speaking
+            requestAnimationFrame(() => {
+                SpeechService.announce(speechAnnouncement);
+            });
 
         } catch (err) {
             console.error("[Vision System] Advanced vision request failed:", err);
-            const errDescription = err.message === 'timeout' ? 'Scan timed out' : 'Analysis failed';
+            const errDescription = "Unable to analyze the scene.";
             
-            SpeechService.announce(errDescription);
             showScanPopup(errDescription);
+            requestAnimationFrame(() => {
+                SpeechService.announce(errDescription);
+            });
         } finally {
             isAnalyzing = false;
             const scanBtn = document.getElementById('btn-scan-action');
