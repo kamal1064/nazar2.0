@@ -182,7 +182,11 @@
                     
                     <!-- Camera Header Bar -->
                     <div class="camera-header-bar">
-                        <div></div>
+                        <button class="btn-back-home" id="btn-back-home" aria-label="Back to Home">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
                         <div class="camera-header-title">AI VISION</div>
                         <button class="btn-flip-camera" id="camera-swap-btn" aria-label="Flip Camera">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
@@ -193,26 +197,27 @@
 
                     <!-- Top Real-Time AI Detection Overlay Banner -->
                     <div class="ai-description-banner" id="vision-system-bar">
-                        <div class="banner-icon-box">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                        <div class="mic-icon-circle">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                             </svg>
                         </div>
                         <div class="banner-text-wrap">
-                            <span class="banner-tag">AI Description</span>
+                            <span class="banner-tag">AI DESCRIPTION</span>
                             <span class="banner-desc" id="scan-popup-text">Ready to Scan. Point your camera at an object and press Scan.</span>
-                            <!-- Dynamic expand toggle -->
+                        </div>
+                        <div class="banner-right-controls">
+                            <button class="banner-repeat-btn" id="repeat-btn" aria-label="Repeat speech output">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                </svg>
+                            </button>
                             <button id="toggle-desc-expand" class="desc-expand-btn" aria-label="Expand Text" style="display: none;">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="14" height="14">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
                         </div>
-                        <button class="banner-repeat-btn" id="repeat-btn" aria-label="Repeat speech output">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                            </svg>
-                        </button>
                     </div>
 
                     <!-- Camera Stream & Bounding Boxes Canvas -->
@@ -241,8 +246,8 @@
                             <div class="dock-section dock-left">
                                 <button class="btn-control-scan" id="btn-scan-action" aria-label="Scan Surroundings">
                                     <div class="scan-pulse-ring"></div>
-                                    <svg class="scan-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                    <svg class="scan-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                     </svg>
                                     <span class="control-label">SCAN</span>
                                 </button>
@@ -252,8 +257,18 @@
                             <div class="dock-section dock-center">
                                 <button class="btn-control-mode" id="btn-mode-toggle" aria-label="Toggle Mode">
                                     <div class="mode-sliding-indicator"></div>
-                                    <span class="mode-option option-scene">🖼 Scene</span>
-                                    <span class="mode-option option-text">📄 Text</span>
+                                    <div class="mode-option option-scene">
+                                        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <span>Scene</span>
+                                    </div>
+                                    <div class="mode-option option-text">
+                                        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span>Text</span>
+                                    </div>
                                     <!-- Keep the required DOM element with ID 'mode-label-text' inside for app.js to update -->
                                     <span id="mode-label-text" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Scene Mode</span>
                                 </button>
@@ -262,11 +277,11 @@
                             <!-- Right Section: Stop Voice -->
                             <div class="dock-section dock-right">
                                 <button class="btn-control-stop" id="btn-stop-speech" aria-label="Stop Voice Output">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
+                                    <svg class="stop-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
                                     </svg>
-                                    <span>Stop Voice</span>
+                                    <span>STOP VOICE</span>
                                 </button>
                             </div>
 

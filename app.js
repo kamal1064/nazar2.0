@@ -871,6 +871,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             this.isDetecting = false;
             this.activeDetections = [];
+            const canvas = document.getElementById('detection-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
         },
 
         scheduleNext(element) {
@@ -955,6 +960,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             this.activeDetections = filtered;
 
+            // Draw premium visual bounding boxes
+            this.drawBoundingBoxes(filtered);
+
             // Build alerts
             const currentAlerts = [];
             const elWidth = 640; // canvas scaled coordinate standard
@@ -1015,6 +1023,92 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!found && now - this.alertCooldowns[key] > this.cooldownDuration) {
                     delete this.alertCooldowns[key];
                 }
+            });
+        },
+
+        drawBoundingBoxes(predictions) {
+            const canvas = document.getElementById('detection-canvas');
+            const video = document.getElementById('camera-stream');
+            if (!canvas || !video) return;
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Sync layout dimensions
+            if (canvas.width !== video.clientWidth || canvas.height !== video.clientHeight) {
+                canvas.width = video.clientWidth;
+                canvas.height = video.clientHeight;
+            }
+
+            if (predictions.length === 0) return;
+
+            const frameW = (CameraService.canvas && CameraService.canvas.width) || 640;
+            const frameH = (CameraService.canvas && CameraService.canvas.height) || 480;
+            const scaleX = canvas.width / frameW;
+            const scaleY = canvas.height / frameH;
+
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#3B82F6'; // Accent blue
+            ctx.fillStyle = '#3B82F6';
+
+            predictions.forEach(pred => {
+                const [x, y, w, h] = pred.bbox;
+                const rx = x * scaleX;
+                const ry = y * scaleY;
+                const rw = w * scaleX;
+                const rh = h * scaleY;
+
+                // Draw rounded rectangle bounding box
+                const radius = 8;
+                ctx.beginPath();
+                ctx.moveTo(rx + radius, ry);
+                ctx.lineTo(rx + rw - radius, ry);
+                ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + radius);
+                ctx.lineTo(rx + rw, ry + rh - radius);
+                ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - radius, ry + rh);
+                ctx.lineTo(rx + radius, ry + rh);
+                ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - radius);
+                ctx.lineTo(rx, ry + radius);
+                ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
+                ctx.closePath();
+                ctx.stroke();
+
+                // Draw solid background shadow overlay inside the box
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.05)';
+                ctx.fill();
+
+                // Draw clean label pill above the box
+                const friendlyLabel = pred.class.charAt(0).toUpperCase() + pred.class.slice(1);
+                ctx.font = 'bold 11px system-ui, sans-serif';
+                const labelText = `${friendlyLabel} (${Math.round(pred.score * 100)}%)`;
+                const textWidth = ctx.measureText(labelText).width;
+
+                ctx.fillStyle = '#2563EB'; // Solid blue background for label
+                const labelH = 18;
+                const labelY = ry - labelH - 4 > 0 ? ry - labelH - 4 : ry + 4;
+                
+                // Draw rounded label pill
+                const lr = 4;
+                const lx = rx;
+                const ly = labelY;
+                const lw = textWidth + 12;
+
+                ctx.beginPath();
+                ctx.moveTo(lx + lr, ly);
+                ctx.lineTo(lx + lw - lr, ly);
+                ctx.quadraticCurveTo(lx + lw, ly, lx + lw, ly + lr);
+                ctx.lineTo(lx + lw, ly + labelH - lr);
+                ctx.quadraticCurveTo(lx + lw, ly + labelH, lx + lw - lr, ly + labelH);
+                ctx.lineTo(lx + lr, ly + labelH);
+                ctx.quadraticCurveTo(lx, ly + labelH, lx, ly + labelH - lr);
+                ctx.lineTo(lx, ly + lr);
+                ctx.quadraticCurveTo(lx, ly, lx + lr, ly);
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw text in white
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillText(labelText, lx + 6, ly + 13);
             });
         }
     };
@@ -3172,6 +3266,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isExpanded = desc.classList.toggle('expanded');
                 toggleDescExpandBtn.classList.toggle('expanded', isExpanded);
                 toggleDescExpandBtn.setAttribute('aria-label', isExpanded ? 'Collapse Text' : 'Expand Text');
+            }
+        });
+    }
+
+    const btnBackHome = document.getElementById('btn-back-home');
+    if (btnBackHome) {
+        btnBackHome.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const homeTabBtn = document.querySelector('[data-tab="home"]');
+            if (homeTabBtn) homeTabBtn.click();
+        });
+    }
+
+    const visionSystemBar = document.getElementById('vision-system-bar');
+    if (visionSystemBar) {
+        visionSystemBar.addEventListener('click', (e) => {
+            if (e.target.closest('#repeat-btn') || e.target.closest('#toggle-desc-expand')) {
+                return;
+            }
+            const toggleBtn = document.getElementById('toggle-desc-expand');
+            if (toggleBtn && toggleBtn.style.display !== 'none') {
+                toggleBtn.click();
             }
         });
     }

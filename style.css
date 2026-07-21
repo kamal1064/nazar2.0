@@ -488,7 +488,8 @@ html, body {
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
-.btn-flip-camera {
+.btn-flip-camera,
+.btn-back-home {
     width: 44px;
     height: 44px;
     border-radius: 50%;
@@ -500,46 +501,54 @@ html, body {
     justify-content: center;
     cursor: pointer;
     backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     transition: var(--transition);
 }
 
+.btn-flip-camera:hover,
+.btn-back-home:hover {
+    background: rgba(15, 23, 42, 0.85);
+    transform: scale(1.05);
+}
+
 .btn-flip-camera:hover {
-    background: rgba(15, 23, 42, 0.9);
-    transform: rotate(180deg);
+    transform: rotate(180deg) scale(1.05);
 }
 
 /* Top AI Detection Overlay Banner */
 .ai-description-banner {
     position: absolute;
-    top: calc(1rem + env(safe-area-inset-top, 0px));
+    top: calc(4.75rem + env(safe-area-inset-top, 0px));
     left: 1.25rem;
     right: 1.25rem;
-    background: rgba(15, 23, 42, 0.45);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 20px;
-    padding: 0.85rem 1.1rem;
+    padding: 1rem 1.15rem;
     color: white;
     z-index: 15;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     box-shadow: var(--shadow-medium);
     display: flex;
-    align-items: flex-start;
-    gap: 0.85rem;
+    align-items: center;
+    gap: 0.95rem;
     max-height: 120px;
     box-sizing: border-box;
+    cursor: pointer;
 }
 
-.banner-icon-box {
-    width: 34px;
-    height: 34px;
+.mic-icon-circle {
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
-    background: var(--primary);
+    background: #2563EB;
     color: white;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    box-shadow: 0 0 10px rgba(37, 99, 235, 0.4);
 }
 
 .banner-text-wrap {
@@ -551,11 +560,11 @@ html, body {
 }
 
 .banner-tag {
-    font-size: 0.65rem;
+    font-size: 0.68rem;
     font-weight: 800;
     letter-spacing: 0.75px;
     text-transform: uppercase;
-    color: var(--primary-accent);
+    color: #3B82F6;
 }
 
 .banner-desc {
@@ -576,18 +585,27 @@ html, body {
     overflow-y: auto;
 }
 
+.banner-right-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    align-self: stretch;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
 .desc-expand-btn {
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     padding: 2px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-top: 2px;
-    transition: transform 0.2s ease;
-    align-self: flex-start;
+    transition: transform 0.25s ease;
 }
 
 .desc-expand-btn.expanded {
@@ -599,13 +617,13 @@ html, body {
     border: none;
     color: rgba(255, 255, 255, 0.75);
     cursor: pointer;
-    padding: 0.25rem;
+    padding: 2px;
     transition: var(--transition);
-    flex-shrink: 0;
 }
 
 .banner-repeat-btn:hover {
     color: white;
+    transform: scale(1.1);
 }
 
 /* Camera Video Stream Container */
@@ -649,11 +667,11 @@ html, body {
 }
 
 .camera-control-dock {
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 24px;
+    background: rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 26px;
     padding: 6px 10px;
     display: flex;
     align-items: center;
@@ -691,14 +709,16 @@ html, body {
     background: linear-gradient(135deg, #2563EB, #3B82F6);
     color: white;
     border: none;
-    border-radius: 16px;
-    height: 40px;
-    padding: 0 14px;
+    border-radius: 18px;
+    height: 68px;
+    width: 76px;
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    gap: 4px;
     font-weight: 800;
-    font-size: 0.82rem;
+    font-size: 0.7rem;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -724,7 +744,7 @@ html, body {
 .scan-pulse-ring {
     position: absolute;
     inset: -2px;
-    border-radius: 18px;
+    border-radius: 20px;
     border: 2px solid #3B82F6;
     opacity: 0;
     pointer-events: none;
@@ -745,13 +765,12 @@ html, body {
     position: relative;
     display: flex;
     align-items: center;
-    background: rgba(255, 255, 255, 0.08) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 20px;
     padding: 2px;
-    height: 40px;
-    width: 100%;
-    max-width: 155px;
+    height: 68px;
+    width: 140px;
     cursor: pointer;
     overflow: hidden;
     flex-shrink: 0;
@@ -764,7 +783,7 @@ html, body {
     left: 2px;
     width: calc(50% - 2px);
     background: #2563EB;
-    border-radius: 14px;
+    border-radius: 18px;
     transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     z-index: 1;
     box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
@@ -776,16 +795,17 @@ html, body {
 
 .mode-option {
     flex: 1;
-    text-align: center;
-    font-size: 0.76rem;
-    font-weight: 700;
-    color: rgba(255, 255, 255, 0.6);
-    z-index: 2;
-    transition: color 0.2s ease;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    z-index: 2;
+    transition: color 0.2s ease;
+    height: 100%;
 }
 
 .mode-option.option-scene {
@@ -793,7 +813,7 @@ html, body {
 }
 
 .mode-text-active .mode-option.option-scene {
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.5);
 }
 
 .mode-text-active .mode-option.option-text {
@@ -802,25 +822,27 @@ html, body {
 
 /* Stop Voice Button (Right section) */
 .btn-control-stop {
-    background: rgba(255, 255, 255, 0.08) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 16px;
-    height: 40px;
-    padding: 0 12px;
-    color: white;
+    background: white !important;
+    border: none !important;
+    border-radius: 18px;
+    height: 68px;
+    width: 76px;
+    color: #0F172A;
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
-    gap: 6px;
-    font-weight: 700;
-    font-size: 0.78rem;
+    justify-content: center;
+    gap: 4px;
+    font-weight: 800;
+    font-size: 0.65rem;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     flex-shrink: 0;
 }
 
 .btn-control-stop:hover {
-    background: rgba(255, 255, 255, 0.15) !important;
+    background: #F1F5F9 !important;
 }
 
 .btn-control-stop:active {
