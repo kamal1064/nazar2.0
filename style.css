@@ -208,7 +208,7 @@ html, body {
 
 .app-panels-container {
     flex: 1;
-    height: calc(100vh - var(--bottom-nav-height));
+    height: 100%;
     overflow-y: auto;
     position: relative;
 }
@@ -218,7 +218,7 @@ html, body {
     display: none;
     width: 100%;
     min-height: auto;
-    padding: 1.25rem 1.25rem calc(var(--bottom-nav-height) + 1rem) 1.25rem;
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 1.25rem calc(var(--bottom-nav-height) + 1.5rem + env(safe-area-inset-bottom, 0px)) 1.25rem;
     opacity: 0;
     transition: opacity 0.2s ease;
 }
@@ -728,7 +728,7 @@ html, body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-muted);
-    margin: 1.5rem 0 0.75rem 0;
+    margin: 0 0 0.75rem 0;
 }
 
 .voice-assistant-card {
@@ -781,6 +781,7 @@ html, body {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    margin-bottom: 1.5rem;
 }
 
 .settings-item-card {
