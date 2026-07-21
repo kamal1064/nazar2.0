@@ -457,12 +457,16 @@ html, body {
 
 /* Camera Workspace (Heart of Application) */
 #camera-panel {
-    display: flex;
+    display: none;
     flex-direction: column;
     height: calc(100vh - var(--bottom-nav-height));
     padding: 0 !important;
     position: relative;
     background-color: #000000;
+}
+
+#camera-panel.active-panel {
+    display: flex !important;
 }
 
 .camera-header-bar {
