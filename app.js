@@ -2278,9 +2278,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (isOcrMode) {
                 btn.style.background = 'rgba(59, 130, 246, 0.25)';
                 btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+                btn.classList.add('mode-text-active');
             } else {
                 btn.style.background = 'rgba(255, 255, 255, 0.08)';
                 btn.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                btn.classList.remove('mode-text-active');
             }
         }
     }
@@ -3133,4 +3135,44 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         SpeechService.announce("Welcome to Nazar, your AI navigation companion. Ready to assist.");
     }, 2000);
+
+    // --- 13. AI DESCRIPTION EXPAND/COLLAPSE HELPER ---
+    function checkDescriptionOverflow() {
+        const desc = document.getElementById('scan-popup-text');
+        const expandBtn = document.getElementById('toggle-desc-expand');
+        if (!desc || !expandBtn) return;
+        
+        // Temporarily reset expanded to check standard clamp overflow
+        const wasExpanded = desc.classList.contains('expanded');
+        if (!wasExpanded) {
+            expandBtn.style.display = 'none';
+            setTimeout(() => {
+                const isOverflowing = desc.scrollHeight > desc.clientHeight;
+                if (isOverflowing) {
+                    expandBtn.style.display = 'inline-flex';
+                }
+            }, 50);
+        }
+    }
+
+    const scanPopupObserver = new MutationObserver(checkDescriptionOverflow);
+    const scanPopupElem = document.getElementById('scan-popup-text');
+    if (scanPopupElem) {
+        scanPopupObserver.observe(scanPopupElem, { childList: true, characterData: true, subtree: true });
+        // Initial run
+        checkDescriptionOverflow();
+    }
+
+    const toggleDescExpandBtn = document.getElementById('toggle-desc-expand');
+    if (toggleDescExpandBtn) {
+        toggleDescExpandBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const desc = document.getElementById('scan-popup-text');
+            if (desc) {
+                const isExpanded = desc.classList.toggle('expanded');
+                toggleDescExpandBtn.classList.toggle('expanded', isExpanded);
+                toggleDescExpandBtn.setAttribute('aria-label', isExpanded ? 'Collapse Text' : 'Expand Text');
+            }
+        });
+    }
 });
