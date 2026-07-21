@@ -217,10 +217,14 @@ html, body {
 .screen-panel {
     display: none;
     width: 100%;
-    min-height: 100%;
+    min-height: auto;
     padding: 1.25rem 1.25rem calc(var(--bottom-nav-height) + 1rem) 1.25rem;
     opacity: 0;
     transition: opacity 0.2s ease;
+}
+
+.settings-menu-card-header[aria-expanded="true"] .chevron-arrow {
+    transform: rotate(90deg);
 }
 
 .screen-panel.active-panel {
@@ -903,79 +907,321 @@ html, body {
    MULTI-TIER RESPONSIVE MEDIA QUERIES
    ========================================================================== */
 
-/* 1. Mobile (320px – 767px): Standard Mobile Viewport */
-@media (max-width: 767px) {
-    .desktop-sidebar,
-    .desktop-right-panel {
-        display: none !important;
-    }
+/* Toggle Switch Slider styling */
+.toggle-switch-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
 }
 
-/* 2. Tablet (768px – 1023px): Responsive Dashboard with Left Sidebar */
+.toggle-switch-wrapper input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #cbd5e1;
+    transition: var(--transition);
+    border-radius: 24px;
+}
+
+.toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: var(--transition);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.toggle-switch-wrapper input:checked + .toggle-slider {
+    background-color: var(--primary);
+}
+
+.toggle-switch-wrapper input:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
+/* Hamburger Drawer & Backdrop styles */
+#hamburger-drawer-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    z-index: 900;
+    backdrop-filter: blur(4px);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+#hamburger-drawer-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+.hamburger-drawer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background-color: var(--bg-card);
+    border-right: 1px solid var(--border-color);
+    padding: 1.5rem 1.25rem;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+}
+
+.hamburger-drawer.active {
+    transform: translateX(0);
+}
+
+.drawer-nav-item {
+    transition: var(--transition);
+}
+
+.drawer-nav-item:hover {
+    background-color: var(--primary-light);
+    color: var(--primary);
+}
+
+.drawer-nav-item.active {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    box-shadow: inset 3px 0 0 var(--primary);
+}
+
+/* 1. Mobile (default, 320px – 767px) */
+/* Hide desktop sidebar elements */
+.desktop-sidebar {
+    display: none !important;
+}
+
+/* 2. Tablet (768px – 1023px): Sidebar + Center panel. Settings in side drawer */
 @media (min-width: 768px) and (max-width: 1023px) {
-    .desktop-sidebar {
+    #app-container {
         display: flex;
-        width: 220px;
-    }
-    .bottom-nav {
-        display: none !important;
-    }
-    .desktop-right-panel {
-        display: none !important;
-    }
-    .app-mobile-viewport {
+        flex-direction: row;
+        width: 100vw;
         height: 100vh;
+        overflow: hidden;
     }
-    .screen-panel {
-        padding-bottom: 2rem !important;
-    }
-}
-
-/* 3. Laptop (1024px – 1279px): Adaptive Layout */
-@media (min-width: 1024px) and (max-width: 1279px) {
+    
     .desktop-sidebar {
-        display: flex;
+        display: flex !important;
         width: 240px;
+        flex-shrink: 0;
     }
-    .bottom-nav {
-        display: none !important;
-    }
-    .desktop-right-panel {
-        display: none !important;
-    }
-}
 
-/* 4. Large Laptop (1280px – 1439px): 3-Column Layout */
-@media (min-width: 1280px) and (max-width: 1439px) {
-    .desktop-sidebar {
-        display: flex;
-        width: var(--sidebar-width);
-    }
     .bottom-nav {
         display: none !important;
     }
-    .desktop-right-panel {
-        display: flex;
+    
+    #mobile-menu-btn {
+        display: none !important;
+    }
+
+    .app-mobile-viewport {
+        flex: 1;
+        max-width: none;
+        height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+        background-color: var(--bg-body);
+        padding: 1.5rem;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .app-panels-container {
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    /* Settings Panel acts as right-side drawer on Tablet */
+    #settings-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
         width: 320px;
+        background-color: var(--bg-card);
+        border-left: 1px solid var(--border-color);
+        z-index: 800;
+        transform: translateX(100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex !important;
+        flex-direction: column;
+        padding: 1.5rem;
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.05);
+    }
+
+    #settings-panel.drawer-open {
+        transform: translateX(0);
     }
 }
 
-/* 5. Desktop (1440px+): Full 3-Column Layout matching Reference Image 2 */
+/* 3. Laptop (1024px – 1439px): Sidebar + Workspace + Right panel (narrower settings) */
+@media (min-width: 1024px) and (max-width: 1439px) {
+    #app-container {
+        display: flex;
+        flex-direction: row;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+    }
+    
+    .desktop-sidebar {
+        display: flex !important;
+        width: 240px;
+        flex-shrink: 0;
+    }
+
+    .bottom-nav {
+        display: none !important;
+    }
+    
+    #mobile-menu-btn {
+        display: none !important;
+    }
+
+    .app-mobile-viewport {
+        flex: 1;
+        max-width: none;
+        height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+        background-color: var(--bg-body);
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        overflow: hidden;
+    }
+
+    .app-panels-container {
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    /* Settings Panel permanently visible on the right */
+    #settings-panel {
+        grid-column: 2;
+        grid-row: 1;
+        display: flex !important;
+        flex-direction: column;
+        height: 100%;
+        overflow-y: auto;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-hero);
+        padding: 1.5rem;
+        box-shadow: var(--shadow-small);
+        position: static !important;
+        transform: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    /* Active Workspace Panel (Home or Camera) occupies column 1 */
+    .app-panels-container > .screen-panel:not(#settings-panel) {
+        grid-column: 1;
+        grid-row: 1;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .app-panels-container > .screen-panel:not(#settings-panel):not(.active-panel) {
+        display: none !important;
+    }
+}
+
+/* 4. Desktop (1440px+): Full 3-Column Layout matching Reference Image 2 */
 @media (min-width: 1440px) {
     #app-container {
-        max-width: 1600px;
-        margin: 0 auto;
-    }
-    .desktop-sidebar {
         display: flex;
-        width: var(--sidebar-width);
+        flex-direction: row;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
     }
+    
+    .desktop-sidebar {
+        display: flex !important;
+        width: var(--sidebar-width);
+        flex-shrink: 0;
+    }
+
     .bottom-nav {
         display: none !important;
     }
-    .desktop-right-panel {
-        display: flex;
-        width: 380px;
+    
+    #mobile-menu-btn {
+        display: none !important;
+    }
+
+    .app-mobile-viewport {
+        flex: 1;
+        max-width: none;
+        height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+        background-color: var(--bg-body);
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 2rem;
+        padding: 2rem;
+        overflow: hidden;
+    }
+
+    .app-panels-container {
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    /* Settings Panel permanently visible on the right */
+    #settings-panel {
+        grid-column: 2;
+        grid-row: 1;
+        display: flex !important;
+        flex-direction: column;
+        height: 100%;
+        overflow-y: auto;
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-hero);
+        padding: 2rem;
+        box-shadow: var(--shadow-small);
+        position: static !important;
+        transform: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    /* Active Workspace Panel (Home or Camera) occupies column 1 */
+    .app-panels-container > .screen-panel:not(#settings-panel) {
+        grid-column: 1;
+        grid-row: 1;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .app-panels-container > .screen-panel:not(#settings-panel):not(.active-panel) {
+        display: none !important;
     }
 }
 

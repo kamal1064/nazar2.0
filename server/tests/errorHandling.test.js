@@ -111,6 +111,8 @@ async function runErrorHandlingTests() {
         process.exitCode = 1;
     } finally {
         server.close();
+        const mongoose = require('mongoose');
+        mongoose.connection.close();
     }
 }
 

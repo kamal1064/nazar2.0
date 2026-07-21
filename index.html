@@ -92,7 +92,7 @@
                     
                     <header class="home-header">
                         <div class="header-branding">
-                            <button class="mobile-menu-btn" aria-label="Menu">
+                            <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menu">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                                 </svg>
@@ -293,36 +293,83 @@
                     <!-- Safety & Support Section -->
                     <h2 class="settings-section-title">Safety & Support</h2>
                     <div class="settings-card-group">
-                        <div class="settings-item-card" id="settings-emergency-sos">
-                            <div class="item-left">
-                                <div class="item-icon-circle icon-red">SOS</div>
-                                <div class="item-info">
-                                    <span class="item-title">Emergency SOS</span>
-                                    <span class="item-subtitle">Send alert to your contacts</span>
+                        
+                        <!-- 1. Emergency SOS Accordion Card -->
+                        <div class="settings-menu-card settings-item-card" id="settings-emergency-sos">
+                            <button class="settings-menu-card-header" type="button" aria-expanded="false" style="background: none; border: none; width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 0; cursor: pointer; color: inherit; font-family: inherit;">
+                                <div class="item-left">
+                                    <div class="item-icon-circle icon-red">SOS</div>
+                                    <div class="item-info">
+                                        <span class="item-title">Emergency SOS</span>
+                                        <span class="item-subtitle">Send alert to your contacts</span>
+                                    </div>
                                 </div>
+                                <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="transition: var(--transition);">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </button>
+                            <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                                <button type="button" id="btn-test-email" class="btn-secondary" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-btn); background: rgba(59, 130, 246, 0.1); color: var(--primary); border: 1px solid rgba(59, 130, 246, 0.25); font-weight: 700; cursor: pointer;">Test SOS Email Dispatch</button>
+                                <button type="button" id="btn-test-sos" class="btn-secondary" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-btn); background: var(--bg-card-hover); color: var(--text-main); border: 1px solid var(--border-color); font-weight: 700; cursor: pointer;">Test SMS Dispatch</button>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
                         </div>
 
-                        <div class="settings-item-card" id="settings-emergency-contacts">
-                            <div class="item-left">
-                                <div class="item-icon-circle icon-purple">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                    </svg>
+                        <!-- 2. Emergency Contacts Accordion Card -->
+                        <div class="settings-menu-card settings-item-card" id="settings-emergency-contacts">
+                            <button class="settings-menu-card-header" type="button" aria-expanded="false" style="background: none; border: none; width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 0; cursor: pointer; color: inherit; font-family: inherit;">
+                                <div class="item-left">
+                                    <div class="item-icon-circle icon-purple">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                    <div class="item-info">
+                                        <span class="item-title">Emergency Contacts</span>
+                                        <span class="item-subtitle">Manage emergency contact details</span>
+                                    </div>
                                 </div>
-                                <div class="item-info">
-                                    <span class="item-title">Emergency Contacts</span>
-                                    <span class="item-subtitle">Manage your contacts</span>
+                                <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="transition: var(--transition);">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </button>
+                            
+                            <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                                <!-- Contact Display Card -->
+                                <div id="saved-contact-card" style="display: none; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); border-radius: 12px; padding: 0.85rem; flex-direction: column; gap: 0.25rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span id="saved-contact-name" style="font-weight: 700; font-size: 0.9rem; color: var(--text-main);"></span>
+                                        <span id="saved-contact-relationship" style="font-size: 0.72rem; background: var(--danger); color: white; padding: 2px 8px; border-radius: 12px; font-weight: 700;"></span>
+                                    </div>
+                                    <span id="saved-contact-phone" style="font-size: 0.8rem; color: var(--text-muted);"></span>
+                                    <span id="saved-contact-email" style="font-size: 0.8rem; color: var(--primary); word-break: break-all;"></span>
+                                </div>
+
+                                <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);" for="input-emergency-name">Full Name</label>
+                                    <input type="text" id="input-emergency-name" class="settings-text-input" placeholder="Full Name" style="padding: 0.65rem; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 0.85rem; background: var(--bg-body); color: var(--text-main);">
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);" for="input-emergency-email">Email Address</label>
+                                    <input type="email" id="input-emergency-email" class="settings-text-input" placeholder="Email Address" style="padding: 0.65rem; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 0.85rem; background: var(--bg-body); color: var(--text-main);">
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);" for="input-emergency-phone">Phone Number</label>
+                                    <input type="tel" id="input-emergency-phone" class="settings-text-input" placeholder="Phone Number" style="padding: 0.65rem; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 0.85rem; background: var(--bg-body); color: var(--text-main);">
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 0.3rem;">
+                                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted);" for="input-emergency-rel">Relationship</label>
+                                    <input type="text" id="input-emergency-rel" class="settings-text-input" placeholder="Relationship" style="padding: 0.65rem; border: 1px solid var(--border-color); border-radius: 8px; outline: none; font-size: 0.85rem; background: var(--bg-body); color: var(--text-main);">
+                                </div>
+                                <div id="emergency-contact-error" style="display: none; font-size: 0.8rem; color: var(--danger); font-weight: 600;" role="alert"></div>
+
+                                <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                                    <button type="button" id="btn-save-emergency" class="btn-primary" style="flex: 1; padding: 0.75rem; font-size: 0.85rem; border-radius: var(--radius-btn); background: var(--primary); color: white; border: none; font-weight: 700; cursor: pointer;">Save Contact</button>
+                                    <button type="button" id="btn-delete-emergency" class="btn-secondary" style="flex: 1; padding: 0.75rem; font-size: 0.85rem; border-radius: var(--radius-btn); background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 700; cursor: pointer;">Delete Contact</button>
                                 </div>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
                         </div>
 
+                        <!-- 3. Live Location Sharing -->
                         <div class="settings-item-card">
                             <div class="item-left">
                                 <div class="item-icon-circle icon-green">
@@ -335,103 +382,133 @@
                                     <span class="item-subtitle">Share your location in real-time</span>
                                 </div>
                             </div>
-                            <input type="checkbox" id="toggle-location-sharing" checked style="width: 20px; height: 20px;">
+                            <label class="toggle-switch-wrapper" for="toggle-location-sharing">
+                                <input type="checkbox" id="toggle-location-sharing" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
 
                     <!-- Preferences Section -->
                     <h2 class="settings-section-title">Preferences</h2>
                     <div class="settings-card-group">
-                        <div class="settings-item-card">
-                            <div class="item-left">
-                                <div class="item-icon-circle icon-blue">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                    </svg>
+                        
+                        <!-- 1. Voice Settings Accordion Card -->
+                        <div class="settings-menu-card settings-item-card">
+                            <button class="settings-menu-card-header" type="button" aria-expanded="false" style="background: none; border: none; width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 0; cursor: pointer; color: inherit; font-family: inherit;">
+                                <div class="item-left">
+                                    <div class="item-icon-circle icon-blue">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                        </svg>
+                                    </div>
+                                    <div class="item-info">
+                                        <span class="item-title">Voice Settings</span>
+                                        <span class="item-subtitle">Speech rate, volume & voice</span>
+                                    </div>
                                 </div>
-                                <div class="item-info">
-                                    <span class="item-title">Voice Settings</span>
-                                    <span class="item-subtitle">Speech rate, volume & voice</span>
+                                <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="transition: var(--transition);">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </button>
+                            <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <span class="item-title" style="font-size: 0.85rem;">Enable Vocal Announcer</span>
+                                    <label class="toggle-switch-wrapper" for="toggle-speech-output">
+                                        <input type="checkbox" id="toggle-speech-output" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </div>
-                            </div>
-                            <input type="checkbox" id="toggle-speech-output" checked style="display:none;">
-                            <input type="checkbox" id="toggle-voice-commands" style="display:none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </div>
-
-                        <div class="settings-item-card">
-                            <div class="item-left">
-                                <div class="item-icon-circle icon-teal">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    </svg>
-                                </div>
-                                <div class="item-info">
-                                    <span class="item-title">Scan Settings</span>
-                                    <span class="item-subtitle">Choose scan mode and alerts</span>
-                                </div>
-                            </div>
-                            <input type="checkbox" id="toggle-vibration-alerts" checked style="display:none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </div>
-
-                        <div class="settings-item-card">
-                            <div class="item-left">
-                                <div class="item-icon-circle icon-purple">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-23" />
-                                    </svg>
-                                </div>
-                                <div class="item-info">
-                                    <span class="item-title">Appearance</span>
-                                    <span class="item-subtitle">Light / Dark mode</span>
+                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <span class="item-title" style="font-size: 0.85rem;">Voice Command Mode</span>
+                                    <label class="toggle-switch-wrapper" for="toggle-voice-commands">
+                                        <input type="checkbox" id="toggle-voice-commands">
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </div>
                             </div>
-                            <input type="checkbox" id="toggle-dark-mode" style="display:none;">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
                         </div>
 
-                        <div class="settings-item-card">
-                            <div class="item-left">
-                                <div class="item-icon-circle icon-orange">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
-                                    </svg>
+                        <!-- 2. Scan Settings Accordion Card -->
+                        <div class="settings-menu-card settings-item-card">
+                            <button class="settings-menu-card-header" type="button" aria-expanded="false" style="background: none; border: none; width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 0; cursor: pointer; color: inherit; font-family: inherit;">
+                                <div class="item-left">
+                                    <div class="item-icon-circle icon-teal">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        </svg>
+                                    </div>
+                                    <div class="item-info">
+                                        <span class="item-title">Scan Settings</span>
+                                        <span class="item-subtitle">Choose scan mode and alerts</span>
+                                    </div>
                                 </div>
-                                <div class="item-info">
-                                    <span class="item-title">Language</span>
-                                    <span class="item-subtitle">English</span>
+                                <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="transition: var(--transition);">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </button>
+                            <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <span class="item-title" style="font-size: 0.85rem;">Enable Vibration Alerts</span>
+                                    <label class="toggle-switch-wrapper" for="toggle-vibration-alerts">
+                                        <input type="checkbox" id="toggle-vibration-alerts" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
                                 </div>
                             </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7" />
-                            </svg>
                         </div>
-                    </div>
 
-                    <!-- Emergency Contact Hidden Form Hooks (Preserved IDs) -->
-                    <div style="display:none;">
-                        <input type="text" id="input-emergency-name">
-                        <input type="email" id="input-emergency-email">
-                        <input type="tel" id="input-emergency-phone">
-                        <input type="text" id="input-emergency-rel">
-                        <button type="button" id="btn-save-emergency"></button>
-                        <button type="button" id="btn-delete-emergency"></button>
-                        <button type="button" id="btn-test-email"></button>
-                        <button type="button" id="btn-test-sos"></button>
-                        <div id="saved-contact-card">
-                            <span id="saved-contact-name"></span>
-                            <span id="saved-contact-phone"></span>
-                            <span id="saved-contact-email"></span>
-                            <span id="saved-contact-relationship"></span>
+                        <!-- 3. Appearance Accordion Card -->
+                        <div class="settings-menu-card settings-item-card">
+                            <button class="settings-menu-card-header" type="button" aria-expanded="false" style="background: none; border: none; width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 0; cursor: pointer; color: inherit; font-family: inherit;">
+                                <div class="item-left">
+                                    <div class="item-icon-circle icon-purple">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-23" />
+                                        </svg>
+                                    </div>
+                                    <div class="item-info">
+                                        <span class="item-title">Appearance</span>
+                                        <span class="item-subtitle">Light / Dark mode toggle</span>
+                                    </div>
+                                </div>
+                                <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="transition: var(--transition);">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </button>
+                            <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <span class="item-title" style="font-size: 0.85rem;">Force Dark Mode Theme</span>
+                                    <label class="toggle-switch-wrapper" for="toggle-dark-mode">
+                                        <input type="checkbox" id="toggle-dark-mode">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                        <div id="emergency-contact-error"></div>
+
+                        <!-- 4. Language Accordion Card -->
+                        <div class="settings-menu-card settings-item-card">
+                            <button class="settings-menu-card-header" type="button" aria-expanded="false" style="background: none; border: none; width: 100%; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 0; cursor: pointer; color: inherit; font-family: inherit;">
+                                <div class="item-left">
+                                    <div class="item-icon-circle icon-orange">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9" />
+                                        </svg>
+                                    </div>
+                                    <div class="item-info">
+                                        <span class="item-title">Language</span>
+                                        <span class="item-subtitle">English</span>
+                                    </div>
+                                </div>
+                                <svg class="chevron-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" style="transition: var(--transition);">
+                                    <path d="m9 18 6-6-6-6"/>
+                                </svg>
+                            </button>
+                            <div style="margin-top: 1rem; width: 100%; display: flex; flex-direction: column; gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                                <span class="item-subtitle" style="font-size: 0.85rem;">Default System Voice: English (United States)</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- About Section -->
@@ -503,53 +580,7 @@
 
         </div> <!-- End app-mobile-viewport -->
 
-        <!-- Desktop Right Context Panel (Reference Image 2 Column 3) -->
-        <aside class="desktop-right-panel" id="desktop-right-panel" aria-label="Desktop Context & Settings Panel">
-            <h2 class="settings-page-title" style="font-size: 1.35rem; margin-bottom: 1.25rem;">Settings</h2>
-            
-            <div class="voice-assistant-card">
-                <div class="voice-card-left">
-                    <div class="voice-card-icon">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                        </svg>
-                    </div>
-                    <div class="voice-card-info">
-                        <span class="voice-card-name">Voice Assistant</span>
-                        <span class="voice-card-status">NAZAR Voice is active • Listening...</span>
-                    </div>
-                </div>
-            </div>
 
-            <h3 class="settings-section-title">Safety & Support</h3>
-            <div class="settings-card-group" style="margin-bottom: 1.25rem;">
-                <div class="settings-item-card">
-                    <div class="item-left">
-                        <div class="item-icon-circle icon-red">SOS</div>
-                        <div class="item-info">
-                            <span class="item-title">Emergency SOS</span>
-                            <span class="item-subtitle">Send alert to your contacts</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <h3 class="settings-section-title">Preferences</h3>
-            <div class="settings-card-group">
-                <div class="settings-item-card">
-                    <div class="item-left">
-                        <div class="item-icon-circle icon-blue">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="18" height="18">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                            </svg>
-                        </div>
-                        <div class="item-info">
-                            <span class="item-title">Voice Settings</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </aside>
 
         <!-- SOS Trigger Confirmation Modal -->
         <div class="app-modal-layer" id="sos-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
@@ -565,6 +596,59 @@
         </div>
 
     </main>
+
+    <!-- Hamburger Slide-out Navigation Drawer (Mobile Only) -->
+    <div class="app-drawer-backdrop" id="hamburger-drawer-overlay"></div>
+    <div class="hamburger-drawer" id="hamburger-drawer" aria-label="Mobile Navigation Menu">
+        <div class="drawer-header-row" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+            <div class="brand-title" style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.25rem; font-weight: 800; color: var(--primary);">
+                <span>NAZAR</span>
+            </div>
+            <button class="btn-drawer-close" id="hamburger-drawer-close" aria-label="Close menu" style="background: transparent; border: none; cursor: pointer; color: var(--text-main);">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        
+        <nav style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1.5rem;">
+            <button class="drawer-nav-item active" data-target="home" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-btn); background: transparent; border: none; width: 100%; text-align: left; font-weight: 700; color: var(--text-muted); cursor: pointer; font-family: inherit;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span>Home</span>
+            </button>
+            <button class="drawer-nav-item" data-target="camera" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-btn); background: transparent; border: none; width: 100%; text-align: left; font-weight: 700; color: var(--text-muted); cursor: pointer; font-family: inherit;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                </svg>
+                <span>Camera</span>
+            </button>
+            <button class="drawer-nav-item" data-target="settings" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-btn); background: transparent; border: none; width: 100%; text-align: left; font-weight: 700; color: var(--text-muted); cursor: pointer; font-family: inherit;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Settings</span>
+            </button>
+        </nav>
+
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Dark Mode Toggle row inside Hamburger -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                <span style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);">Dark Mode</span>
+                <label class="toggle-switch-wrapper" for="toggle-dark-mode-drawer">
+                    <input type="checkbox" id="toggle-dark-mode-drawer">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            
+            <button class="btn-primary" id="drawer-quick-sos-btn" style="background: var(--danger); width: 100%; border: none; padding: 0.85rem; border-radius: var(--radius-btn); font-weight: 800; color: white; cursor: pointer; font-family: inherit;">
+                Emergency SOS
+            </button>
+        </div>
+    </div>
 
     <!-- JS Logic -->
     <script src="app.js?v=40"></script>

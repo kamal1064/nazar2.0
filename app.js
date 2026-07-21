@@ -179,6 +179,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             }
 
+            const toggleDarkDrawer = document.getElementById('toggle-dark-mode-drawer');
+            if (toggleDarkDrawer) {
+                toggleDarkDrawer.checked = this.state.darkModeEnabled;
+                toggleDarkDrawer.addEventListener('change', (e) => {
+                    if (toggleDark) {
+                        toggleDark.checked = e.target.checked;
+                        toggleDark.dispatchEvent(new Event('change'));
+                    }
+                });
+            }
+
+            const toggleDarkBtn = document.getElementById('toggle-dark-mode-btn');
+            if (toggleDarkBtn) {
+                toggleDarkBtn.addEventListener('click', () => {
+                    const isDark = document.body.classList.contains('dark-mode');
+                    if (toggleDark) {
+                        toggleDark.checked = !isDark;
+                        toggleDark.dispatchEvent(new Event('change'));
+                    }
+                    if (toggleDarkDrawer) {
+                        toggleDarkDrawer.checked = !isDark;
+                    }
+                });
+            }
+
             if (this.state.darkModeEnabled) {
                 document.body.classList.add('dark-mode');
             }
@@ -1790,9 +1815,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const screenPanels = document.querySelectorAll('.screen-panel');
 
     async function switchTab(tabId) {
+        // On desktop/laptop, settings is permanently on the right.
+        // Clicking settings should not hide the center view. Instead, keep the current center active (or default to home).
+        let targetCenterTab = tabId;
+        if (window.innerWidth >= 1024 && tabId === 'settings') {
+            targetCenterTab = (state.currentTab === 'settings' || !state.currentTab) ? 'home' : state.currentTab;
+        }
+
         state.currentTab = tabId;
 
-        if (tabId === 'camera') {
+        if (targetCenterTab === 'camera') {
             await CameraPermissionManager.checkStatus();
             if (CameraPermissionManager.state === 'granted') {
                 await CameraService.start();
@@ -1825,13 +1857,37 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        screenPanels.forEach(panel => {
-            if (panel.id === `${tabId}-panel`) {
-                panel.classList.add('active-panel');
+        document.querySelectorAll('.drawer-nav-item').forEach(item => {
+            if (item.getAttribute('data-target') === tabId) {
+                item.classList.add('active');
             } else {
-                panel.classList.remove('active-panel');
+                item.classList.remove('active');
             }
         });
+
+        screenPanels.forEach(panel => {
+            if (panel.id === 'settings-panel') {
+                if (window.innerWidth < 1024) {
+                    panel.classList.toggle('active-panel', tabId === 'settings');
+                } else {
+                    panel.classList.add('active-panel');
+                }
+            } else {
+                panel.classList.toggle('active-panel', panel.id === `${targetCenterTab}-panel`);
+            }
+        });
+
+        // On Tablet, clicking Settings toggles the settings panel drawer!
+        if (window.innerWidth >= 768 && window.innerWidth < 1024) {
+            const settingsPanel = document.getElementById('settings-panel');
+            if (settingsPanel) {
+                if (tabId === 'settings') {
+                    settingsPanel.classList.add('drawer-open');
+                } else {
+                    settingsPanel.classList.remove('drawer-open');
+                }
+            }
+        }
     }
 
     console.log(`[Navigation] Found ${navItems.length} bottom navigation buttons.`);
@@ -3016,6 +3072,52 @@ document.addEventListener('DOMContentLoaded', () => {
             e.stopPropagation();
             window.speechSynthesis.cancel();
             SpeechService.announce("Speech stopped.");
+        });
+    }
+
+    // Hamburger Drawer Open / Close / Sync bindings
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const hamburgerDrawer = document.getElementById('hamburger-drawer');
+    const hamburgerOverlay = document.getElementById('hamburger-drawer-overlay');
+    const hamburgerClose = document.getElementById('hamburger-drawer-close');
+
+    if (mobileMenuBtn && hamburgerDrawer && hamburgerOverlay) {
+        mobileMenuBtn.addEventListener('click', () => {
+            hamburgerDrawer.classList.add('active');
+            hamburgerOverlay.classList.add('active');
+        });
+    }
+
+    const closeDrawer = () => {
+        if (hamburgerDrawer && hamburgerOverlay) {
+            hamburgerDrawer.classList.remove('active');
+            hamburgerOverlay.classList.remove('active');
+        }
+    };
+
+    if (hamburgerClose) {
+        hamburgerClose.addEventListener('click', closeDrawer);
+    }
+    if (hamburgerOverlay) {
+        hamburgerOverlay.addEventListener('click', closeDrawer);
+    }
+
+    document.querySelectorAll('.drawer-nav-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const target = item.getAttribute('data-target');
+            switchTab(target);
+            closeDrawer();
+        });
+    });
+
+    const drawerSosBtn = document.getElementById('drawer-quick-sos-btn');
+    if (drawerSosBtn) {
+        drawerSosBtn.addEventListener('click', () => {
+            closeDrawer();
+            const sosModal = document.getElementById('sos-modal');
+            if (sosModal) sosModal.classList.add('modal-active');
+            SpeechService.announce("SOS emergency menu triggered. Confirmed action will share coordinates.");
         });
     }
 
