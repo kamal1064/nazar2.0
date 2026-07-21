@@ -2332,6 +2332,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Reset expanded state classes when new content is set
         popupText.classList.remove('expanded');
+        const banner = document.getElementById('vision-system-bar');
+        if (banner) {
+            banner.classList.remove('expanded');
+        }
         const expandBtn = document.getElementById('toggle-desc-expand');
         if (expandBtn) {
             expandBtn.classList.remove('expanded');
@@ -2345,6 +2349,10 @@ document.addEventListener('DOMContentLoaded', () => {
             currentScanDescription = "Ready to Scan. Point your camera at an object and press Scan.";
             popupText.innerText = currentScanDescription;
             popupText.classList.remove('expanded');
+        }
+        const banner = document.getElementById('vision-system-bar');
+        if (banner) {
+            banner.classList.remove('expanded');
         }
         const expandBtn = document.getElementById('toggle-desc-expand');
         if (expandBtn) {
@@ -3282,8 +3290,12 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleDescExpandBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const desc = document.getElementById('scan-popup-text');
+            const banner = document.getElementById('vision-system-bar');
             if (desc) {
                 const isExpanded = desc.classList.toggle('expanded');
+                if (banner) {
+                    banner.classList.toggle('expanded', isExpanded);
+                }
                 toggleDescExpandBtn.classList.toggle('expanded', isExpanded);
                 toggleDescExpandBtn.setAttribute('aria-label', isExpanded ? 'Collapse Text' : 'Expand Text');
             }

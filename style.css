@@ -531,11 +531,17 @@ html, body {
     -webkit-backdrop-filter: blur(20px);
     box-shadow: var(--shadow-medium);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.95rem;
-    max-height: 120px;
+    max-height: 120px; /* Collapsed state limit */
     box-sizing: border-box;
     cursor: pointer;
+    transition: max-height 0.25s ease-in-out, background-color 0.2s;
+    overflow: hidden;
+}
+
+.ai-description-banner.expanded {
+    max-height: 40vh; /* Limits expanded height to 40% of viewport */
 }
 
 .mic-icon-circle {
@@ -576,13 +582,18 @@ html, body {
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    transition: max-height 0.25s ease;
+    transition: max-height 0.25s ease-in-out;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .banner-desc.expanded {
+    display: block; /* Break out of -webkit-box layout to allow overflow-y scrolling */
     -webkit-line-clamp: unset;
-    max-height: 300px;
+    max-height: calc(40vh - 3rem); /* Allow internally scrolling the description text up to max height */
     overflow-y: auto;
+    padding-right: 4px;
 }
 
 .banner-right-controls {
