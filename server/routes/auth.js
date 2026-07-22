@@ -7,6 +7,8 @@ const { authLimiter } = require('../middleware/rateLimiter');
 // Public auth endpoints protected by rate limiting
 router.post('/signup', authLimiter, authController.signup);
 router.post('/login', authLimiter, authController.login);
+router.get('/google', authController.initiateGoogleOAuth);
+router.get('/google/callback', authController.googleOAuthCallback);
 router.post('/google', authLimiter, authController.googleAuth);
 router.post('/forgot-password', authLimiter, authController.forgotPassword);
 router.post('/reset-password', authLimiter, authController.resetPassword);

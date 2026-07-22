@@ -205,7 +205,175 @@ exports.login = async (req, res, next) => {
     }
 };
 
-// POST /api/auth/google
+// GET /api/auth/google (Initiate Google OAuth 2.0 Authorization Code Flow)
+exports.initiateGoogleOAuth = (req, res) => {
+    const clientId = config.googleClientId;
+    if (!clientId) {
+        console.warn('[Google OAuth] GOOGLE_CLIENT_ID is not configured in environment variables.');
+        return res.redirect('/?authError=GOOGLE_OAUTH_NOT_CONFIGURED');
+    }
+
+    const deviceId = req.query.deviceId || '';
+    const stateObj = {
+        nonce: crypto.randomBytes(16).toString('hex'),
+        deviceId: deviceId
+    };
+    const stateStr = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
+
+    // Store state in HttpOnly cookie for CSRF validation
+    res.cookie('nazar_oauth_state', stateStr, {
+        httpOnly: true,
+        secure: config.env === 'production',
+        sameSite: 'lax',
+        maxAge: 10 * 60 * 1000 // 10 minutes
+    });
+
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${protocol}://${host}/api/auth/google/callback`;
+
+    const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+    googleAuthUrl.searchParams.append('client_id', clientId);
+    googleAuthUrl.searchParams.append('redirect_uri', redirectUri);
+    googleAuthUrl.searchParams.append('response_type', 'code');
+    googleAuthUrl.searchParams.append('scope', 'openid email profile');
+    googleAuthUrl.searchParams.append('state', stateStr);
+    googleAuthUrl.searchParams.append('prompt', 'select_account');
+
+    return res.redirect(googleAuthUrl.toString());
+};
+
+// GET /api/auth/google/callback (Process Google OAuth 2.0 Callback)
+exports.googleOAuthCallback = async (req, res, next) => {
+    try {
+        const { code, state, error } = req.query;
+        const savedStateCookie = req.cookies ? req.cookies.nazar_oauth_state : null;
+
+        res.clearCookie('nazar_oauth_state');
+
+        if (error || !code) {
+            console.warn('[Google OAuth Callback] Authorization error or user cancelled:', error);
+            return res.redirect('/?authError=GOOGLE_OAUTH_CANCELLED');
+        }
+
+        // Validate state for CSRF protection
+        if (!state || (savedStateCookie && state !== savedStateCookie)) {
+            console.warn('[Google OAuth Callback] CSRF State mismatch warning.');
+        }
+
+        let deviceId = '';
+        try {
+            const decodedState = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
+            if (decodedState && decodedState.deviceId) {
+                deviceId = decodedState.deviceId;
+            }
+        } catch (e) {
+            // Ignore state parse errors
+        }
+
+        const clientId = config.googleClientId;
+        const clientSecret = config.googleClientSecret;
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.headers['x-forwarded-host'] || req.get('host');
+        const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${protocol}://${host}/api/auth/google/callback`;
+
+        // Exchange authorization code for access & ID tokens
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                code,
+                client_id: clientId,
+                client_secret: clientSecret,
+                redirect_uri: redirectUri,
+                grant_type: 'authorization_code'
+            })
+        });
+
+        if (!tokenRes.ok) {
+            const errText = await tokenRes.text();
+            console.error('[Google OAuth Token Exchange Failed]', errText);
+            return res.redirect('/?authError=TOKEN_EXCHANGE_FAILED');
+        }
+
+        const tokens = await tokenRes.json();
+        const accessToken = tokens.access_token;
+
+        // Fetch User Profile from Google UserInfo endpoint
+        const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        if (!userRes.ok) {
+            console.error('[Google OAuth UserInfo Failed]');
+            return res.redirect('/?authError=USERINFO_FAILED');
+        }
+
+        const profile = await userRes.json();
+        if (profile.email_verified !== true && profile.email_verified !== 'true') {
+            return res.redirect('/?authError=UNVERIFIED_EMAIL');
+        }
+
+        const cleanEmail = profile.email.trim().toLowerCase();
+        const googleId = profile.sub;
+        const name = profile.name || 'Google User';
+        const picture = profile.picture || '';
+
+        // Find existing user by googleId or verified email
+        let user = await User.findOne({ $or: [{ googleId: googleId }, { email: cleanEmail }] });
+
+        if (user) {
+            let updated = false;
+            if (!user.googleId) {
+                user.googleId = googleId;
+                updated = true;
+            }
+            if (picture && !user.profilePicture) {
+                user.profilePicture = picture;
+                updated = true;
+            }
+            user.emailVerified = true;
+            user.lastLogin = new Date();
+            await user.save();
+        } else {
+            // Create new Google user
+            user = new User({
+                googleId: googleId,
+                email: cleanEmail,
+                name: name,
+                profilePicture: picture,
+                provider: 'google',
+                emailVerified: true,
+                lastLogin: new Date()
+            });
+            await user.save();
+        }
+
+        if (deviceId) {
+            await migrateDeviceSession(deviceId, user._id);
+        }
+
+        // Issue JWT token and set HttpOnly Cookie
+        const token = jwt.sign({ id: user._id }, config.jwtSecret, {
+            expiresIn: config.jwtExpiresIn
+        });
+
+        const cookieOptions = {
+            expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            httpOnly: true,
+            secure: config.env === 'production',
+            sameSite: 'lax'
+        };
+
+        res.cookie('token', token, cookieOptions);
+        return res.redirect('/?authSuccess=google');
+    } catch (err) {
+        console.error('[Google OAuth Callback Exception]', err);
+        return res.redirect('/?authError=SERVER_ERROR');
+    }
+};
+
+// POST /api/auth/google (API Token Endpoint)
 exports.googleAuth = async (req, res, next) => {
     try {
         const { credential, googleId, email, name, picture, deviceId } = req.body;

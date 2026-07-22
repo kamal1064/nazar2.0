@@ -3442,126 +3442,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Idempotent Google Sign-In SDK Loader & Auth System Integration
-    let googleSDKLoading = false;
-    function loadGoogleSDK(callback) {
-        if (window.google && window.google.accounts) {
-            if (typeof callback === 'function') callback();
-            return;
-        }
-        if (googleSDKLoading) return;
-
-        googleSDKLoading = true;
-        const script = document.createElement('script');
-        script.id = 'google-jssdk';
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-            console.log('[Google Auth] SDK loaded successfully.');
-            googleSDKLoading = false;
-            initGoogleAuth();
-            if (typeof callback === 'function') callback();
-        };
-        script.onerror = () => {
-            console.warn('[Google Auth] SDK failed to load.');
-            googleSDKLoading = false;
-            if (typeof callback === 'function') callback();
-        };
-        document.head.appendChild(script);
-    }
-
-    function initGoogleAuth() {
-        if (!window.google || !window.google.accounts || !window.google.accounts.id) return;
-        const clientId = window.GOOGLE_CLIENT_ID || '1082531649987-9u2n7n5n631a0v8d8f99r5e5e5e5e5e5.apps.googleusercontent.com';
-        try {
-            window.google.accounts.id.initialize({
-                client_id: clientId,
-                callback: handleGoogleCredentialResponse,
-                auto_select: false,
-                cancel_on_tap_outside: true
-            });
-        } catch (e) {
-            console.warn('[Google Auth Init Warning]', e);
-        }
-    }
-
-    async function handleGoogleCredentialResponse(response) {
-        if (!response || !response.credential) {
-            showAuthAlert('Google authentication failed or was cancelled.');
-            return;
-        }
-        sendGoogleAuthToServer({ credential: response.credential });
-    }
-
-    async function sendGoogleAuthToServer(payload) {
-        showAuthAlert('Authenticating with Google...', true);
-        try {
-            const deviceId = localStorage.getItem('deviceId');
-            const res = await fetch('/api/auth/google', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    ...payload,
-                    deviceId: deviceId
-                })
-            });
-
-            const data = await res.json();
-            if (res.ok && data.success) {
-                if (data.token) localStorage.setItem('authToken', data.token);
-                if (data.data && data.data._id) localStorage.setItem('userId', data.data._id);
-                state.authUser = data.data;
-                updateAccountUI(data.data);
-                showAuthAlert('Google Sign-In successful!', true);
-                setTimeout(() => {
-                    hideAuthModal();
-                    if (typeof SpeechService !== 'undefined') {
-                        SpeechService.announce(`Welcome ${data.data.name || 'User'}`);
-                    }
-                }, 1000);
-            } else {
-                showAuthAlert(data.message || 'Google authentication failed.');
-            }
-        } catch (err) {
-            console.error('[Google OAuth error]', err);
-            showAuthAlert('Network error during Google authentication.');
-        }
-    }
-
+    // Google OAuth 2.0 Authorization Code Flow
     function triggerGoogleAuth() {
-        showAuthModal('login');
-        loadGoogleSDK(() => {
-            if (window.google && window.google.accounts && window.google.accounts.id) {
-                initGoogleAuth();
-                window.google.accounts.id.prompt((notification) => {
-                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                        promptGoogleOAuthFallback();
-                    }
-                });
-            } else {
-                promptGoogleOAuthFallback();
-            }
-        });
+        const deviceId = localStorage.getItem('deviceId') || '';
+        const redirectUrl = `/api/auth/google?deviceId=${encodeURIComponent(deviceId)}`;
+        window.location.href = redirectUrl;
     }
 
-    function promptGoogleOAuthFallback() {
-        const userEmail = prompt('Google Sign-In:\nEnter your Google Email address to continue:');
-        if (userEmail && userEmail.includes('@')) {
-            const userName = userEmail.split('@')[0].replace('.', ' ');
-            sendGoogleAuthToServer({
-                email: userEmail,
-                name: userName.charAt(0).toUpperCase() + userName.slice(1),
-                googleId: 'google_' + Math.random().toString(36).substring(2, 10),
-                picture: ''
-            });
-        } else if (userEmail !== null) {
-            showAuthAlert('Please enter a valid email address.');
-        }
+    function loadGoogleSDK() {
+        // No-op retained for backwards compatibility
     }
 
     // Password Strength Live Calculation
@@ -3917,12 +3806,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Check for ?resetToken=... or ?auth=login or #login parameters in URL
+    // Check for OAuth redirect return or URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const resetTokenParam = urlParams.get('resetToken');
     const authParam = urlParams.get('auth') || (window.location.hash ? window.location.hash.replace('#', '') : '');
+    const authSuccessParam = urlParams.get('authSuccess');
+    const authErrorParam = urlParams.get('authError');
 
-    if (resetTokenParam) {
+    if (authSuccessParam === 'google') {
+        fetch('/api/auth/me', { credentials: 'include' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    if (data.token) localStorage.setItem('authToken', data.token);
+                    if (data.data._id) localStorage.setItem('userId', data.data._id);
+                    state.authUser = data.data;
+                    updateAccountUI(data.data);
+                    showAuthModal('login');
+                    showAuthAlert('Successfully authenticated with Google!', true);
+                    setTimeout(() => {
+                        hideAuthModal();
+                        if (typeof SpeechService !== 'undefined') {
+                            SpeechService.announce(`Welcome ${data.data.name || 'User'}`);
+                        }
+                    }, 1200);
+                }
+            })
+            .catch(e => console.warn('[Auth Me Error]', e));
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (authErrorParam) {
+        showAuthModal('login');
+        if (authErrorParam === 'GOOGLE_OAUTH_NOT_CONFIGURED') {
+            showAuthAlert('Google OAuth is not configured on the server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
+        } else if (authErrorParam === 'GOOGLE_OAUTH_CANCELLED') {
+            showAuthAlert('Google authentication was cancelled.');
+        } else {
+            showAuthAlert('Google authentication failed. Please try again.');
+        }
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (resetTokenParam) {
         showAuthModal('reset');
         const tokenInput = document.getElementById('reset-token-input');
         if (tokenInput) tokenInput.value = resetTokenParam;
