@@ -3362,6 +3362,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const headerAccountLabel = document.getElementById('header-account-label');
         const sidebarAccountBtn = document.getElementById('sidebar-account-btn');
         const sidebarAccountLabel = document.getElementById('sidebar-account-label');
+        const drawerAccountLabel = document.getElementById('drawer-account-label');
+        const settingsAccountTitle = document.getElementById('settings-account-title');
+        const settingsAccountSubtitle = document.getElementById('settings-account-subtitle');
+        const settingsAccountActionBtn = document.getElementById('settings-account-action-btn');
 
         if (user) {
             const displayName = user.name || user.email || 'User';
@@ -3374,8 +3378,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sidebarAccountLabel) {
                 sidebarAccountLabel.textContent = `Sign Out (${shortName})`;
             }
+            if (drawerAccountLabel) {
+                drawerAccountLabel.textContent = `Sign Out (${shortName})`;
+            }
             if (headerAccountBtn) {
                 headerAccountBtn.setAttribute('title', `Logged in as ${displayName}`);
+            }
+            if (settingsAccountTitle) {
+                settingsAccountTitle.textContent = displayName;
+            }
+            if (settingsAccountSubtitle) {
+                settingsAccountSubtitle.textContent = `${user.email || 'Logged in'} • Account active`;
+            }
+            if (settingsAccountActionBtn) {
+                settingsAccountActionBtn.textContent = 'Sign Out';
             }
         } else {
             if (headerAccountLabel) {
@@ -3385,8 +3401,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sidebarAccountLabel) {
                 sidebarAccountLabel.textContent = 'Sign In';
             }
+            if (drawerAccountLabel) {
+                drawerAccountLabel.textContent = 'Sign In / Register';
+            }
             if (headerAccountBtn) {
                 headerAccountBtn.setAttribute('title', 'Sign In / Register');
+            }
+            if (settingsAccountTitle) {
+                settingsAccountTitle.textContent = 'Account & Synchronization';
+            }
+            if (settingsAccountSubtitle) {
+                settingsAccountSubtitle.textContent = 'Sign in to back up settings and emergency contacts';
+            }
+            if (settingsAccountActionBtn) {
+                settingsAccountActionBtn.textContent = 'Sign In';
             }
         }
     }
@@ -3753,12 +3781,51 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof SpeechService !== 'undefined') SpeechService.announce('Logged out successfully.');
     }
 
-    // Check for ?resetToken=... parameter in URL
+    // Additional Account Trigger Listeners (Drawer & Settings Card)
+    const drawerAccountBtn = document.getElementById('drawer-account-btn');
+    if (drawerAccountBtn) {
+        drawerAccountBtn.addEventListener('click', () => {
+            const drawerOverlay = document.getElementById('hamburger-drawer-overlay');
+            const drawer = document.getElementById('hamburger-drawer');
+            if (drawerOverlay) drawerOverlay.classList.remove('active');
+            if (drawer) drawer.classList.remove('open');
+
+            if (state.authUser) {
+                if (confirm(`Logged in as ${state.authUser.name || state.authUser.email}. Do you want to log out?`)) {
+                    handleLogout();
+                }
+            } else {
+                showAuthModal('login');
+            }
+        });
+    }
+
+    const settingsAccountCard = document.getElementById('settings-account-card');
+    const settingsAccountActionBtn = document.getElementById('settings-account-action-btn');
+    const handleSettingsAccountClick = (e) => {
+        e.stopPropagation();
+        if (state.authUser) {
+            if (confirm(`Logged in as ${state.authUser.name || state.authUser.email}. Do you want to log out?`)) {
+                handleLogout();
+            }
+        } else {
+            showAuthModal('login');
+        }
+    };
+
+    if (settingsAccountCard) settingsAccountCard.addEventListener('click', handleSettingsAccountClick);
+    if (settingsAccountActionBtn) settingsAccountActionBtn.addEventListener('click', handleSettingsAccountClick);
+
+    // Check for ?resetToken=... or ?auth=login or #login parameters in URL
     const urlParams = new URLSearchParams(window.location.search);
     const resetTokenParam = urlParams.get('resetToken');
+    const authParam = urlParams.get('auth') || (window.location.hash ? window.location.hash.replace('#', '') : '');
+
     if (resetTokenParam) {
         showAuthModal('reset');
         const tokenInput = document.getElementById('reset-token-input');
         if (tokenInput) tokenInput.value = resetTokenParam;
+    } else if (['login', 'signup', 'forgot', 'auth'].includes(authParam)) {
+        showAuthModal(authParam === 'auth' ? 'login' : authParam);
     }
 });

@@ -7,7 +7,7 @@
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
     <!-- Stylesheet -->
-    <link rel="stylesheet" href="style.css?v=41">
+    <link rel="stylesheet" href="style.css?v=42">
 </head>
 <body>
 
@@ -321,6 +321,23 @@
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                             </svg>
+                        </button>
+                    <!-- Account & Authentication Card -->
+                    <div class="voice-assistant-card" id="settings-account-card" style="margin-bottom: 1rem; background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(30, 41, 59, 0.4) 100%); border: 1px solid var(--border-color); cursor: pointer;">
+                        <div class="voice-card-left">
+                            <div class="voice-card-icon" style="background: rgba(37, 99, 235, 0.2); color: var(--primary);">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
+                                    <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                            <div class="voice-card-info">
+                                <span class="voice-card-name" id="settings-account-title">Account & Synchronization</span>
+                                <span class="voice-card-status" id="settings-account-subtitle">Sign in to back up settings and emergency contacts</span>
+                            </div>
+                        </div>
+                        <button class="auth-btn-primary" id="settings-account-action-btn" style="width: auto; padding: 0.5rem 1rem; font-size: 0.8rem; border-radius: 8px;">
+                            Sign In
                         </button>
                     </div>
 
@@ -965,6 +982,12 @@
                 </label>
             </div>
             
+            <button class="drawer-nav-item" id="drawer-account-btn" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.85rem 1rem; border-radius: var(--radius-btn); background: transparent; border: none; width: 100%; text-align: left; font-weight: 700; color: var(--text-muted); cursor: pointer; font-family: inherit;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span id="drawer-account-label">Sign In / Register</span>
+            </button>
             <button class="btn-primary" id="drawer-quick-sos-btn" style="background: var(--danger); width: 100%; border: none; padding: 0.85rem; border-radius: var(--radius-btn); font-weight: 800; color: white; cursor: pointer; font-family: inherit;">
                 Emergency SOS
             </button>
@@ -972,6 +995,6 @@
     </div>
 
     <!-- JS Logic -->
-    <script src="app.js?v=41"></script>
+    <script src="app.js?v=42"></script>
 </body>
 </html>
