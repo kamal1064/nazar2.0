@@ -44,8 +44,12 @@ function validateConfig() {
         warnings.push('JWT_SECRET is not set. A temporary development fallback secret will be used. Configure JWT_SECRET in production.');
     }
 
-    if (!process.env.GOOGLE_CLIENT_ID) {
-        warnings.push('GOOGLE_CLIENT_ID is not set. Google OAuth authentication button will operate in offline/disabled mode.');
+    if (!process.env.CLIENT_URL) {
+        warnings.push('CLIENT_URL is not set. Defaulting to http://localhost:5000.');
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        warnings.push('GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET is not set. Google OAuth authentication will operate in disabled mode.');
     }
 
     if (warnings.length > 0) {

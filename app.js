@@ -3813,6 +3813,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const authSuccessParam = urlParams.get('authSuccess');
     const authErrorParam = urlParams.get('authError');
 
+    const returnToParam = urlParams.get('returnTo');
+
     if (authSuccessParam === 'google') {
         fetch('/api/auth/me', { credentials: 'include' })
             .then(res => res.json())
@@ -3829,20 +3831,27 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (typeof SpeechService !== 'undefined') {
                             SpeechService.announce(`Welcome ${data.data.name || 'User'}`);
                         }
-                    }, 1200);
+                    }, 1000);
                 }
             })
             .catch(e => console.warn('[Auth Me Error]', e));
-        window.history.replaceState({}, document.title, window.location.pathname);
+
+        const targetUrl = (returnToParam && returnToParam.startsWith('/') && !returnToParam.startsWith('//')) ? returnToParam : window.location.pathname;
+        window.history.replaceState({}, document.title, targetUrl);
     } else if (authErrorParam) {
         showAuthModal('login');
-        if (authErrorParam === 'GOOGLE_OAUTH_NOT_CONFIGURED') {
-            showAuthAlert('Google OAuth is not configured on the server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
-        } else if (authErrorParam === 'GOOGLE_OAUTH_CANCELLED') {
-            showAuthAlert('Google authentication was cancelled.');
-        } else {
-            showAuthAlert('Google authentication failed. Please try again.');
-        }
+        const errorMessages = {
+            'google_oauth_not_configured': 'Google OAuth is not configured on the server. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.',
+            'google_oauth_cancelled': 'Google authentication was cancelled by user.',
+            'access_denied': 'Access was denied during Google authentication.',
+            'invalid_state': 'Security error: Invalid state token or potential CSRF detected.',
+            'token_exchange_failed': 'Failed to exchange authorization code with Google token server.',
+            'userinfo_failed': 'Failed to retrieve Google user profile details.',
+            'unverified_email': 'Your Google account email is not verified by Google.',
+            'account_conflict': 'This Google account is already linked to another user account.',
+            'server_error': 'Server error processing Google authentication.'
+        };
+        showAuthAlert(errorMessages[authErrorParam] || 'Google authentication failed. Please try again.');
         window.history.replaceState({}, document.title, window.location.pathname);
     } else if (resetTokenParam) {
         showAuthModal('reset');

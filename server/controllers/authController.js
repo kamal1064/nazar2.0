@@ -205,28 +205,81 @@ exports.login = async (req, res, next) => {
     }
 };
 
-// GET /api/auth/google (Initiate Google OAuth 2.0 Authorization Code Flow)
+// Helper utilities for PKCE & Signed State Token
+function generateCodeVerifier() {
+    return crypto.randomBytes(32).toString('base64url');
+}
+
+function generateCodeChallenge(verifier) {
+    return crypto.createHash('sha256').update(verifier).digest('base64url');
+}
+
+function signStateToken(payloadObj) {
+    const payloadStr = Buffer.from(JSON.stringify(payloadObj)).toString('base64url');
+    const signature = crypto.createHmac('sha256', config.jwtSecret).update(payloadStr).digest('base64url');
+    return `${payloadStr}.${signature}`;
+}
+
+function verifyStateToken(signedStateStr) {
+    if (!signedStateStr || typeof signedStateStr !== 'string') return null;
+    const parts = signedStateStr.split('.');
+    if (parts.length !== 2) return null;
+
+    const [payloadStr, signature] = parts;
+    const expectedSignature = crypto.createHmac('sha256', config.jwtSecret).update(payloadStr).digest('base64url');
+
+    try {
+        if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+            return null; // Signature mismatch / tampering
+        }
+        return JSON.parse(Buffer.from(payloadStr, 'base64url').toString('utf8'));
+    } catch (e) {
+        return null;
+    }
+}
+
+function sanitizeReturnTo(returnTo) {
+    if (!returnTo || typeof returnTo !== 'string') return '';
+    const trimmed = returnTo.trim();
+    if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !trimmed.includes('://')) {
+        return trimmed;
+    }
+    return '';
+}
+
+// GET /api/auth/google (Initiate Google OAuth 2.0 Authorization Code Flow with PKCE & HMAC State)
 exports.initiateGoogleOAuth = (req, res) => {
     const clientId = config.googleClientId;
     if (!clientId) {
         console.warn('[Google OAuth] GOOGLE_CLIENT_ID is not configured in environment variables.');
-        return res.redirect('/?authError=GOOGLE_OAUTH_NOT_CONFIGURED');
+        return res.redirect('/?authError=google_oauth_not_configured');
     }
 
     const deviceId = req.query.deviceId || '';
+    const returnTo = sanitizeReturnTo(req.query.returnTo);
+
+    // PKCE generation
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = generateCodeChallenge(codeVerifier);
+
+    // Signed state creation
     const stateObj = {
         nonce: crypto.randomBytes(16).toString('hex'),
-        deviceId: deviceId
+        deviceId: deviceId,
+        returnTo: returnTo
     };
-    const stateStr = Buffer.from(JSON.stringify(stateObj)).toString('base64url');
+    const signedState = signStateToken(stateObj);
 
-    // Store state in HttpOnly cookie for CSRF validation
-    res.cookie('nazar_oauth_state', stateStr, {
+    // Store state and PKCE verifier in HttpOnly cookies
+    const cookieOpts = {
         httpOnly: true,
         secure: config.env === 'production',
         sameSite: 'lax',
         maxAge: 10 * 60 * 1000 // 10 minutes
-    });
+    };
+
+    res.cookie('nazar_oauth_state', signedState, cookieOpts);
+    res.cookie('nazar_pkce_verifier', codeVerifier, cookieOpts);
 
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const host = req.headers['x-forwarded-host'] || req.get('host');
@@ -237,39 +290,39 @@ exports.initiateGoogleOAuth = (req, res) => {
     googleAuthUrl.searchParams.append('redirect_uri', redirectUri);
     googleAuthUrl.searchParams.append('response_type', 'code');
     googleAuthUrl.searchParams.append('scope', 'openid email profile');
-    googleAuthUrl.searchParams.append('state', stateStr);
+    googleAuthUrl.searchParams.append('state', signedState);
+    googleAuthUrl.searchParams.append('code_challenge', codeChallenge);
+    googleAuthUrl.searchParams.append('code_challenge_method', 'S256');
     googleAuthUrl.searchParams.append('prompt', 'select_account');
 
     return res.redirect(googleAuthUrl.toString());
 };
 
-// GET /api/auth/google/callback (Process Google OAuth 2.0 Callback)
+// GET /api/auth/google/callback (Process Google OAuth 2.0 Callback with PKCE & Account Merge Safety)
 exports.googleOAuthCallback = async (req, res, next) => {
     try {
         const { code, state, error } = req.query;
         const savedStateCookie = req.cookies ? req.cookies.nazar_oauth_state : null;
+        const savedPkceVerifier = req.cookies ? req.cookies.nazar_pkce_verifier : null;
 
         res.clearCookie('nazar_oauth_state');
+        res.clearCookie('nazar_pkce_verifier');
 
         if (error || !code) {
             console.warn('[Google OAuth Callback] Authorization error or user cancelled:', error);
-            return res.redirect('/?authError=GOOGLE_OAUTH_CANCELLED');
+            const errCode = error === 'access_denied' ? 'access_denied' : 'google_oauth_cancelled';
+            return res.redirect(`/?authError=${errCode}`);
         }
 
-        // Validate state for CSRF protection
-        if (!state || (savedStateCookie && state !== savedStateCookie)) {
-            console.warn('[Google OAuth Callback] CSRF State mismatch warning.');
+        // Validate state for CSRF protection & HMAC signature
+        const verifiedStateObj = verifyStateToken(state);
+        if (!verifiedStateObj || (savedStateCookie && state !== savedStateCookie)) {
+            console.warn('[Google OAuth Callback] CSRF State validation failed.');
+            return res.redirect('/?authError=invalid_state');
         }
 
-        let deviceId = '';
-        try {
-            const decodedState = JSON.parse(Buffer.from(state, 'base64url').toString('utf8'));
-            if (decodedState && decodedState.deviceId) {
-                deviceId = decodedState.deviceId;
-            }
-        } catch (e) {
-            // Ignore state parse errors
-        }
+        const deviceId = verifiedStateObj.deviceId || '';
+        const returnTo = sanitizeReturnTo(verifiedStateObj.returnTo);
 
         const clientId = config.googleClientId;
         const clientSecret = config.googleClientSecret;
@@ -277,23 +330,29 @@ exports.googleOAuthCallback = async (req, res, next) => {
         const host = req.headers['x-forwarded-host'] || req.get('host');
         const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${protocol}://${host}/api/auth/google/callback`;
 
-        // Exchange authorization code for access & ID tokens
+        // Exchange authorization code for tokens with PKCE
+        const tokenParams = new URLSearchParams({
+            code,
+            client_id: clientId,
+            client_secret: clientSecret,
+            redirect_uri: redirectUri,
+            grant_type: 'authorization_code'
+        });
+
+        if (savedPkceVerifier) {
+            tokenParams.append('code_verifier', savedPkceVerifier);
+        }
+
         const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-                code,
-                client_id: clientId,
-                client_secret: clientSecret,
-                redirect_uri: redirectUri,
-                grant_type: 'authorization_code'
-            })
+            body: tokenParams
         });
 
         if (!tokenRes.ok) {
             const errText = await tokenRes.text();
             console.error('[Google OAuth Token Exchange Failed]', errText);
-            return res.redirect('/?authError=TOKEN_EXCHANGE_FAILED');
+            return res.redirect('/?authError=token_exchange_failed');
         }
 
         const tokens = await tokenRes.json();
@@ -306,12 +365,12 @@ exports.googleOAuthCallback = async (req, res, next) => {
 
         if (!userRes.ok) {
             console.error('[Google OAuth UserInfo Failed]');
-            return res.redirect('/?authError=USERINFO_FAILED');
+            return res.redirect('/?authError=userinfo_failed');
         }
 
         const profile = await userRes.json();
         if (profile.email_verified !== true && profile.email_verified !== 'true') {
-            return res.redirect('/?authError=UNVERIFIED_EMAIL');
+            return res.redirect('/?authError=unverified_email');
         }
 
         const cleanEmail = profile.email.trim().toLowerCase();
@@ -319,33 +378,39 @@ exports.googleOAuthCallback = async (req, res, next) => {
         const name = profile.name || 'Google User';
         const picture = profile.picture || '';
 
-        // Find existing user by googleId or verified email
-        let user = await User.findOne({ $or: [{ googleId: googleId }, { email: cleanEmail }] });
+        // Safe User Lookup & Account Merge (Prevent Duplicate Google IDs)
+        let user = await User.findOne({ googleId: googleId });
 
-        if (user) {
-            let updated = false;
-            if (!user.googleId) {
+        if (!user) {
+            user = await User.findOne({ email: cleanEmail });
+            if (user) {
+                // Ensure no OTHER account already claims this googleId
+                const googleIdConflict = await User.findOne({ googleId: googleId, _id: { $ne: user._id } });
+                if (googleIdConflict) {
+                    console.warn('[Google OAuth Conflict] Google ID already associated with another user account.');
+                    return res.redirect('/?authError=account_conflict');
+                }
                 user.googleId = googleId;
-                updated = true;
+                if (picture && !user.profilePicture) user.profilePicture = picture;
+                user.emailVerified = true;
+                user.lastLogin = new Date();
+                await user.save();
+            } else {
+                user = new User({
+                    googleId: googleId,
+                    email: cleanEmail,
+                    name: name,
+                    profilePicture: picture,
+                    provider: 'google',
+                    emailVerified: true,
+                    lastLogin: new Date()
+                });
+                await user.save();
             }
-            if (picture && !user.profilePicture) {
-                user.profilePicture = picture;
-                updated = true;
-            }
-            user.emailVerified = true;
-            user.lastLogin = new Date();
-            await user.save();
         } else {
-            // Create new Google user
-            user = new User({
-                googleId: googleId,
-                email: cleanEmail,
-                name: name,
-                profilePicture: picture,
-                provider: 'google',
-                emailVerified: true,
-                lastLogin: new Date()
-            });
+            user.emailVerified = true;
+            if (picture && !user.profilePicture) user.profilePicture = picture;
+            user.lastLogin = new Date();
             await user.save();
         }
 
@@ -366,10 +431,12 @@ exports.googleOAuthCallback = async (req, res, next) => {
         };
 
         res.cookie('token', token, cookieOptions);
-        return res.redirect('/?authSuccess=google');
+
+        const returnQuery = returnTo ? `&returnTo=${encodeURIComponent(returnTo)}` : '';
+        return res.redirect(`/?authSuccess=google${returnQuery}`);
     } catch (err) {
         console.error('[Google OAuth Callback Exception]', err);
-        return res.redirect('/?authError=SERVER_ERROR');
+        return res.redirect('/?authError=server_error');
     }
 };
 
