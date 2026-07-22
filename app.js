@@ -2033,35 +2033,65 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem("deviceId", deviceId);
         }
 
-        if (!userId || userId.startsWith('local-')) {
-            console.log("[User Session] Registering/upgrading user profile dynamically for device:", deviceId);
-            try {
-                const response = await fetch('/api/users', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        deviceId,
-                        name: 'Nazar User',
-                        provider: 'local'
-                    })
-                });
-                if (response.ok) {
-                    const result = await response.json();
-                    userId = result.data._id;
+        // 1. Check for Active Authenticated User Session
+        try {
+            const token = localStorage.getItem("authToken");
+            const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const authRes = await fetch('/api/auth/me', {
+                method: 'GET',
+                headers,
+                credentials: 'include'
+            });
+
+            if (authRes.ok) {
+                const authData = await authRes.json();
+                if (authData.success && authData.data) {
+                    state.authUser = authData.data;
+                    userId = authData.data._id;
                     localStorage.setItem("userId", userId);
-                    console.log("[User Session] Successfully registered dynamic userId:", userId);
-                } else if (!userId) {
-                    userId = 'local-' + deviceId;
-                    localStorage.setItem("userId", userId);
-                }
-            } catch (err) {
-                if (!userId) {
-                    userId = 'local-' + deviceId;
-                    localStorage.setItem("userId", userId);
+                    console.log("[User Session] Authenticated session active for:", authData.data.name || authData.data.email);
+                    updateAccountUI(authData.data);
                 }
             }
-        } else {
-            console.log("[User Session] Resolved dynamic userId from cache:", userId);
+        } catch (authCheckErr) {
+            console.log("[User Session] Auth check offline or unauthenticated fallback.");
+        }
+
+        // 2. Fallback to Anonymous Device Session if not authenticated
+        if (!state.authUser) {
+            if (!userId || userId.startsWith('local-')) {
+                console.log("[User Session] Registering/upgrading user profile dynamically for device:", deviceId);
+                try {
+                    const response = await fetch('/api/users', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            deviceId,
+                            name: 'Nazar User',
+                            provider: 'local'
+                        })
+                    });
+                    if (response.ok) {
+                        const result = await response.json();
+                        userId = result.data._id;
+                        localStorage.setItem("userId", userId);
+                        console.log("[User Session] Successfully registered dynamic userId:", userId);
+                    } else if (!userId) {
+                        userId = 'local-' + deviceId;
+                        localStorage.setItem("userId", userId);
+                    }
+                } catch (err) {
+                    if (!userId) {
+                        userId = 'local-' + deviceId;
+                        localStorage.setItem("userId", userId);
+                    }
+                }
+            } else {
+                console.log("[User Session] Resolved dynamic userId from cache:", userId);
+            }
+            updateAccountUI(null);
         }
 
         if (userId) {
@@ -3322,5 +3352,413 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleBtn.click();
             }
         });
+    }
+
+    /* ==========================================================================
+       AUTHENTICATION SYSTEM FRONTEND MANAGER
+       ========================================================================== */
+    function updateAccountUI(user) {
+        const headerAccountBtn = document.getElementById('header-account-btn');
+        const headerAccountLabel = document.getElementById('header-account-label');
+        const sidebarAccountBtn = document.getElementById('sidebar-account-btn');
+        const sidebarAccountLabel = document.getElementById('sidebar-account-label');
+
+        if (user) {
+            const displayName = user.name || user.email || 'User';
+            const shortName = displayName.split(' ')[0];
+            
+            if (headerAccountLabel) {
+                headerAccountLabel.textContent = shortName;
+                headerAccountLabel.style.display = 'inline';
+            }
+            if (sidebarAccountLabel) {
+                sidebarAccountLabel.textContent = `Sign Out (${shortName})`;
+            }
+            if (headerAccountBtn) {
+                headerAccountBtn.setAttribute('title', `Logged in as ${displayName}`);
+            }
+        } else {
+            if (headerAccountLabel) {
+                headerAccountLabel.textContent = 'Account';
+                headerAccountLabel.style.display = 'none';
+            }
+            if (sidebarAccountLabel) {
+                sidebarAccountLabel.textContent = 'Sign In';
+            }
+            if (headerAccountBtn) {
+                headerAccountBtn.setAttribute('title', 'Sign In / Register');
+            }
+        }
+    }
+
+    function showAuthModal(view = 'login') {
+        const authModal = document.getElementById('auth-modal');
+        if (authModal) {
+            authModal.style.display = 'flex';
+            authModal.classList.add('modal-active');
+            showAuthView(view);
+            loadGoogleSDK();
+        }
+    }
+
+    function hideAuthModal() {
+        const authModal = document.getElementById('auth-modal');
+        if (authModal) {
+            authModal.style.display = 'none';
+            authModal.classList.remove('modal-active');
+            clearAuthAlert();
+        }
+    }
+
+    function showAuthView(viewName) {
+        const views = ['login', 'signup', 'forgot', 'reset'];
+        views.forEach(v => {
+            const el = document.getElementById(`auth-view-${v}`);
+            if (el) el.style.display = (v === viewName) ? 'flex' : 'none';
+        });
+        clearAuthAlert();
+    }
+
+    function showAuthAlert(message, isSuccess = false) {
+        const alertEl = document.getElementById('auth-alert');
+        if (alertEl) {
+            alertEl.textContent = message;
+            alertEl.className = `auth-alert ${isSuccess ? 'alert-success' : 'alert-error'}`;
+            alertEl.style.display = 'block';
+        }
+    }
+
+    function clearAuthAlert() {
+        const alertEl = document.getElementById('auth-alert');
+        if (alertEl) {
+            alertEl.style.display = 'none';
+            alertEl.textContent = '';
+        }
+    }
+
+    // Idempotent Google Sign-In SDK Loader
+    let googleSDKLoading = false;
+    function loadGoogleSDK() {
+        if (window.google && window.google.accounts) return;
+        if (googleSDKLoading || document.getElementById('google-jssdk')) return;
+
+        googleSDKLoading = true;
+        const script = document.createElement('script');
+        script.id = 'google-jssdk';
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = () => {
+            console.log('[Google Auth] SDK loaded successfully.');
+            googleSDKLoading = false;
+        };
+        script.onerror = () => {
+            console.warn('[Google Auth] SDK failed to load (offline or blocked).');
+            googleSDKLoading = false;
+        };
+        document.head.appendChild(script);
+    }
+
+    // Password Strength Live Calculation
+    function calculatePasswordStrength(password) {
+        if (!password) return { score: 0, label: 'Weak' };
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[a-z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+
+        if (score <= 2) return { score: 1, label: 'Weak', class: 'active-weak' };
+        if (score <= 4) return { score: 3, label: 'Medium', class: 'active-medium' };
+        return { score: 4, label: 'Strong', class: 'active-strong' };
+    }
+
+    function updatePasswordStrengthUI(password) {
+        const result = calculatePasswordStrength(password);
+        const labelEl = document.getElementById('str-label');
+        if (labelEl) {
+            labelEl.textContent = password ? result.label : 'Weak';
+            labelEl.style.color = result.class === 'active-strong' ? '#22c55e' : (result.class === 'active-medium' ? '#eab308' : '#ef4444');
+        }
+
+        for (let i = 1; i <= 4; i++) {
+            const bar = document.getElementById(`str-bar-${i}`);
+            if (bar) {
+                bar.className = 'strength-bar';
+                if (password && i <= result.score) {
+                    bar.classList.add(result.class);
+                }
+            }
+        }
+    }
+
+    // Event Wire-up for Auth UI
+    const headerAccountBtn = document.getElementById('header-account-btn');
+    if (headerAccountBtn) {
+        headerAccountBtn.addEventListener('click', () => {
+            if (state.authUser) {
+                // Confirm Logout if logged in
+                if (confirm(`Logged in as ${state.authUser.name || state.authUser.email}. Do you want to log out?`)) {
+                    handleLogout();
+                }
+            } else {
+                showAuthModal('login');
+            }
+        });
+    }
+
+    const sidebarAccountBtn = document.getElementById('sidebar-account-btn');
+    if (sidebarAccountBtn) {
+        sidebarAccountBtn.addEventListener('click', () => {
+            if (state.authUser) {
+                handleLogout();
+            } else {
+                showAuthModal('login');
+            }
+        });
+    }
+
+    const authModalClose = document.getElementById('auth-modal-close');
+    if (authModalClose) {
+        authModalClose.addEventListener('click', hideAuthModal);
+    }
+
+    // Password Visibility Toggles
+    ['login-password-toggle', 'signup-password-toggle', 'signup-confirm-password-toggle'].forEach(toggleId => {
+        const toggleBtn = document.getElementById(toggleId);
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                const input = toggleBtn.previousElementSibling;
+                if (input) {
+                    const isPassword = input.getAttribute('type') === 'password';
+                    input.setAttribute('type', isPassword ? 'text' : 'password');
+                }
+            });
+        }
+    });
+
+    // View Navigation Buttons
+    const btnShowForgot = document.getElementById('btn-show-forgot');
+    if (btnShowForgot) btnShowForgot.addEventListener('click', () => showAuthView('forgot'));
+
+    const btnShowSignup = document.getElementById('btn-show-signup');
+    if (btnShowSignup) btnShowSignup.addEventListener('click', () => showAuthView('signup'));
+
+    const btnShowLogin = document.getElementById('btn-show-login');
+    if (btnShowLogin) btnShowLogin.addEventListener('click', () => showAuthView('login'));
+
+    const btnBackToLogin = document.getElementById('btn-back-to-login');
+    if (btnBackToLogin) btnBackToLogin.addEventListener('click', () => showAuthView('login'));
+
+    const btnResetBackLogin = document.getElementById('btn-reset-back-login');
+    if (btnResetBackLogin) btnResetBackLogin.addEventListener('click', () => showAuthView('login'));
+
+    // Live Strength Meter Input Listener
+    const signupPasswordInput = document.getElementById('signup-password');
+    if (signupPasswordInput) {
+        signupPasswordInput.addEventListener('input', (e) => {
+            updatePasswordStrengthUI(e.target.value);
+        });
+    }
+
+    // Form Submissions
+    const loginForm = document.getElementById('auth-form-login');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAuthAlert();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const deviceId = localStorage.getItem('deviceId');
+
+            if (!email || !password) {
+                showAuthAlert('Please enter email and password.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ email, password, deviceId })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (data.token) localStorage.setItem('authToken', data.token);
+                    if (data.data && data.data._id) localStorage.setItem('userId', data.data._id);
+                    state.authUser = data.data;
+                    updateAccountUI(data.data);
+                    showAuthAlert('Login successful!', true);
+                    setTimeout(() => {
+                        hideAuthModal();
+                        if (typeof SpeechService !== 'undefined') SpeechService.announce(`Welcome back, ${data.data.name || 'User'}`);
+                    }, 1000);
+                } else {
+                    showAuthAlert(data.message || 'Log in failed.');
+                }
+            } catch (err) {
+                showAuthAlert('Network error during login. Please try again.');
+            }
+        });
+    }
+
+    const signupForm = document.getElementById('auth-form-signup');
+    if (signupForm) {
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAuthAlert();
+            const name = document.getElementById('signup-name').value;
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-confirm-password').value;
+            const termsChecked = document.getElementById('signup-terms').checked;
+            const deviceId = localStorage.getItem('deviceId');
+
+            if (!name || !email || !password) {
+                showAuthAlert('Please fill in all required fields.');
+                return;
+            }
+            if (password !== confirmPassword) {
+                showAuthAlert('Passwords do not match.');
+                return;
+            }
+            if (!termsChecked) {
+                showAuthAlert('Please accept the Terms of Service to create an account.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/signup', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ name, email, password, deviceId })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (data.token) localStorage.setItem('authToken', data.token);
+                    if (data.data && data.data._id) localStorage.setItem('userId', data.data._id);
+                    state.authUser = data.data;
+                    updateAccountUI(data.data);
+                    showAuthAlert('Account created successfully!', true);
+                    setTimeout(() => {
+                        hideAuthModal();
+                        if (typeof SpeechService !== 'undefined') SpeechService.announce(`Welcome to NAZAR, ${data.data.name}`);
+                    }, 1000);
+                } else {
+                    showAuthAlert(data.message || 'Registration failed.');
+                }
+            } catch (err) {
+                showAuthAlert('Network error during registration. Please try again.');
+            }
+        });
+    }
+
+    const forgotForm = document.getElementById('auth-form-forgot');
+    if (forgotForm) {
+        forgotForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAuthAlert();
+            const email = document.getElementById('forgot-email').value;
+            if (!email) {
+                showAuthAlert('Please enter your registered email address.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/forgot-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ email })
+                });
+
+                const data = await res.json();
+                showAuthAlert(data.message || 'Password reset link sent.', true);
+            } catch (err) {
+                showAuthAlert('Network error sending reset email.');
+            }
+        });
+    }
+
+    const resetForm = document.getElementById('auth-form-reset');
+    if (resetForm) {
+        resetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            clearAuthAlert();
+            const token = document.getElementById('reset-token-input').value;
+            const password = document.getElementById('reset-password').value;
+            const confirmPassword = document.getElementById('reset-confirm-password').value;
+
+            if (password !== confirmPassword) {
+                showAuthAlert('Passwords do not match.');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({ token, password })
+                });
+
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    if (data.token) localStorage.setItem('authToken', data.token);
+                    if (data.data && data.data._id) localStorage.setItem('userId', data.data._id);
+                    state.authUser = data.data;
+                    updateAccountUI(data.data);
+                    showAuthAlert('Password reset successful! Logging you in...', true);
+                    setTimeout(() => {
+                        hideAuthModal();
+                    }, 1200);
+                } else {
+                    showAuthAlert(data.message || 'Reset password failed.');
+                }
+            } catch (err) {
+                showAuthAlert('Network error resetting password.');
+            }
+        });
+    }
+
+    async function handleLogout() {
+        try {
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'include'
+            });
+        } catch (e) {
+            console.warn('[Auth Logout] Server logout warning:', e);
+        }
+        localStorage.removeItem('authToken');
+        state.authUser = null;
+        updateAccountUI(null);
+        if (typeof SpeechService !== 'undefined') SpeechService.announce('Logged out successfully.');
+    }
+
+    // Check for ?resetToken=... parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetTokenParam = urlParams.get('resetToken');
+    if (resetTokenParam) {
+        showAuthModal('reset');
+        const tokenInput = document.getElementById('reset-token-input');
+        if (tokenInput) tokenInput.value = resetTokenParam;
     }
 });

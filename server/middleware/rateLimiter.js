@@ -39,8 +39,22 @@ const settingsLimiter = rateLimit({
     validate: { xForwardedForHeader: false, forwardedHeader: false }
 });
 
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: {
+        success: false,
+        message: 'Too many authentication attempts. Please try again after 15 minutes.',
+        code: 'TOO_MANY_REQUESTS'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false }
+});
+
 module.exports = {
     userLimiter,
     scanLimiter,
-    settingsLimiter
+    settingsLimiter,
+    authLimiter
 };

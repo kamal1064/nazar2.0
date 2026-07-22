@@ -40,6 +40,14 @@ function validateConfig() {
         warnings.push('No GEMINI_API_KEY_1 configured. Scan requests will fail until an API key is provided.');
     }
 
+    if (!process.env.JWT_SECRET) {
+        warnings.push('JWT_SECRET is not set. A temporary development fallback secret will be used. Configure JWT_SECRET in production.');
+    }
+
+    if (!process.env.GOOGLE_CLIENT_ID) {
+        warnings.push('GOOGLE_CLIENT_ID is not set. Google OAuth authentication button will operate in offline/disabled mode.');
+    }
+
     if (warnings.length > 0) {
         console.warn('[Config Validation Warnings]:');
         warnings.forEach(w => console.warn(`  ⚠️ ${w}`));
@@ -64,6 +72,11 @@ module.exports = {
     mongoDbName: process.env.MONGODB_DB_NAME || 'nazar',
     emailUser: process.env.EMAIL_USER || '',
     emailAppPassword: process.env.EMAIL_APP_PASSWORD || '',
+    jwtSecret: process.env.JWT_SECRET || 'nazar-dev-jwt-secret-key-2026-safe-fallback',
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    clientUrl: process.env.CLIENT_URL || 'http://localhost:5000',
     maskSecret,
     maskMongoUri,
     validateConfig

@@ -2,6 +2,7 @@ const config = require('./config');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const connectDB = require('./db');
 const errorHandler = require('./middleware/errorHandler');
 const requestId = require('./middleware/requestId');
@@ -34,9 +35,11 @@ app.set('trust proxy', 1);
 app.use(requestId);
 app.use(helmet());
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' })); // Increased for base64 image payloads
 
 // Load routers
+const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const scansRouter = require('./routes/scans');
 const contactsRouter = require('./routes/contacts');
@@ -46,6 +49,7 @@ const adminRouter = require('./routes/admin');
 const keyRotationService = require('./services/keyRotationService');
 
 // Route bindings
+app.use('/api/auth', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/scan', scansRouter);
 app.use('/api/emergency-contacts', contactsRouter);
