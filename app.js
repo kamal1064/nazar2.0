@@ -3505,8 +3505,36 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileDropdown  = document.getElementById('profile-dropdown');
 
     function closeProfileDropdown() {
-        if (profileDropdown) profileDropdown.classList.remove('open');
+        if (profileDropdown) {
+            profileDropdown.classList.remove('open');
+            // Reset inline positioning styles set by mobile JS
+            profileDropdown.style.top  = '';
+            profileDropdown.style.right = '';
+            profileDropdown.style.left  = '';
+        }
         if (headerAccountBtn) headerAccountBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    function positionDropdownMobile() {
+        if (!profileDropdown || !headerAccountBtn) return;
+        // Only apply on mobile viewports
+        if (window.innerWidth > 767) return;
+
+        const rect = headerAccountBtn.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+
+        // Place the dropdown 8px below the avatar button
+        const dropdownTop  = rect.bottom + 8;
+        // Align right edge of dropdown with right edge of avatar button,
+        // but clamp so it never overflows the left edge of the viewport
+        const rightOffset  = viewportWidth - rect.right;
+        const dropdownWidth = Math.min(220, viewportWidth - 24);
+        // left edge = rect.right - dropdownWidth; clamp to 12px min
+        const leftEdge = Math.max(12, rect.right - dropdownWidth);
+
+        profileDropdown.style.top   = dropdownTop + 'px';
+        profileDropdown.style.left  = leftEdge + 'px';
+        profileDropdown.style.right = 'auto';
     }
 
     if (headerAccountBtn) {
@@ -3518,7 +3546,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (isOpen) {
                     closeProfileDropdown();
                 } else {
-                    if (profileDropdown) profileDropdown.classList.add('open');
+                    if (profileDropdown) {
+                        positionDropdownMobile(); // position before making visible on mobile
+                        profileDropdown.classList.add('open');
+                    }
                     headerAccountBtn.setAttribute('aria-expanded', 'true');
                 }
             } else {
