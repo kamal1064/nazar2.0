@@ -3320,6 +3320,7 @@ document.addEventListener('DOMContentLoaded', () => {
        ========================================================================== */
     function updateAccountUI(user) {
         // Legacy elements (still present, kept for backward compat)
+        const sidebarAccountBtn   = document.getElementById('sidebar-account-btn');
         const sidebarAccountLabel = document.getElementById('sidebar-account-label');
         const drawerAccountLabel  = document.getElementById('drawer-account-label');
         const settingsAccountTitle     = document.getElementById('settings-account-title');
@@ -3359,8 +3360,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dropdownName)  dropdownName.textContent  = displayName;
             if (dropdownEmail) dropdownEmail.textContent = user.email || '';
 
-            // --- Sidebar: keep "Sign In" (sign-out is in the dropdown) ---
-            if (sidebarAccountLabel) sidebarAccountLabel.textContent = 'Sign In';
+            // --- Sidebar: hide button when logged in (sign-out is in the dropdown) ---
+            if (sidebarAccountBtn) sidebarAccountBtn.style.display = 'none';
 
             // --- Drawer ---
             if (drawerAccountLabel) drawerAccountLabel.textContent = 'Sign Out';
@@ -3388,6 +3389,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (dropdownName)  dropdownName.textContent  = 'Guest';
             if (dropdownEmail) dropdownEmail.textContent = '';
 
+            if (sidebarAccountBtn) sidebarAccountBtn.style.display = '';
             if (sidebarAccountLabel) sidebarAccountLabel.textContent = 'Sign In';
             if (drawerAccountLabel)  drawerAccountLabel.textContent  = 'Sign In / Register';
 
