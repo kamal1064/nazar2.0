@@ -1909,16 +1909,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const screenPanels = document.querySelectorAll('.screen-panel');
 
     async function switchTab(tabId) {
-        // On desktop/laptop, settings is permanently on the right.
-        // Clicking settings should not hide the center view. Instead, keep the current center active (or default to home).
-        let targetCenterTab = tabId;
-        if (window.innerWidth >= 1024 && tabId === 'settings') {
-            targetCenterTab = (state.currentTab === 'settings' || !state.currentTab) ? 'home' : state.currentTab;
-        }
-
         state.currentTab = tabId;
 
-        if (targetCenterTab === 'camera') {
+        if (tabId === 'camera') {
             await CameraPermissionManager.checkStatus();
             if (CameraPermissionManager.state === 'granted') {
                 await CameraService.start();
@@ -1936,52 +1929,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         navItems.forEach(item => {
-            if (item.getAttribute('data-target') === tabId) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
+            item.classList.toggle('active', item.getAttribute('data-target') === tabId);
         });
 
         document.querySelectorAll('.desktop-nav-item').forEach(item => {
-            if (item.getAttribute('data-target') === tabId) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
+            item.classList.toggle('active', item.getAttribute('data-target') === tabId);
         });
 
         document.querySelectorAll('.drawer-nav-item').forEach(item => {
-            if (item.getAttribute('data-target') === tabId) {
-                item.classList.add('active');
-            } else {
-                item.classList.remove('active');
-            }
+            item.classList.toggle('active', item.getAttribute('data-target') === tabId);
         });
 
         screenPanels.forEach(panel => {
-            if (panel.id === 'settings-panel') {
-                if (window.innerWidth < 1024) {
-                    panel.classList.toggle('active-panel', tabId === 'settings');
-                } else {
-                    panel.classList.add('active-panel');
-                }
-            } else {
-                panel.classList.toggle('active-panel', panel.id === `${targetCenterTab}-panel`);
-            }
+            panel.classList.toggle('active-panel', panel.id === `${tabId}-panel`);
         });
-
-        // On Tablet, clicking Settings toggles the settings panel drawer!
-        if (window.innerWidth >= 768 && window.innerWidth < 1024) {
-            const settingsPanel = document.getElementById('settings-panel');
-            if (settingsPanel) {
-                if (tabId === 'settings') {
-                    settingsPanel.classList.add('drawer-open');
-                } else {
-                    settingsPanel.classList.remove('drawer-open');
-                }
-            }
-        }
     }
 
     console.log(`[Navigation] Found ${navItems.length} bottom navigation buttons.`);

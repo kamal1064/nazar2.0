@@ -1221,8 +1221,8 @@ html, body {
     display: none !important;
 }
 
-/* 2. Tablet (768px – 1023px): Sidebar + Center panel. Settings in side drawer */
-@media (min-width: 768px) and (max-width: 1023px) {
+/* Responsive Layout Architecture: Sidebar + Single Active Content Panel */
+@media (min-width: 768px) {
     #app-container {
         display: flex;
         flex-direction: row;
@@ -1252,192 +1252,48 @@ html, body {
         border-radius: 0;
         box-shadow: none;
         background-color: var(--bg-body);
-        padding: 1.5rem;
-        overflow: hidden;
+        padding: 1.5rem 2rem;
+        overflow-x: hidden;
+        overflow-y: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .app-panels-container {
+        flex: 1;
+        width: 100%;
+        height: 100%;
         position: relative;
-    }
-
-    .app-panels-container {
-        height: 100%;
-        overflow-y: auto;
-    }
-
-    /* Settings Panel acts as right-side drawer on Tablet */
-    #settings-panel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        width: 320px;
-        background-color: var(--bg-card);
-        border-left: 1px solid var(--border-color);
-        z-index: 800;
-        transform: translateX(100%);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex !important;
+        overflow: hidden;
+        display: flex;
         flex-direction: column;
-        padding: 1.5rem;
-        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.05);
     }
 
-    #settings-panel.drawer-open {
-        transform: translateX(0);
-    }
-}
-
-/* 3. Laptop (1024px – 1439px): Sidebar + Workspace + Right panel (narrower settings) */
-@media (min-width: 1024px) and (max-width: 1439px) {
-    #app-container {
-        display: flex;
-        flex-direction: row;
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-    }
-    
-    .desktop-sidebar {
-        display: flex !important;
-        width: 240px;
-        flex-shrink: 0;
-    }
-
-    .bottom-nav {
+    .screen-panel {
         display: none !important;
-    }
-    
-    #mobile-menu-btn {
-        display: none !important;
-    }
-
-    .app-mobile-viewport {
-        flex: 1;
-        max-width: none;
-        height: 100vh;
-        border-radius: 0;
-        box-shadow: none;
-        background-color: var(--bg-body);
-        padding: 1.5rem;
-        overflow: hidden;
-        display: flex;
-    }
-
-    .app-panels-container {
-        flex: 1;
         width: 100%;
         height: 100%;
-        display: grid;
-        grid-template-columns: 1fr 320px;
-        gap: 1.5rem;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
-    /* Settings Panel permanently visible on the right */
-    #settings-panel {
-        grid-column: 2;
-        grid-row: 1;
+    .screen-panel.active-panel {
         display: flex !important;
         flex-direction: column;
-        height: 100%;
-        overflow-y: auto;
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-hero);
-        padding: 1.5rem;
-        box-shadow: var(--shadow-small);
-        position: static !important;
-        transform: none !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
-
-    /* Active Workspace Panel (Home or Camera) occupies column 1 */
-    .app-panels-container > .screen-panel:not(#settings-panel) {
-        grid-column: 1;
-        grid-row: 1;
-        height: 100%;
-        overflow-y: auto;
-    }
-    
-    .app-panels-container > .screen-panel:not(#settings-panel):not(.active-panel) {
-        display: none !important;
-    }
-}
-
-/* 4. Desktop (1440px+): Full 3-Column Layout matching Reference Image 2 */
-@media (min-width: 1440px) {
-    #app-container {
-        display: flex;
-        flex-direction: row;
-        width: 100vw;
-        height: 100vh;
-        overflow: hidden;
-    }
-    
-    .desktop-sidebar {
-        display: flex !important;
-        width: var(--sidebar-width);
-        flex-shrink: 0;
-    }
-
-    .bottom-nav {
-        display: none !important;
-    }
-    
-    #mobile-menu-btn {
-        display: none !important;
-    }
-
-    .app-mobile-viewport {
-        flex: 1;
-        max-width: none;
-        height: 100vh;
-        border-radius: 0;
-        box-shadow: none;
-        background-color: var(--bg-body);
-        padding: 2rem;
-        overflow: hidden;
-        display: flex;
-    }
-
-    .app-panels-container {
-        flex: 1;
         width: 100%;
         height: 100%;
-        display: grid;
-        grid-template-columns: 1fr 380px;
-        gap: 2rem;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
 
-    /* Settings Panel permanently visible on the right */
     #settings-panel {
-        grid-column: 2;
-        grid-row: 1;
-        display: flex !important;
-        flex-direction: column;
-        height: 100%;
-        overflow-y: auto;
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: var(--radius-hero);
-        padding: 2rem;
-        box-shadow: var(--shadow-small);
         position: static !important;
         transform: none !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-    }
-
-    /* Active Workspace Panel (Home or Camera) occupies column 1 */
-    .app-panels-container > .screen-panel:not(#settings-panel) {
-        grid-column: 1;
-        grid-row: 1;
-        height: 100%;
-        overflow-y: auto;
-    }
-    
-    .app-panels-container > .screen-panel:not(#settings-panel):not(.active-panel) {
-        display: none !important;
+        box-shadow: none !important;
+        border-left: none !important;
+        width: 100% !important;
+        max-width: 900px;
+        margin: 0 auto;
     }
 }
 
