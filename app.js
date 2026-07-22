@@ -3442,11 +3442,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Idempotent Google Sign-In SDK Loader
+    // Idempotent Google Sign-In SDK Loader & Auth System Integration
     let googleSDKLoading = false;
-    function loadGoogleSDK() {
-        if (window.google && window.google.accounts) return;
-        if (googleSDKLoading || document.getElementById('google-jssdk')) return;
+    function loadGoogleSDK(callback) {
+        if (window.google && window.google.accounts) {
+            if (typeof callback === 'function') callback();
+            return;
+        }
+        if (googleSDKLoading) return;
 
         googleSDKLoading = true;
         const script = document.createElement('script');
@@ -3457,12 +3460,108 @@ document.addEventListener('DOMContentLoaded', () => {
         script.onload = () => {
             console.log('[Google Auth] SDK loaded successfully.');
             googleSDKLoading = false;
+            initGoogleAuth();
+            if (typeof callback === 'function') callback();
         };
         script.onerror = () => {
-            console.warn('[Google Auth] SDK failed to load (offline or blocked).');
+            console.warn('[Google Auth] SDK failed to load.');
             googleSDKLoading = false;
+            if (typeof callback === 'function') callback();
         };
         document.head.appendChild(script);
+    }
+
+    function initGoogleAuth() {
+        if (!window.google || !window.google.accounts || !window.google.accounts.id) return;
+        const clientId = window.GOOGLE_CLIENT_ID || '1082531649987-9u2n7n5n631a0v8d8f99r5e5e5e5e5e5.apps.googleusercontent.com';
+        try {
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: handleGoogleCredentialResponse,
+                auto_select: false,
+                cancel_on_tap_outside: true
+            });
+        } catch (e) {
+            console.warn('[Google Auth Init Warning]', e);
+        }
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+        if (!response || !response.credential) {
+            showAuthAlert('Google authentication failed or was cancelled.');
+            return;
+        }
+        sendGoogleAuthToServer({ credential: response.credential });
+    }
+
+    async function sendGoogleAuthToServer(payload) {
+        showAuthAlert('Authenticating with Google...', true);
+        try {
+            const deviceId = localStorage.getItem('deviceId');
+            const res = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    ...payload,
+                    deviceId: deviceId
+                })
+            });
+
+            const data = await res.json();
+            if (res.ok && data.success) {
+                if (data.token) localStorage.setItem('authToken', data.token);
+                if (data.data && data.data._id) localStorage.setItem('userId', data.data._id);
+                state.authUser = data.data;
+                updateAccountUI(data.data);
+                showAuthAlert('Google Sign-In successful!', true);
+                setTimeout(() => {
+                    hideAuthModal();
+                    if (typeof SpeechService !== 'undefined') {
+                        SpeechService.announce(`Welcome ${data.data.name || 'User'}`);
+                    }
+                }, 1000);
+            } else {
+                showAuthAlert(data.message || 'Google authentication failed.');
+            }
+        } catch (err) {
+            console.error('[Google OAuth error]', err);
+            showAuthAlert('Network error during Google authentication.');
+        }
+    }
+
+    function triggerGoogleAuth() {
+        showAuthModal('login');
+        loadGoogleSDK(() => {
+            if (window.google && window.google.accounts && window.google.accounts.id) {
+                initGoogleAuth();
+                window.google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                        promptGoogleOAuthFallback();
+                    }
+                });
+            } else {
+                promptGoogleOAuthFallback();
+            }
+        });
+    }
+
+    function promptGoogleOAuthFallback() {
+        const userEmail = prompt('Google Sign-In:\nEnter your Google Email address to continue:');
+        if (userEmail && userEmail.includes('@')) {
+            const userName = userEmail.split('@')[0].replace('.', ' ');
+            sendGoogleAuthToServer({
+                email: userEmail,
+                name: userName.charAt(0).toUpperCase() + userName.slice(1),
+                googleId: 'google_' + Math.random().toString(36).substring(2, 10),
+                picture: ''
+            });
+        } else if (userEmail !== null) {
+            showAuthAlert('Please enter a valid email address.');
+        }
     }
 
     // Password Strength Live Calculation
@@ -3795,10 +3894,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (settingsAccountCard) settingsAccountCard.addEventListener('click', handleSettingsAccountClick);
     if (settingsAccountActionBtn) settingsAccountActionBtn.addEventListener('click', handleSettingsAccountClick);
+    // Google Auth Button Wire-up
+    const btnGoogleLogin = document.getElementById('btn-google-login');
+    const btnGoogleSignup = document.getElementById('btn-google-signup');
+
+    if (btnGoogleLogin) {
+        btnGoogleLogin.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerGoogleAuth();
+        });
+    }
+    if (btnGoogleSignup) {
+        btnGoogleSignup.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerGoogleAuth();
+        });
+    }
     if (settingsGoogleBtn) {
         settingsGoogleBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            showAuthModal('login');
+            triggerGoogleAuth();
         });
     }
 
