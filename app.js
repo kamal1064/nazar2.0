@@ -3319,81 +3319,88 @@ document.addEventListener('DOMContentLoaded', () => {
        AUTHENTICATION SYSTEM FRONTEND MANAGER
        ========================================================================== */
     function updateAccountUI(user) {
-        const headerAccountBtn = document.getElementById('header-account-btn');
-        const headerAccountLabel = document.getElementById('header-account-label');
-        const sidebarAccountBtn = document.getElementById('sidebar-account-btn');
+        // Legacy elements (still present, kept for backward compat)
         const sidebarAccountLabel = document.getElementById('sidebar-account-label');
-        const drawerAccountLabel = document.getElementById('drawer-account-label');
-        const settingsAccountTitle = document.getElementById('settings-account-title');
-        const settingsAccountSubtitle = document.getElementById('settings-account-subtitle');
+        const drawerAccountLabel  = document.getElementById('drawer-account-label');
+        const settingsAccountTitle     = document.getElementById('settings-account-title');
+        const settingsAccountSubtitle  = document.getElementById('settings-account-subtitle');
         const settingsAccountActionBtn = document.getElementById('settings-account-action-btn');
+
+        // New avatar elements
+        const avatarIcon    = document.getElementById('profile-avatar-icon');
+        const avatarInitial = document.getElementById('profile-avatar-initial');
+        const avatarPhoto   = document.getElementById('profile-avatar-photo');
+        const dropdownName  = document.getElementById('profile-dropdown-name');
+        const dropdownEmail = document.getElementById('profile-dropdown-email');
 
         if (user) {
             const displayName = user.name || user.email || 'User';
-            const shortName = displayName.split(' ')[0];
-            
-            if (headerAccountLabel) {
-                headerAccountLabel.textContent = shortName;
-                headerAccountLabel.style.display = 'inline';
+            const firstLetter = (user.name || user.email || 'U')[0].toUpperCase();
+
+            // --- Avatar: photo > initial > icon ---
+            const photo = user.picture || user.photoURL || user.avatar || '';
+            if (photo && avatarPhoto) {
+                // Has a profile picture (Google OAuth)
+                if (avatarIcon)    avatarIcon.style.display    = 'none';
+                if (avatarInitial) avatarInitial.style.display = 'none';
+                avatarPhoto.src = photo;
+                avatarPhoto.style.display = 'block';
+            } else {
+                // No photo — show first letter
+                if (avatarIcon)    avatarIcon.style.display    = 'none';
+                if (avatarPhoto)   avatarPhoto.style.display   = 'none';
+                if (avatarInitial) {
+                    avatarInitial.textContent   = firstLetter;
+                    avatarInitial.style.display = 'inline';
+                }
             }
-            if (sidebarAccountLabel) {
-                sidebarAccountLabel.textContent = `Sign Out (${shortName})`;
-            }
-            if (drawerAccountLabel) {
-                drawerAccountLabel.textContent = `Sign Out (${shortName})`;
-            }
-            if (headerAccountBtn) {
-                headerAccountBtn.setAttribute('title', `Logged in as ${displayName}`);
-            }
-            if (settingsAccountTitle) {
-                settingsAccountTitle.textContent = displayName;
-            }
-            if (settingsAccountSubtitle) {
-                settingsAccountSubtitle.textContent = `${user.email || 'Logged in'} • Account active`;
-            }
-            if (settingsAccountActionBtn) {
-                settingsAccountActionBtn.textContent = 'Sign Out';
-            }
+
+            // --- Dropdown content ---
+            if (dropdownName)  dropdownName.textContent  = displayName;
+            if (dropdownEmail) dropdownEmail.textContent = user.email || '';
+
+            // --- Sidebar: keep "Sign In" (sign-out is in the dropdown) ---
+            if (sidebarAccountLabel) sidebarAccountLabel.textContent = 'Sign In';
+
+            // --- Drawer ---
+            if (drawerAccountLabel) drawerAccountLabel.textContent = 'Sign Out';
+
+            // --- Settings card ---
+            if (settingsAccountTitle)     settingsAccountTitle.textContent    = displayName;
+            if (settingsAccountSubtitle)  settingsAccountSubtitle.textContent = `${user.email || 'Logged in'} • Account active`;
+            if (settingsAccountActionBtn) settingsAccountActionBtn.textContent = 'Sign Out';
+
             const settingsAvatar = document.getElementById('settings-avatar');
             if (settingsAvatar) {
-                const initials = (user.name || user.email || 'U').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                const initials = displayName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
                 settingsAvatar.textContent = initials;
             }
             const settingsGoogleBtn = document.getElementById('settings-google-btn');
-            if (settingsGoogleBtn) {
-                settingsGoogleBtn.style.display = 'none';
-            }
+            if (settingsGoogleBtn) settingsGoogleBtn.style.display = 'none';
+
         } else {
-            if (headerAccountLabel) {
-                headerAccountLabel.textContent = 'Account';
-                headerAccountLabel.style.display = 'none';
-            }
-            if (sidebarAccountLabel) {
-                sidebarAccountLabel.textContent = 'Sign In';
-            }
-            if (drawerAccountLabel) {
-                drawerAccountLabel.textContent = 'Sign In / Register';
-            }
-            if (headerAccountBtn) {
-                headerAccountBtn.setAttribute('title', 'Sign In / Register');
-            }
-            if (settingsAccountTitle) {
-                settingsAccountTitle.textContent = 'Account & Synchronization';
-            }
-            if (settingsAccountSubtitle) {
-                settingsAccountSubtitle.textContent = 'Sign in to back up settings and emergency contacts';
-            }
-            if (settingsAccountActionBtn) {
-                settingsAccountActionBtn.textContent = 'Sign In / Register';
-            }
+            // --- Logged out state ---
+            // Avatar: restore icon
+            if (avatarIcon)    avatarIcon.style.display    = 'inline';
+            if (avatarInitial) avatarInitial.style.display = 'none';
+            if (avatarPhoto)   { avatarPhoto.style.display = 'none'; avatarPhoto.src = ''; }
+
+            if (dropdownName)  dropdownName.textContent  = 'Guest';
+            if (dropdownEmail) dropdownEmail.textContent = '';
+
+            if (sidebarAccountLabel) sidebarAccountLabel.textContent = 'Sign In';
+            if (drawerAccountLabel)  drawerAccountLabel.textContent  = 'Sign In / Register';
+
+            if (settingsAccountTitle)     settingsAccountTitle.textContent    = 'Account & Synchronization';
+            if (settingsAccountSubtitle)  settingsAccountSubtitle.textContent = 'Sign in to sync your settings and emergency contacts.';
+            if (settingsAccountActionBtn) settingsAccountActionBtn.textContent = 'Sign In / Register';
+
             const settingsAvatar = document.getElementById('settings-avatar');
             if (settingsAvatar) {
                 settingsAvatar.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
             }
             const settingsGoogleBtn = document.getElementById('settings-google-btn');
-            if (settingsGoogleBtn) {
-                settingsGoogleBtn.style.display = 'flex';
-            }
+            if (settingsGoogleBtn) settingsGoogleBtn.style.display = 'flex';
         }
     }
 
@@ -3489,16 +3496,61 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event Wire-up for Auth UI
     const headerAccountBtn = document.getElementById('header-account-btn');
+    const profileDropdown  = document.getElementById('profile-dropdown');
+
+    function closeProfileDropdown() {
+        if (profileDropdown) profileDropdown.classList.remove('open');
+        if (headerAccountBtn) headerAccountBtn.setAttribute('aria-expanded', 'false');
+    }
+
     if (headerAccountBtn) {
-        headerAccountBtn.addEventListener('click', () => {
+        headerAccountBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
             if (state.authUser) {
-                // Confirm Logout if logged in
-                if (confirm(`Logged in as ${state.authUser.name || state.authUser.email}. Do you want to log out?`)) {
-                    handleLogout();
+                // Toggle dropdown when logged in
+                const isOpen = profileDropdown && profileDropdown.classList.contains('open');
+                if (isOpen) {
+                    closeProfileDropdown();
+                } else {
+                    if (profileDropdown) profileDropdown.classList.add('open');
+                    headerAccountBtn.setAttribute('aria-expanded', 'true');
                 }
             } else {
+                // Not logged in — open the auth modal
                 showAuthModal('login');
             }
+        });
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const wrapper = document.getElementById('profile-avatar-wrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            closeProfileDropdown();
+        }
+    });
+
+    // Dropdown: Settings item
+    const dropdownSettingsBtn = document.getElementById('profile-dropdown-settings');
+    if (dropdownSettingsBtn) {
+        dropdownSettingsBtn.addEventListener('click', () => {
+            closeProfileDropdown();
+            // Navigate to Settings panel
+            document.querySelectorAll('.desktop-nav-item').forEach(btn => btn.classList.remove('active'));
+            const settingsNavBtn = document.querySelector('.desktop-nav-item[data-target="settings"]');
+            if (settingsNavBtn) settingsNavBtn.classList.add('active');
+            document.querySelectorAll('.screen-panel').forEach(p => p.classList.remove('active-panel'));
+            const settingsPanel = document.getElementById('settings-panel');
+            if (settingsPanel) settingsPanel.classList.add('active-panel');
+        });
+    }
+
+    // Dropdown: Sign Out item
+    const dropdownSignoutBtn = document.getElementById('profile-dropdown-signout');
+    if (dropdownSignoutBtn) {
+        dropdownSignoutBtn.addEventListener('click', () => {
+            closeProfileDropdown();
+            handleLogout();
         });
     }
 
@@ -3506,7 +3558,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarAccountBtn) {
         sidebarAccountBtn.addEventListener('click', () => {
             if (state.authUser) {
-                handleLogout();
+                // When logged in, sidebar Sign In button still opens the dropdown / modal
+                // (sign-out is in the dropdown — but as a convenience, open auth info)
+                if (profileDropdown) profileDropdown.classList.add('open');
+                if (headerAccountBtn) headerAccountBtn.setAttribute('aria-expanded', 'true');
             } else {
                 showAuthModal('login');
             }
