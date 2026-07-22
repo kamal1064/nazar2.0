@@ -3802,21 +3802,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Settings Dashboard Sub-navigation Smooth Scroll Listener
-    document.querySelectorAll('.settings-nav-item').forEach(navBtn => {
-        navBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            const secName = navBtn.getAttribute('data-section');
-            const targetSection = document.getElementById(`settings-sec-${secName}`);
-            if (targetSection) {
-                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-
-            document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
-            navBtn.classList.add('active');
-        });
-    });
-
     // Check for ?resetToken=... or ?auth=login or #login parameters in URL
     const urlParams = new URLSearchParams(window.location.search);
     const resetTokenParam = urlParams.get('resetToken');

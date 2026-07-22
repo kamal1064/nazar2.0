@@ -1332,62 +1332,13 @@ html, body {
     margin: 0;
 }
 
-.settings-dashboard-container {
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    gap: 24px;
-    width: 100%;
-    align-items: start;
-}
-
-.settings-subnav {
-    background: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 20px;
-    padding: 1rem 0.75rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    position: sticky;
-    top: 1rem;
-    box-shadow: var(--shadow-small);
-}
-
-.settings-nav-item {
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    width: 100%;
-    padding: 0.85rem 1.15rem;
-    border-radius: 12px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    font-weight: 700;
-    font-size: 0.9rem;
-    cursor: pointer;
-    text-align: left;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    font-family: inherit;
-}
-
-.settings-nav-item:hover {
-    background: var(--bg-app);
-    color: var(--text-main);
-    transform: translateX(2px);
-}
-
-.settings-nav-item.active {
-    background: rgba(37, 99, 235, 0.12);
-    color: var(--primary);
-    font-weight: 800;
-}
-
 .settings-content-area {
     display: flex;
     flex-direction: column;
     gap: 2.25rem;
     width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
 }
 
 .settings-section {
@@ -2022,35 +1973,6 @@ input[type="tel"] {
         padding: 1rem 1rem calc(var(--bottom-nav-height) + 24px) 1rem !important;
         max-width: 100% !important;
         margin: 0 !important;
-    }
-
-    .settings-dashboard-container {
-        grid-template-columns: 1fr !important;
-        gap: 16px !important;
-    }
-
-    .settings-subnav {
-        display: flex !important;
-        flex-direction: row !important;
-        overflow-x: auto !important;
-        position: static !important;
-        padding: 0.5rem !important;
-        gap: 0.5rem !important;
-        border-radius: 14px !important;
-        white-space: nowrap !important;
-        -webkit-overflow-scrolling: touch !important;
-        scrollbar-width: none !important;
-    }
-
-    .settings-subnav::-webkit-scrollbar {
-        display: none !important;
-    }
-
-    .settings-nav-item {
-        width: auto !important;
-        padding: 0.6rem 0.95rem !important;
-        font-size: 0.82rem !important;
-        flex-shrink: 0 !important;
     }
 
     .settings-account-hero {
