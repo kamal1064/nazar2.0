@@ -80,6 +80,7 @@ module.exports = {
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
     googleClientId: process.env.GOOGLE_CLIENT_ID || '',
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    googleRedirectUri: process.env.GOOGLE_REDIRECT_URI || '',
     clientUrl: process.env.CLIENT_URL || 'http://localhost:5000',
     maskSecret,
     maskMongoUri,
