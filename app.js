@@ -3363,8 +3363,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- Sidebar: hide button when logged in (sign-out is in the dropdown) ---
             if (sidebarAccountBtn) sidebarAccountBtn.style.display = 'none';
 
-            // --- Drawer ---
+            // --- Drawer: hide when logged in (sign-out is in the profile dropdown) ---
             if (drawerAccountLabel) drawerAccountLabel.textContent = 'Sign Out';
+            const drawerAccountBtn = document.getElementById('drawer-account-btn');
+            if (drawerAccountBtn) drawerAccountBtn.style.display = 'none';
 
             // --- Settings card ---
             if (settingsAccountTitle)     settingsAccountTitle.textContent    = displayName;
@@ -3392,6 +3394,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (sidebarAccountBtn) sidebarAccountBtn.style.display = '';
             if (sidebarAccountLabel) sidebarAccountLabel.textContent = 'Sign In';
             if (drawerAccountLabel)  drawerAccountLabel.textContent  = 'Sign In / Register';
+            const drawerAccountBtnLoggedOut = document.getElementById('drawer-account-btn');
+            if (drawerAccountBtnLoggedOut) drawerAccountBtnLoggedOut.style.display = '';
 
             if (settingsAccountTitle)     settingsAccountTitle.textContent    = 'Account & Synchronization';
             if (settingsAccountSubtitle)  settingsAccountSubtitle.textContent = 'Sign in to sync your settings and emergency contacts.';
@@ -3804,7 +3808,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof SpeechService !== 'undefined') SpeechService.announce('Logged out successfully.');
     }
 
-    // Additional Account Trigger Listeners (Drawer & Settings Card)
+    // Drawer account btn: only shown when logged out (opens auth modal)
     const drawerAccountBtn = document.getElementById('drawer-account-btn');
     if (drawerAccountBtn) {
         drawerAccountBtn.addEventListener('click', () => {
@@ -3812,14 +3816,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const drawer = document.getElementById('hamburger-drawer');
             if (drawerOverlay) drawerOverlay.classList.remove('active');
             if (drawer) drawer.classList.remove('open');
-
-            if (state.authUser) {
-                if (confirm(`Logged in as ${state.authUser.name || state.authUser.email}. Do you want to log out?`)) {
-                    handleLogout();
-                }
-            } else {
-                showAuthModal('login');
-            }
+            showAuthModal('login');
         });
     }
 
