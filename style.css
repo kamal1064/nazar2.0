@@ -2123,6 +2123,90 @@ input[type="tel"] {
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
     }
+
+    /* ----------------------------------------------------------------
+       Emergency Contacts & Settings – Mobile Single-Column Layout Fix
+       ---------------------------------------------------------------- */
+
+    /* Prevent any horizontal overflow on the settings panel */
+    #settings-panel,
+    .settings-content-area,
+    .settings-section,
+    .settings-card-group {
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Expanded settings cards (menu cards) must stack vertically */
+    .settings-menu-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    /* The accordion header row stays horizontal (icon + label + chevron) */
+    .settings-menu-card-header {
+        flex-direction: row !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    /* Expanded form content area fills full width */
+    .settings-menu-card > div:not(.settings-menu-card-header) {
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* All text inputs fill their parent without overflowing */
+    .settings-text-input,
+    #input-emergency-name,
+    #input-emergency-email,
+    #input-emergency-phone,
+    #input-emergency-rel {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+        word-break: break-word !important;
+    }
+
+    /* Save / Delete button row: wrap on very small screens */
+    #settings-emergency-contacts > div > div:last-of-type,
+    #btn-save-emergency,
+    #btn-delete-emergency {
+        box-sizing: border-box !important;
+        min-width: 0 !important;
+    }
+
+    /* Force button row to wrap so buttons stack when needed */
+    div:has(> #btn-save-emergency) {
+        flex-wrap: wrap !important;
+        width: 100% !important;
+    }
+
+    /* Saved contact display card email wraps instead of overflowing */
+    #saved-contact-email {
+        word-break: break-all !important;
+        overflow-wrap: anywhere !important;
+    }
+
+    /* item-left should not shrink its icon off-screen */
+    .item-left {
+        flex-shrink: 0 !important;
+        min-width: 0 !important;
+    }
+
+    .item-info {
+        min-width: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .item-title,
+    .item-subtitle {
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+    }
 }
 
 /* 3. Very Small Viewports (280px – 360px: Galaxy Fold, iPhone SE) */
