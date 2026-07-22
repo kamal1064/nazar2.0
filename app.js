@@ -3354,6 +3354,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (settingsAccountActionBtn) {
                 settingsAccountActionBtn.textContent = 'Sign Out';
             }
+            const settingsAvatar = document.getElementById('settings-avatar');
+            if (settingsAvatar) {
+                const initials = (user.name || user.email || 'U').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+                settingsAvatar.textContent = initials;
+            }
+            const settingsGoogleBtn = document.getElementById('settings-google-btn');
+            if (settingsGoogleBtn) {
+                settingsGoogleBtn.style.display = 'none';
+            }
         } else {
             if (headerAccountLabel) {
                 headerAccountLabel.textContent = 'Account';
@@ -3375,7 +3384,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 settingsAccountSubtitle.textContent = 'Sign in to back up settings and emergency contacts';
             }
             if (settingsAccountActionBtn) {
-                settingsAccountActionBtn.textContent = 'Sign In';
+                settingsAccountActionBtn.textContent = 'Sign In / Register';
+            }
+            const settingsAvatar = document.getElementById('settings-avatar');
+            if (settingsAvatar) {
+                settingsAvatar.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+            }
+            const settingsGoogleBtn = document.getElementById('settings-google-btn');
+            if (settingsGoogleBtn) {
+                settingsGoogleBtn.style.display = 'flex';
             }
         }
     }
@@ -3763,6 +3780,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const settingsAccountCard = document.getElementById('settings-account-card');
     const settingsAccountActionBtn = document.getElementById('settings-account-action-btn');
+    const settingsGoogleBtn = document.getElementById('settings-google-btn');
+
     const handleSettingsAccountClick = (e) => {
         e.stopPropagation();
         if (state.authUser) {
@@ -3776,6 +3795,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (settingsAccountCard) settingsAccountCard.addEventListener('click', handleSettingsAccountClick);
     if (settingsAccountActionBtn) settingsAccountActionBtn.addEventListener('click', handleSettingsAccountClick);
+    if (settingsGoogleBtn) {
+        settingsGoogleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showAuthModal('login');
+        });
+    }
+
+    // Settings Dashboard Sub-navigation Smooth Scroll Listener
+    document.querySelectorAll('.settings-nav-item').forEach(navBtn => {
+        navBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const secName = navBtn.getAttribute('data-section');
+            const targetSection = document.getElementById(`settings-sec-${secName}`);
+            if (targetSection) {
+                targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+
+            document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
+            navBtn.classList.add('active');
+        });
+    });
 
     // Check for ?resetToken=... or ?auth=login or #login parameters in URL
     const urlParams = new URLSearchParams(window.location.search);
