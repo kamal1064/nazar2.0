@@ -1967,3 +1967,160 @@ html, body {
     }
 }
 
+/* ==========================================================================
+   PRODUCTION MOBILE-FIRST RESPONSIVE ARCHITECTURE (280px – 1024px+)
+   ========================================================================== */
+
+/* 1. Universal Touch Accessibility (WCAG AA Compliance) */
+button, input, select, textarea, .nav-item, .settings-nav-item, .dark-toggle-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="tel"] {
+    font-size: 16px !important; /* Prevents iOS Safari automatic zoom on input focus */
+}
+
+/* 2. Mobile Viewport Layout (280px – 767px) */
+@media (max-width: 767px) {
+    body {
+        padding-top: var(--safe-area-top);
+        padding-left: var(--safe-area-left);
+        padding-right: var(--safe-area-right);
+    }
+
+    .app-mobile-viewport {
+        padding: 0 !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+    }
+
+    .app-panels-container {
+        width: 100% !important;
+        padding-bottom: 0 !important;
+        overflow-x: hidden !important;
+    }
+
+    .screen-panel {
+        padding: 1rem 1rem calc(var(--bottom-nav-height) + 24px) 1rem !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Fixed Bottom Nav Safe Area Support */
+    .bottom-nav {
+        height: var(--bottom-nav-height);
+        padding-bottom: var(--safe-area-bottom);
+        box-sizing: border-box;
+    }
+
+    /* Settings Page Mobile Responsive Stacking */
+    #settings-panel {
+        padding: 1rem 1rem calc(var(--bottom-nav-height) + 24px) 1rem !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+
+    .settings-dashboard-container {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    .settings-subnav {
+        display: flex !important;
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        position: static !important;
+        padding: 0.5rem !important;
+        gap: 0.5rem !important;
+        border-radius: 14px !important;
+        white-space: nowrap !important;
+        -webkit-overflow-scrolling: touch !important;
+        scrollbar-width: none !important;
+    }
+
+    .settings-subnav::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    .settings-nav-item {
+        width: auto !important;
+        padding: 0.6rem 0.95rem !important;
+        font-size: 0.82rem !important;
+        flex-shrink: 0 !important;
+    }
+
+    .settings-account-hero {
+        padding: 1.25rem !important;
+        border-radius: 16px !important;
+    }
+
+    .account-card-actions {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 0.65rem !important;
+    }
+
+    .account-card-actions button {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    /* Auth Modal Mobile Optimization */
+    .app-modal-layer {
+        padding: 0.75rem !important;
+    }
+
+    .auth-card-container {
+        width: min(94vw, 440px) !important;
+        max-height: 88vh !important;
+        padding: 1.25rem 1rem !important;
+        border-radius: 20px !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+}
+
+/* 3. Very Small Viewports (280px – 360px: Galaxy Fold, iPhone SE) */
+@media (max-width: 360px) {
+    .settings-header-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .settings-page-title {
+        font-size: 1.4rem !important;
+    }
+
+    .settings-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .user-avatar-circle {
+        width: 44px !important;
+        height: 44px !important;
+    }
+}
+
+/* 4. Tablet Layout Adaptation (768px – 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .settings-dashboard-container {
+        grid-template-columns: 220px 1fr !important;
+        gap: 16px !important;
+    }
+
+    .settings-subnav {
+        padding: 0.75rem 0.5rem !important;
+    }
+
+    .settings-nav-item {
+        padding: 0.75rem 0.85rem !important;
+        font-size: 0.85rem !important;
+    }
+}
+
