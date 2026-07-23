@@ -537,6 +537,21 @@
                                                     <span class="toggle-slider"></span>
                                                 </label>
                                             </div>
+                                            <div style="display: flex; flex-direction: column; gap: 0.4rem; width: 100%; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+                                                <span class="item-title" style="font-size: 0.85rem;">Voice Speed (Rate)</span>
+                                                <input type="range" id="slider-voice-rate" min="0.5" max="3.0" step="0.1" value="1.0" style="width: 100%; cursor: pointer;">
+                                            </div>
+                                            <div style="display: flex; flex-direction: column; gap: 0.4rem; width: 100%;">
+                                                <span class="item-title" style="font-size: 0.85rem;">Voice Volume</span>
+                                                <input type="range" id="slider-voice-volume" min="0.0" max="1.0" step="0.1" value="1.0" style="width: 100%; cursor: pointer;">
+                                            </div>
+                                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+                                                <span class="item-title" style="font-size: 0.85rem;">Developer HUD Telemetry</span>
+                                                <label class="toggle-switch-wrapper" for="toggle-dev-hud">
+                                                    <input type="checkbox" id="toggle-dev-hud">
+                                                    <span class="toggle-slider"></span>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -939,7 +954,24 @@
         </div>
     </div>
 
+    <!-- Developer HUD Overlay -->
+    <div id="developer-hud" class="dev-hud-card" style="display: none;">
+        <div class="hud-header">
+            <h3>NAZAR Voice Telemetry</h3>
+            <button id="close-hud-btn" aria-label="Close HUD">&times;</button>
+        </div>
+        <div class="hud-body">
+            <p><strong>Transcript:</strong> <span id="hud-transcript">-</span></p>
+            <p><strong>Resolved Intent:</strong> <span id="hud-intent">-</span></p>
+            <p><strong>Confidence:</strong> <span id="hud-confidence">-</span></p>
+            <p><strong>Source:</strong> <span id="hud-source">-</span></p>
+            <p><strong>Recent Telemetry:</strong></p>
+            <ul id="hud-telemetry-list" style="margin: 0; padding-left: 15px; max-height: 80px; overflow-y: auto;"></ul>
+        </div>
+    </div>
+
     <!-- JS Logic -->
     <script src="app.js?v=56"></script>
+    <script type="module" src="voice/controllers/voiceController.js"></script>
 </body>
 </html>

@@ -2357,3 +2357,114 @@ input[type="tel"] {
     }
 }
 
+/* NAZAR Voice Engine HUD & Visual State Dot Classes */
+.status-voice-sleeping {
+    background: #64748b !important; /* Grey */
+    box-shadow: 0 0 8px #64748b !important;
+}
+
+.status-voice-idle {
+    background: #e2e8f0 !important; /* White/Light Grey */
+    box-shadow: 0 0 8px #e2e8f0 !important;
+}
+
+.status-voice-listening {
+    background: #3b82f6 !important; /* Blue */
+    box-shadow: 0 0 8px #3b82f6 !important;
+    animation: statusPulse 1.2s infinite;
+}
+
+.status-voice-thinking {
+    background: #eab308 !important; /* Yellow */
+    box-shadow: 0 0 8px #eab308 !important;
+    animation: statusPulse 1s infinite;
+}
+
+.status-voice-executing {
+    background: #22c55e !important; /* Green */
+    box-shadow: 0 0 8px #22c55e !important;
+    animation: statusPulse 0.8s infinite;
+}
+
+.status-voice-speaking {
+    background: #a855f7 !important; /* Purple */
+    box-shadow: 0 0 8px #a855f7 !important;
+    animation: statusPulse 1.5s infinite;
+}
+
+.status-voice-error {
+    background: #ef4444 !important; /* Red */
+    box-shadow: 0 0 8px #ef4444 !important;
+    animation: statusPulse 0.5s infinite;
+}
+
+/* Developer HUD Styles */
+.dev-hud-card {
+    position: fixed;
+    bottom: 80px;
+    right: 20px;
+    width: 320px;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    color: #e2e8f0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.78rem;
+    z-index: 9999;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.hud-header {
+    background: rgba(30, 41, 59, 0.9);
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.hud-header h3 {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.hud-header button {
+    background: none;
+    border: none;
+    color: #ef4444;
+    font-size: 1.3rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0;
+}
+
+.hud-body {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.hud-body p {
+    margin: 0;
+}
+
+.hud-body span {
+    color: #3b82f6;
+}
+
+#hud-confidence {
+    color: #eab308;
+}
+
+#hud-source {
+    color: #22c55e;
+}
+
+

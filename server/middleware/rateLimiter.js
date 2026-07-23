@@ -52,9 +52,23 @@ const authLimiter = rateLimit({
     validate: { xForwardedForHeader: false, forwardedHeader: false }
 });
 
+const voiceLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 150,
+    message: {
+        success: false,
+        message: 'Too many voice assistant requests, please try again after 15 minutes.',
+        code: 'TOO_MANY_REQUESTS'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false }
+});
+
 module.exports = {
     userLimiter,
     scanLimiter,
     settingsLimiter,
-    authLimiter
+    authLimiter,
+    voiceLimiter
 };

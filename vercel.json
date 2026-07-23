@@ -8,7 +8,8 @@
     { "src": "manifest.json",       "use": "@vercel/static" },
     { "src": "service-worker.js",   "use": "@vercel/static" },
     { "src": "detection-worker.js", "use": "@vercel/static" },
-    { "src": "nazar_icon.png",      "use": "@vercel/static" }
+    { "src": "nazar_icon.png",      "use": "@vercel/static" },
+    { "src": "voice/**/*",          "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/server/server.js" },

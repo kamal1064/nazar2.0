@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SkillResponse",
+  "version": "1.0.0",
+  "type": "object",
+  "properties": {
+    "success": {
+      "type": "boolean",
+      "description": "Indicator if the skill executed successfully."
+    },
+    "spokenText": {
+      "type": "string",
+      "description": "The textual voice feedback phrase that the Speech Synthesis should announce."
+    },
+    "nextState": {
+      "type": "string",
+      "description": "The target state of the Voice Engine state machine after execution (e.g. Idle, Scanning)."
+    },
+    "data": {
+      "type": "object",
+      "description": "Additional payload return values for debugging or HUD telemetry."
+    }
+  },
+  "required": ["success", "spokenText", "nextState", "data"],
+  "additionalProperties": false
+}

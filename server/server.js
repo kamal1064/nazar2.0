@@ -46,6 +46,7 @@ const contactsRouter = require('./routes/contacts');
 const settingsRouter = require('./routes/settings');
 const emergencyRouter = require('./routes/emergency');
 const adminRouter = require('./routes/admin');
+const voiceRouter = require('./routes/voice');
 const keyRotationService = require('./services/keyRotationService');
 
 // Route bindings
@@ -56,6 +57,7 @@ app.use('/api/emergency-contacts', contactsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/emergency', emergencyRouter);
 app.use('/api/admin', adminRouter);
+app.use('/api/voice', voiceRouter);
 
 // Base healthcheck route
 const healthHandler = async (req, res) => {
@@ -132,7 +134,9 @@ if (require.main === module) {
             });
         })
         .catch(err => {
-            console.error('[Server] Critical connection startup failure:', err.message);
-            process.exit(1);
+            console.warn(`[Server] MongoDB connection failed at startup. Running without database on port ${PORT}:`, err.message);
+            app.listen(PORT, () => {
+                console.log(`[Server] Nazar backend operational on port ${PORT} in offline/no-db mode.`);
+            });
         });
 }

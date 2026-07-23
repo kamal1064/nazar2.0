@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SessionContract",
+  "version": "1.0.0",
+  "type": "object",
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "description": "Unique session identifier for the voice session conversation."
+    },
+    "history": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "model"],
+            "description": "Role in the chat thread."
+          },
+          "parts": {
+            "type": "string",
+            "description": "Text utterance message content."
+          }
+        },
+        "required": ["role", "parts"],
+        "additionalProperties": false
+      },
+      "description": "Bounded array of recent user prompts and Gemini responses."
+    }
+  },
+  "required": ["sessionId", "history"],
+  "additionalProperties": false
+}

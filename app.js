@@ -1754,144 +1754,22 @@ document.addEventListener('DOMContentLoaded', () => {
         isListening: false,
 
         init() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                console.warn("Speech Recognition API is not supported in this browser.");
-                return;
+            if (window.NazarVoiceController) {
+                window.NazarVoiceController.initialize();
+            } else {
+                console.warn('[Bridge] window.NazarVoiceController not loaded yet.');
             }
-
-            this.recognition = new SpeechRecognition();
-            this.recognition.continuous = false;
-            this.recognition.interimResults = false;
-            this.recognition.lang = 'en-US';
-
-            this.recognition.onstart = () => {
-                this.isListening = true;
-                this.updateUI("Listening...");
-            };
-
-            this.recognition.onresult = (e) => {
-                const transcript = e.results[0][0].transcript.trim().toLowerCase();
-                console.log("Voice command parsed: ", transcript);
-
-                // Check for safety confirmation loop response first
-                const confirmed = checkConfirmationResponse(transcript);
-                if (confirmed) {
-                    this.updateUI("Voice command recognized");
-                    return;
-                }
-
-                if (transcript.includes("describe surroundings") || transcript.includes("describe") || transcript.includes("scan now")) {
-                    this.updateUI("Voice command recognized");
-                    triggerDescribeSurroundings(false);
-                } else if (transcript.includes("repeat description") || transcript.includes("repeat") || transcript.includes("repeat last scan")) {
-                    this.updateUI("Voice command recognized");
-                    SpeechService.repeat();
-                } else if (transcript.includes("stop speaking") || transcript.includes("silence") || transcript.includes("stop speech")) {
-                    this.updateUI("Voice command recognized");
-                    window.speechSynthesis.cancel();
-                } else if (transcript.includes("continue reading") || transcript.includes("read more")) {
-                    this.updateUI("Voice command recognized");
-                    if (window.pendingOcrText) {
-                        const textToSpeak = window.pendingOcrText;
-                        if (textToSpeak.length > 500) {
-                            const truncatedText = textToSpeak.slice(0, 500);
-                            window.pendingOcrText = textToSpeak.slice(500);
-                            SpeechService.announce(truncatedText + "... Say continue reading to hear the rest.");
-                        } else {
-                            window.pendingOcrText = null;
-                            SpeechService.announce(textToSpeak);
-                        }
-                    } else {
-                        SpeechService.announce("No further text to read.");
-                    }
-                } else if (transcript.includes("enable continuous") || transcript.includes("continuous scan")) {
-                    this.updateUI("Voice command recognized");
-                    isContinuousScanning = true;
-                    startContinuousScanning();
-                    updateContinuousButtonUI();
-                    updateStatusIndicator('scanning');
-                    updateStopButtonUI();
-                    SpeechService.announce("Continuous scanning activated.");
-                } else if (transcript.includes("disable continuous") || transcript.includes("stop continuous")) {
-                    this.updateUI("Voice command recognized");
-                    isContinuousScanning = false;
-                    stopContinuousScanning();
-                    updateContinuousButtonUI();
-                    updateStatusIndicator('ready');
-                    updateStopButtonUI();
-                    SpeechService.announce("Continuous scanning deactivated.");
-                } else if (transcript.includes("read text") || transcript.includes("ocr mode")) {
-                    this.updateUI("Voice command recognized");
-                    isOcrMode = true;
-                    updateModeButtonUI();
-                    SpeechService.announce("OCR text reading mode active.");
-                } else if (transcript.includes("scene mode") || transcript.includes("describe mode")) {
-                    this.updateUI("Voice command recognized");
-                    isOcrMode = false;
-                    updateModeButtonUI();
-                    SpeechService.announce("Scene description mode active.");
-                } else if (transcript.includes("where am i") || transcript.includes("where is my location") || transcript.includes("current location")) {
-                    this.updateUI("Voice command recognized");
-                    handleWhereAmI();
-                } else if (transcript.includes("emergency") || transcript.includes("help") || transcript.includes("sos")) {
-                    this.updateUI("Voice command recognized");
-                    handleEmergencySOS();
-                } else if (transcript.includes("find nearby")) {
-                    this.updateUI("Voice command recognized");
-                    handleNearbySearch(transcript);
-                } else {
-                    const matchedSetting = handleVoiceSettings(transcript);
-                    if (matchedSetting) {
-                        this.updateUI("Voice command recognized");
-                    } else {
-                        this.updateUI("Command not recognized");
-                        SpeechService.announce("Command not recognized. Please try again.");
-                    }
-                }
-            };
-
-            this.recognition.onerror = (e) => {
-                console.error("Speech recognition error: ", e.error);
-                this.updateUI("Voice recognition failure");
-                SpeechService.announce("Voice command failed.");
-                this.stop();
-            };
-
-            this.recognition.onend = () => {
-                this.isListening = false;
-                const micBtn = document.getElementById('mic-btn');
-                if (micBtn) {
-                    micBtn.classList.remove('active');
-                    micBtn.style.backgroundColor = 'var(--primary)';
-                }
-                setTimeout(() => {
-                    const statusText = document.getElementById('scan-status-text');
-                    if (statusText && state.currentTab === 'camera') {
-                        statusText.innerText = "Scanning surroundings...";
-                    }
-                }, 2000);
-            };
         },
 
         start() {
-            if (!this.recognition) return;
-            if (this.isListening) {
-                this.stop();
-                return;
-            }
-
-            SpeechService.announce("Listening");
-            try {
-                this.recognition.start();
-            } catch (err) {
-                console.warn("Failed to start speech recognition loop: ", err);
+            if (window.NazarVoiceController) {
+                window.NazarVoiceController.startPushToTalk();
             }
         },
 
         stop() {
-            if (this.recognition && this.isListening) {
-                this.recognition.abort();
+            if (window.NazarVoiceController) {
+                window.NazarVoiceController.stopListening();
             }
         },
 
@@ -4046,4 +3924,64 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (['login', 'signup', 'forgot', 'auth'].includes(authParam)) {
         showAuthModal(authParam === 'auth' ? 'login' : authParam);
     }
+
+    // Expose a minimal bridge for NAZAR Voice Engine to invoke local functions
+    window.NazarVoiceAPI = {
+        startScan: () => {
+            triggerDescribeSurroundings(false);
+        },
+        stopScan: () => {
+            if (activeScanController) {
+                try {
+                    activeScanController.abort();
+                } catch (abortErr) {
+                    console.warn("Error aborting scan fetch:", abortErr);
+                }
+            }
+            isContinuousScanning = false;
+            stopContinuousScanning();
+            updateContinuousButtonUI();
+            updateStatusIndicator('ready');
+            updateStopButtonUI();
+        },
+        switchScene: () => {
+            isOcrMode = false;
+            updateModeButtonUI();
+        },
+        switchOCR: () => {
+            isOcrMode = true;
+            updateModeButtonUI();
+        },
+        openSettings: () => {
+            switchTab('settings');
+        },
+        navigate: (tabId) => {
+            switchTab(tabId);
+        },
+        repeat: () => {
+            SpeechService.repeat();
+        },
+        speak: (text) => {
+            SpeechService.announce(text);
+        },
+        sendSOS: (isTestMode = false) => {
+            executeEmergencySOS(isTestMode);
+        },
+        getSettings: () => SettingsService.state,
+        saveSetting: (key, val) => {
+            SettingsService.save(key, val);
+            if (key === 'darkModeEnabled') {
+                const body = document.body;
+                if (val) {
+                    body.classList.add('dark-mode');
+                } else {
+                    body.classList.remove('dark-mode');
+                }
+                const toggleDark = document.getElementById('toggle-dark-mode');
+                const toggleDarkDrawer = document.getElementById('toggle-dark-mode-drawer');
+                if (toggleDark) toggleDark.checked = val;
+                if (toggleDarkDrawer) toggleDarkDrawer.checked = val;
+            }
+        }
+    };
 });

@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IntentContract",
+  "version": "1.0.0",
+  "type": "object",
+  "properties": {
+    "skill": {
+      "type": "string",
+      "description": "Target skill name that should handle the command."
+    },
+    "action": {
+      "type": "string",
+      "description": "Specific action name within the target skill."
+    },
+    "params": {
+      "type": "object",
+      "description": "Key-value parameters extracted from the user speech command."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "AI intent resolution confidence rating from 0.00 to 1.00."
+    }
+  },
+  "required": ["skill", "action", "params", "confidence"],
+  "additionalProperties": false
+}
