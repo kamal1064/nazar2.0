@@ -1810,12 +1810,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     isContinuousScanning = true;
                     startContinuousScanning();
                     updateContinuousButtonUI();
+                    updateStatusIndicator('scanning');
+                    updateStopButtonUI();
                     SpeechService.announce("Continuous scanning activated.");
                 } else if (transcript.includes("disable continuous") || transcript.includes("stop continuous")) {
                     this.updateUI("Voice command recognized");
                     isContinuousScanning = false;
                     stopContinuousScanning();
                     updateContinuousButtonUI();
+                    updateStatusIndicator('ready');
+                    updateStopButtonUI();
                     SpeechService.announce("Continuous scanning deactivated.");
                 } else if (transcript.includes("read text") || transcript.includes("ocr mode")) {
                     this.updateUI("Voice command recognized");
@@ -1978,6 +1982,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isOcrMode = false;
     let isContinuousScanning = false;
     let continuousScanTimer = null;
+    let activeScanController = null;
     let currentScanDescription = "Ready to Scan. Point your camera at an object and press Scan.";
     let lastSceneState = {
         hazards: [],
@@ -2089,6 +2094,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     updateContinuousButtonUI();
                     updateModeButtonUI();
+                    updateStopButtonUI();
+                    if (state.currentTab === 'camera') {
+                        updateStatusIndicator(isContinuousScanning ? 'scanning' : 'ready');
+                    }
                     if (SettingsService.state.darkModeEnabled) {
                         document.body.classList.add('dark-mode');
                     } else {
@@ -2373,14 +2382,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (btn) {
             if (isOcrMode) {
-                btn.style.background = 'rgba(59, 130, 246, 0.25)';
-                btn.style.borderColor = 'rgba(59, 130, 246, 0.4)';
                 btn.classList.add('mode-text-active');
             } else {
-                btn.style.background = 'rgba(255, 255, 255, 0.08)';
-                btn.style.borderColor = 'rgba(255, 255, 255, 0.12)';
                 btn.classList.remove('mode-text-active');
             }
+        }
+    }
+
+    function updateStatusIndicator(stateName) {
+        const statusText = document.getElementById('scan-status-text');
+        const statusDot = document.querySelector('.live-status-pill .status-dot');
+        if (!statusText || !statusDot) return;
+
+        statusDot.className = 'status-dot';
+        
+        switch (stateName) {
+            case 'ready':
+                statusText.innerText = "Ready";
+                statusDot.classList.add('status-ready');
+                break;
+            case 'scanning':
+                statusText.innerText = "Live Scanning...";
+                statusDot.classList.add('status-scanning');
+                break;
+            case 'reading':
+                statusText.innerText = "Reading Text...";
+                statusDot.classList.add('status-reading');
+                break;
+            case 'describing':
+                statusText.innerText = "Describing Scene...";
+                statusDot.classList.add('status-describing');
+                break;
+            case 'processing':
+                statusText.innerText = "Processing...";
+                statusDot.classList.add('status-processing');
+                break;
+            case 'stopped':
+                statusText.innerText = "Scan Stopped";
+                statusDot.classList.add('status-stopped');
+                break;
+            default:
+                statusText.innerText = stateName;
+                statusDot.classList.add('status-ready');
+        }
+    }
+
+    function updateStopButtonUI() {
+        const stopBtn = document.getElementById('btn-stop-speech');
+        if (stopBtn) {
+            stopBtn.disabled = !(isAnalyzing || isContinuousScanning);
         }
     }
 
@@ -2396,6 +2446,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         isAnalyzing = true;
+        updateStatusIndicator(isContinuous ? 'scanning' : (isOcrMode ? 'reading' : 'describing'));
+        updateStopButtonUI();
         const scanStartTime = performance.now();
         console.log("[Vision System] triggerDescribeSurroundings invoked.");
 
@@ -2412,7 +2464,7 @@ document.addEventListener('DOMContentLoaded', () => {
             scanBtn.classList.add('scanning');
         }
         if (scanLabel) {
-            scanLabel.innerText = "Scanning...";
+            scanLabel.innerText = "SCANNING...";
         }
 
         if (describeBtn && !isContinuous) {
@@ -2481,9 +2533,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const endpoint = '/api/scan';
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 60000);
+            activeScanController = new AbortController();
+            const timeoutId = setTimeout(() => {
+                if (activeScanController) activeScanController.abort();
+            }, 60000);
 
+            updateStatusIndicator('processing');
             console.log("[VISION] Sending request to Gemini via /api/scan...");
             let response;
             try {
@@ -2495,7 +2550,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         image: base64Img,
                         ocrMode: isOcrMode
                     }),
-                    signal: controller.signal
+                    signal: activeScanController.signal
                 });
             } catch (fetchErr) {
                 if (fetchErr.name === 'AbortError') {
@@ -2610,6 +2665,10 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
         } catch (err) {
+            if (err.name === 'AbortError') {
+                console.log("[Vision System] Request aborted by user.");
+                return;
+            }
             console.error("[Vision System] Advanced vision request failed:", err);
             const errDescription = "Unable to analyze the scene.";
             
@@ -2619,6 +2678,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } finally {
             isAnalyzing = false;
+            activeScanController = null;
             const scanBtn = document.getElementById('btn-scan-action');
             const scanLabel = scanBtn?.querySelector('.control-label');
             if (scanBtn) {
@@ -2626,13 +2686,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 scanBtn.classList.remove('scanning');
             }
             if (scanLabel) {
-                scanLabel.innerText = "Scan";
+                scanLabel.innerText = "SCAN";
             }
             if (announceStatus) announceStatus.classList.remove('active');
             if (describeBtn) {
                 describeBtn.disabled = false;
                 describeBtn.style.opacity = '1';
             }
+            if (isContinuousScanning) {
+                updateStatusIndicator('scanning');
+            } else {
+                updateStatusIndicator('ready');
+            }
+            updateStopButtonUI();
         }
     }
 
@@ -3185,8 +3251,43 @@ document.addEventListener('DOMContentLoaded', () => {
     if (stopSpeechBtn) {
         stopSpeechBtn.addEventListener('click', (e) => {
             e.stopPropagation();
+            
+            // Abort pending fetch request
+            if (activeScanController) {
+                try {
+                    activeScanController.abort();
+                } catch (abortErr) {
+                    console.warn("Error aborting scan fetch:", abortErr);
+                }
+                activeScanController = null;
+            }
+            
+            isContinuousScanning = false;
+            stopContinuousScanning();
+            
             window.speechSynthesis.cancel();
             SpeechService.announce("Speech stopped.");
+            
+            isAnalyzing = false;
+            
+            const scanBtn = document.getElementById('btn-scan-action');
+            const scanLabel = scanBtn?.querySelector('.control-label');
+            if (scanBtn) {
+                scanBtn.disabled = false;
+                scanBtn.classList.remove('scanning');
+            }
+            if (scanLabel) {
+                scanLabel.innerText = "SCAN";
+            }
+            
+            stopSpeechBtn.disabled = true;
+
+            updateStatusIndicator('stopped');
+            setTimeout(() => {
+                if (!isAnalyzing && !isContinuousScanning) {
+                    updateStatusIndicator('ready');
+                }
+            }, 1500);
         });
     }
 

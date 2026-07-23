@@ -280,48 +280,39 @@
                     <div class="camera-controls-dock-wrapper">
                         <div class="camera-control-dock">
                             
-                            <!-- Left Section: SCAN -->
-                            <div class="dock-section dock-left">
-                                <button class="btn-control-scan" id="btn-scan-action" aria-label="Scan Surroundings">
-                                    <div class="scan-pulse-ring"></div>
-                                    <svg class="scan-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    </svg>
-                                    <span class="control-label">SCAN</span>
-                                </button>
-                            </div>
+                            <!-- Left: SCAN -->
+                            <button class="btn-control-scan" id="btn-scan-action" aria-label="Scan surroundings">
+                                <div class="scan-pulse-ring"></div>
+                                <div class="spinner-ring"></div>
+                                <svg class="scan-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="22" height="22">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                </svg>
+                                <span class="control-label">SCAN</span>
+                            </button>
 
-                            <!-- Center Section: Mode Segmented Control -->
-                            <div class="dock-section dock-center">
-                                <button class="btn-control-mode" id="btn-mode-toggle" aria-label="Toggle Mode">
-                                    <div class="mode-sliding-indicator"></div>
-                                    <div class="mode-option option-scene">
-                                        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                        <span>Scene</span>
-                                    </div>
-                                    <div class="mode-option option-text">
-                                        <svg class="mode-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                        <span>Text</span>
-                                    </div>
-                                    <!-- Keep the required DOM element with ID 'mode-label-text' inside for app.js to update -->
-                                    <span id="mode-label-text" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0;">Scene Mode</span>
-                                </button>
-                            </div>
-
-                            <!-- Right Section: Stop Voice -->
-                            <div class="dock-section dock-right">
-                                <button class="btn-control-stop" id="btn-stop-speech" aria-label="Stop Voice Output">
-                                    <svg class="stop-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                            <!-- Center: Mode Switch Button -->
+                            <button class="btn-control-mode" id="btn-mode-toggle" aria-label="Switch scan mode">
+                                <div class="mode-icon-wrap">
+                                    <svg class="mode-icon icon-scene" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                     </svg>
-                                    <span>STOP VOICE</span>
-                                </button>
-                            </div>
+                                    <svg class="mode-icon icon-text" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <div class="mode-text-wrap">
+                                    <span id="mode-label-text" class="mode-title">Scene Mode</span>
+                                    <span class="mode-subtitle">Tap to switch</span>
+                                </div>
+                            </button>
+
+                            <!-- Right: STOP -->
+                            <button class="btn-control-stop" id="btn-stop-speech" aria-label="Stop active scanning and speech" disabled>
+                                <svg class="stop-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                                    <rect x="4" y="4" width="16" height="16" rx="3" />
+                                </svg>
+                                <span class="stop-label">STOP</span>
+                            </button>
 
                         </div>
                     </div>
@@ -329,8 +320,8 @@
                     <!-- Separate Floating Live Status Pill below the control dock -->
                     <div class="live-status-container">
                         <div class="live-status-pill">
-                            <span class="status-green-dot"></span>
-                            <span id="scan-status-text">Live Scanning...</span>
+                            <span class="status-dot status-ready"></span>
+                            <span id="scan-status-text">Ready</span>
                         </div>
                     </div>
                 </section>
