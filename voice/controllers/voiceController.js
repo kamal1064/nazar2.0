@@ -246,6 +246,10 @@ export class VoiceController {
         }
     }
 
+    stopListening() {
+        recognition.stop();
+    }
+
     /**
      * Resolves natural speech to local/remote intents sequentially.
      * Tracks stage-level performance metrics.
