@@ -3276,7 +3276,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnBackHome) {
         btnBackHome.addEventListener('click', (e) => {
             e.stopPropagation();
-            const homeTabBtn = document.querySelector('[data-tab="home"]');
+            const homeTabBtn = document.querySelector('[data-target="home"]');
             if (homeTabBtn) homeTabBtn.click();
         });
     }
