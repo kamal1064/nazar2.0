@@ -1,29 +1,18 @@
 /**
  * NAZAR Voice Engine OCR Skill
- * v1.0.0
+ * v2.0.0
  */
 import { BaseSkill } from './BaseSkill.js';
+import { logger } from '../utils/logger.js';
 
 export class OCRSkill extends BaseSkill {
-    name() {
-        return 'ocr';
-    }
-
-    supportedActions() {
-        return ['read', 'scan_text'];
-    }
-
-    requiredPermissions() {
-        return ['camera'];
-    }
-
     async execute(action, params = {}) {
-        console.log(`[OCRSkill] Executing: ${action}`);
+        logger.skill.info(`Executing OCRSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
             return {
                 success: false,
-                spokenText: "OCR service is unavailable.",
+                responseKey: 'ocr.error',
                 nextState: "Idle",
                 data: {}
             };
@@ -38,18 +27,30 @@ export class OCRSkill extends BaseSkill {
 
             return {
                 success: true,
-                spokenText: "Reading text.",
+                responseKey: 'ocr.read.success',
                 nextState: "Scanning",
                 data: {}
             };
         } catch (err) {
-            console.error('[OCRSkill] Execution error:', err);
+            logger.skill.error('[OCRSkill] Execution error:', err);
             return {
                 success: false,
-                spokenText: "Failed to read text.",
+                responseKey: 'ocr.error',
                 nextState: "Idle",
                 data: {}
             };
         }
     }
 }
+
+// Static manifest for registration and capability discovery
+OCRSkill.manifest = {
+    id: 'ocr',
+    version: '2.0.0',
+    priority: 200,
+    description: 'read printed text and documents using optical character recognition',
+    commands: ['read', 'scan_text'],
+    permissions: ['camera'],
+    busyDescription: 'reading text'
+};
+

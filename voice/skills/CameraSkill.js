@@ -1,34 +1,18 @@
 /**
  * NAZAR Voice Engine Camera Skill
- * v1.0.0
+ * v2.0.0
  */
 import { BaseSkill } from './BaseSkill.js';
+import { logger } from '../utils/logger.js';
 
 export class CameraSkill extends BaseSkill {
-    name() {
-        return 'camera';
-    }
-
-    supportedActions() {
-        return [
-            'startScan', 'stopScan',
-            'switchTextMode', 'switchSceneMode',
-            'switch_ocr', 'switch_scene',
-            'captureImage', 'readLastResult'
-        ];
-    }
-
-    requiredPermissions() {
-        return ['camera'];
-    }
-
     async execute(action, params = {}) {
-        console.log(`[CameraSkill] Executing: ${action}`);
+        logger.skill.info(`Executing CameraSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
             return {
                 success: false,
-                spokenText: "Camera service is unavailable.",
+                responseKey: 'camera.error',
                 nextState: "Idle",
                 data: {}
             };
@@ -40,7 +24,7 @@ export class CameraSkill extends BaseSkill {
                     window.NazarVoiceAPI.startScan();
                     return {
                         success: true,
-                        spokenText: "Scanning started.",
+                        responseKey: 'camera.startScan.success',
                         nextState: "Scanning",
                         data: {}
                     };
@@ -49,7 +33,7 @@ export class CameraSkill extends BaseSkill {
                     window.NazarVoiceAPI.stopScan();
                     return {
                         success: true,
-                        spokenText: "Scanning stopped.",
+                        responseKey: 'camera.stopScan.success',
                         nextState: "Idle",
                         data: {}
                     };
@@ -59,7 +43,7 @@ export class CameraSkill extends BaseSkill {
                     window.NazarVoiceAPI.switchOCR();
                     return {
                         success: true,
-                        spokenText: "Text mode activated.",
+                        responseKey: 'camera.switch_ocr.success',
                         nextState: "Idle",
                         data: { mode: 'ocr' }
                     };
@@ -69,7 +53,7 @@ export class CameraSkill extends BaseSkill {
                     window.NazarVoiceAPI.switchScene();
                     return {
                         success: true,
-                        spokenText: "Scene mode activated.",
+                        responseKey: 'camera.switch_scene.success',
                         nextState: "Idle",
                         data: { mode: 'scene' }
                     };
@@ -78,7 +62,7 @@ export class CameraSkill extends BaseSkill {
                     window.NazarVoiceAPI.startScan();
                     return {
                         success: true,
-                        spokenText: "Image captured.",
+                        responseKey: 'camera.startScan.success',
                         nextState: "Scanning",
                         data: {}
                     };
@@ -87,7 +71,7 @@ export class CameraSkill extends BaseSkill {
                     window.NazarVoiceAPI.repeat();
                     return {
                         success: true,
-                        spokenText: "", // Feedback handled by app's repeat
+                        responseKey: 'speech.repeat.success',
                         nextState: "Idle",
                         data: {}
                     };
@@ -95,19 +79,36 @@ export class CameraSkill extends BaseSkill {
                 default:
                     return {
                         success: false,
-                        spokenText: "Action not supported.",
+                        responseKey: 'camera.error',
                         nextState: "Idle",
                         data: {}
                     };
             }
         } catch (err) {
-            console.error('[CameraSkill] Execution error:', err);
+            logger.skill.error('[CameraSkill] Execution error:', err);
             return {
                 success: false,
-                spokenText: "Camera control failed.",
+                responseKey: 'camera.error',
                 nextState: "Idle",
                 data: {}
             };
         }
     }
 }
+
+// Static manifest for registration and capability discovery
+CameraSkill.manifest = {
+    id: 'camera',
+    version: '2.0.0',
+    priority: 200,
+    description: 'control camera, start scanning, switch mode, or capture image',
+    commands: [
+        'startScan', 'stopScan',
+        'switchTextMode', 'switchSceneMode',
+        'switch_ocr', 'switch_scene',
+        'captureImage', 'readLastResult'
+    ],
+    permissions: ['camera'],
+    busyDescription: 'controlling the camera'
+};
+

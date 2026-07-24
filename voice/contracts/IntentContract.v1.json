@@ -1,28 +1,41 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "IntentContract",
-  "version": "1.0.0",
-  "type": "object",
-  "properties": {
-    "skill": {
-      "type": "string",
-      "description": "Target skill name that should handle the command."
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "IntentContract",
+    "version": "1.1.0",
+    "description": "Schema for intent objects flowing through the voice engine. Produced by parser (local_exact/regex), fuzzyMatcher (local_fuzzy), or Gemini Function Calling (gemini).",
+    "type": "object",
+    "required": ["skill", "action", "params", "confidence", "source"],
+    "properties": {
+        "skill": {
+            "type": "string",
+            "description": "Target skill identifier matching a registered skill manifest.id.",
+            "examples": ["navigate", "camera", "ocr", "scene", "emergency", "settings", "profile", "speech", "ui", "objectFinder"]
+        },
+        "action": {
+            "type": "string",
+            "description": "Action to execute within the target skill."
+        },
+        "params": {
+            "type": "object",
+            "description": "Key-value parameters extracted from user speech.",
+            "additionalProperties": true
+        },
+        "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Resolution confidence. >=0.95 execute, >=0.75 confirm, >=0.50 ask-repeat, <0.50 deny."
+        },
+        "source": {
+            "type": "string",
+            "enum": ["local_exact", "local_regex", "local_fuzzy", "gemini"],
+            "description": "Resolution layer that produced this intent."
+        },
+        "rawTranscript": {
+            "type": "string",
+            "description": "Original speech transcript (max 500 chars).",
+            "maxLength": 500
+        }
     },
-    "action": {
-      "type": "string",
-      "description": "Specific action name within the target skill."
-    },
-    "params": {
-      "type": "object",
-      "description": "Key-value parameters extracted from the user speech command."
-    },
-    "confidence": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 1,
-      "description": "AI intent resolution confidence rating from 0.00 to 1.00."
-    }
-  },
-  "required": ["skill", "action", "params", "confidence"],
-  "additionalProperties": false
+    "additionalProperties": false
 }

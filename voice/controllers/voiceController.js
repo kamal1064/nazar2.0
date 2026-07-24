@@ -1,27 +1,45 @@
-import { runSelfTest } from '../utils/selfTest.js';
+/**
+ * NAZAR Voice Engine Controller
+ * v2.0.0
+ *
+ * Bootstraps and coordinates the entire voice engine.
+ * Decoupled wiring via eventBus subscriptions.
+ */
 import { stateMachine } from '../core/state.js';
 import { speaker } from '../core/speaker.js';
 import { recognition } from '../core/recognition.js';
 import { permissionsBroker } from '../services/permissions.js';
 import { parser } from '../core/parser.js';
 import { router } from '../core/router.js';
-import { planner } from '../core/planner.js';
 import { taskQueue } from '../core/queue.js';
 import { geminiService } from '../services/gemini.js';
-import { NavigationSkill } from '../skills/NavigationSkill.js';
-import { SettingsSkill } from '../skills/SettingsSkill.js';
-import { CameraSkill } from '../skills/CameraSkill.js';
-import { OCRSkill } from '../skills/OCRSkill.js';
-import { SceneSkill } from '../skills/SceneSkill.js';
-import { SOSSkill } from '../skills/SOSSkill.js';
-import { ProfileSkill } from '../skills/ProfileSkill.js';
-import '../utils/replayHarness.js';
+import { fuzzyMatcher } from '../core/fuzzyMatcher.js';
+import { sessionManager } from '../core/sessionManager.js';
+import { conversationContext } from '../core/context.js';
+import { conversationManager } from '../core/conversationManager.js';
+import { recoveryManager } from '../core/recoveryManager.js';
+import { audioCues } from '../core/audioCues.js';
+import { voiceConfig } from '../utils/voiceConfig.js';
+import { logger } from '../utils/logger.js';
+import { eventBus } from '../core/eventBus.js';
+import { VoiceEvents } from '../events.js';
+import { voiceAnalytics } from '../utils/voiceAnalytics.js';
+import { commandHistory } from '../utils/commandHistory.js';
+import { wakeWordDetector } from '../core/wakeWord.js';
 
 export class VoiceController {
     constructor() {
         this.initialized = false;
-        this.hudOverlay = null;
-        this.pendingGeminiConfirmation = null; // Stash intent for confirmation loop
+        
+        // Intent-aware deduplication
+        this._lastIntentKey = null;
+        this._lastIntentTime = 0;
+
+        // UI references
+        this._overlayEl = null;
+        this._overlayStatusEl = null;
+        this._overlayTranscriptEl = null;
+        this._voiceBtnEl = null;
     }
 
     /**
@@ -30,19 +48,12 @@ export class VoiceController {
     async initialize() {
         if (this.initialized) return;
 
-        console.log('[Voice Engine] Initializing NAZAR Voice Engine...');
+        logger.voice.info('Initializing NAZAR Voice Engine v2.0.0...');
 
-        // 1. Run self-tests
-        const diagnostics = await runSelfTest();
+        // 1. Initialize Pluggable Skill Registry
+        await router.initialize();
 
-        // 2. Perform browser checks
-        if (!diagnostics.speechSynthesis || !diagnostics.speechRecognition) {
-            console.error('[Voice Engine] Voice Engine cannot initialize: Speech APIs missing.');
-            stateMachine.setEngineState('Offline');
-            return;
-        }
-
-        // 3. Set up listeners for Speech Recognition
+        // 2. Initialize Speech Recognition
         const ok = recognition.init({
             onTranscript: (text) => this.handleTranscript(text),
             onError: (err) => this.handleRecognitionError(err),
@@ -50,142 +61,171 @@ export class VoiceController {
         });
 
         if (!ok) {
-            console.error('[Voice Engine] Failed to initialize Recognition.');
+            logger.voice.error('Speech recognition initialization failed. APIs unsupported.');
+            await recoveryManager.handle('VOICE_002');
             return;
         }
 
-        // 4. Register Pluggable Skills
-        router.registerSkill(new NavigationSkill());
-        router.registerSkill(new SettingsSkill());
-        router.registerSkill(new CameraSkill());
-        router.registerSkill(new OCRSkill());
-        router.registerSkill(new SceneSkill());
-        router.registerSkill(new SOSSkill());
-        router.registerSkill(new ProfileSkill());
+        // 3. Attach Wake Word Detector
+        wakeWordDetector.attach(recognition);
+        if (voiceConfig.flags.wakeWord) {
+            wakeWordDetector.enable();
+        }
 
-        // 5. Bind UI Event Listeners
-        this.bindEvents();
+        // 4. Cache UI DOM elements
+        this._cacheUIElements();
 
-        // 6. Initialize States
+        // 5. Register Event Bus Listeners (Event-Driven State Matching)
+        this._registerEvents();
+
+        // 6. Set initial state
         stateMachine.setWakeState('Sleeping');
         stateMachine.setEngineState('Idle');
 
-        this.initialized = true;
-        console.log('[Voice Engine] NAZAR Voice Engine initialized successfully.');
+        // Check online status initially
+        this._updateNetworkStatus(navigator.onLine);
 
-        // Play vocal startup cue
-        await speaker.speak("Voice engine operational");
+        this.initialized = true;
+        logger.voice.info('NAZAR Voice Engine booted successfully.');
+
+        // Play subtle success chime
+        await audioCues.play('success');
     }
 
-    bindEvents() {
-        const voiceBtn = document.getElementById('header-voice-btn');
-        if (voiceBtn) {
-            voiceBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.toggleWakeState();
-            });
-        }
+    _cacheUIElements() {
+        this._overlayEl = document.getElementById('voice-overlay');
+        this._overlayStatusEl = document.getElementById('voice-overlay-status');
+        this._overlayTranscriptEl = document.getElementById('voice-overlay-transcript');
+        this._voiceBtnEl = document.getElementById('header-voice-btn');
+    }
 
-        // Sliders & HUD bindings
+    _registerEvents() {
+        // Handle Wake word detected
+        eventBus.on(VoiceEvents.WAKE_DETECTED, async ({ transcript }) => {
+            logger.voice.info(`Wake word triggered. Wake transcript: "${transcript}"`);
+            voiceAnalytics.recordWake();
+            
+            // Wake session start
+            sessionManager.start();
+            conversationManager.newSession();
+            conversationContext.startSession();
+
+            stateMachine.setWakeState('Awake');
+            await audioCues.play('wake');
+            
+            // Announce wake greeting variations
+            const { pickResponse } = await import('../utils/responseVariations.js');
+            await speaker.speak(pickResponse('wake.greeting'), { mode: 'replace' });
+            
+            // Open mic for command input
+            recognition.startContinuous();
+        });
+
+        // Handle offline/online state
+        window.addEventListener('online', () => this._updateNetworkStatus(true));
+        window.addEventListener('offline', () => this._updateNetworkStatus(false));
+
+        // Handle permission changes
+        eventBus.on(VoiceEvents.PERMISSION_RECOVERED, async ({ resource }) => {
+            logger.voice.info(`Permissions recovered for resource: ${resource}. Restarting listening.`);
+            await audioCues.play('success');
+            if (stateMachine.wakeState === 'Awake') {
+                recognition.startContinuous();
+            }
+        });
+
+        // Keep local page state synced in Context
+        eventBus.on(VoiceEvents.SKILL_FINISHED, ({ id, response }) => {
+            if (id === 'navigate' && response.data?.target) {
+                conversationContext.setPage(response.data.target);
+            }
+            if (id === 'camera' && response.data?.mode) {
+                conversationContext.setCameraMode(response.data.mode);
+            }
+            
+            // Push conversation loops (Anything else?)
+            conversationManager.onCommandCompleted();
+        });
+
+        // Mutex conflict notification
+        eventBus.on(VoiceEvents.RESOURCE_CONFLICT, async ({ resource, owner }) => {
+            logger.router.warn(`Resource lock conflict. ${resource} locked by ${owner}`);
+            await audioCues.play('error');
+        });
+
+        // Trigger Audio Cues on state changes
+        eventBus.on(VoiceEvents.ENGINE_STATE_CHANGED, async ({ state }) => {
+            this._updateVoiceButtonUI(state);
+            this._updateOverlayUI(state);
+            this._updateHudUI();
+
+            if (state === 'Thinking') {
+                await audioCues.play('thinking');
+            } else if (state === 'Listening') {
+                await audioCues.play('listening');
+            }
+        });
+
+        // Clean up locks on command completion safety-net
+        eventBus.on(VoiceEvents.COMMAND_COMPLETED, () => {
+            this._updateHudUI();
+            sessionManager.resetIdleTimer();
+        });
+
+        // Setup slider settings loading
         const rateSlider = document.getElementById('slider-voice-rate');
         const volSlider = document.getElementById('slider-voice-volume');
-        const hudToggle = document.getElementById('toggle-dev-hud');
-        const devHud = document.getElementById('developer-hud');
-        const closeHud = document.getElementById('close-hud-btn');
 
-        if (rateSlider) {
-            // Load initial value
-            if (window.NazarVoiceAPI) {
-                rateSlider.value = window.NazarVoiceAPI.getSettings().speechRate || 1.0;
-                speaker.setPreferences({ rate: parseFloat(rateSlider.value) });
-            }
+        if (rateSlider && window.NazarVoiceAPI) {
+            rateSlider.value = window.NazarVoiceAPI.getSettings().speechRate || 1.0;
+            speaker.setPreferences({ rate: parseFloat(rateSlider.value) });
             rateSlider.addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
                 speaker.setPreferences({ rate: val });
-                if (window.NazarVoiceAPI) {
-                    window.NazarVoiceAPI.saveSetting('speechRate', val);
-                }
+                window.NazarVoiceAPI.saveSetting('speechRate', val);
             });
         }
 
-        if (volSlider) {
-            // Load initial value
-            if (window.NazarVoiceAPI) {
-                volSlider.value = window.NazarVoiceAPI.getSettings().speechVolume || 1.0;
-                speaker.setPreferences({ volume: parseFloat(volSlider.value) });
-            }
+        if (volSlider && window.NazarVoiceAPI) {
+            volSlider.value = window.NazarVoiceAPI.getSettings().speechVolume || 1.0;
+            speaker.setPreferences({ volume: parseFloat(volSlider.value) });
             volSlider.addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
                 speaker.setPreferences({ volume: val });
-                if (window.NazarVoiceAPI) {
-                    window.NazarVoiceAPI.saveSetting('speechVolume', val);
-                }
+                window.NazarVoiceAPI.saveSetting('speechVolume', val);
             });
         }
-
-        const setHudVisibility = (visible) => {
-            if (devHud) devHud.style.display = visible ? 'block' : 'none';
-            if (hudToggle) hudToggle.checked = visible;
-        };
-
-        if (hudToggle) {
-            hudToggle.addEventListener('change', (e) => {
-                setHudVisibility(e.target.checked);
-            });
-        }
-
-        if (closeHud) {
-            closeHud.addEventListener('click', () => {
-                setHudVisibility(false);
-            });
-        }
-
-        // Expose HUD Logger globally so callbacks can invoke it
-        window.NazarVoiceHUD = {
-            updateTranscript: (text) => {
-                const tEl = document.getElementById('hud-transcript');
-                if (tEl) tEl.innerText = text;
-            },
-            logTelemetry: (intent) => {
-                const iEl = document.getElementById('hud-intent');
-                const cEl = document.getElementById('hud-confidence');
-                const sEl = document.getElementById('hud-source');
-                const lEl = document.getElementById('hud-telemetry-list');
-
-                if (iEl) iEl.innerText = `${intent.skill}.${intent.action}`;
-                if (cEl) cEl.innerText = `${(intent.confidence * 100).toFixed(0)}%`;
-                if (sEl) sEl.innerText = intent.source || 'gemini';
-
-                if (lEl) {
-                    const li = document.createElement('li');
-                    li.innerText = `[${intent.source || 'gemini'}] ${intent.skill}.${intent.action} (${(intent.confidence * 100).toFixed(0)}%)`;
-                    lEl.appendChild(li);
-                    lEl.scrollTop = lEl.scrollHeight;
-                }
-            }
-        };
     }
 
-    /**
-     * Toggle WakeState (Awake <-> Sleeping)
-     */
+    _updateNetworkStatus(isOnline) {
+        if (isOnline) {
+            eventBus.emit(VoiceEvents.ENGINE_ONLINE);
+            logger.voice.info('Voice assistant is online.');
+        } else {
+            eventBus.emit(VoiceEvents.ENGINE_OFFLINE);
+            logger.voice.warn('Voice assistant is offline. Graceful degradation active.');
+            recoveryManager.handle('VOICE_003');
+        }
+    }
+
+    /** Set up microphone toggles based on click */
     async toggleWakeState() {
         if (stateMachine.wakeState === 'Sleeping') {
-            // Wake Flow
+            sessionManager.start();
+            conversationManager.newSession();
+            conversationContext.startSession();
+
             stateMachine.setWakeState('Awake');
-            await speaker.speak("Hello. How can I help you?");
-            
-            // Request permissions if not already checked, then start recognition
+            await audioCues.play('wake');
+
             const granted = await permissionsBroker.requestMicrophonePermission();
             if (granted) {
                 recognition.startContinuous();
             } else {
-                await speaker.speak("Microphone permission is required to accept voice commands.");
-                stateMachine.setEngineState('Offline');
+                await recoveryManager.handle('VOICE_001');
             }
         } else {
-            // Sleep Flow
-            await speaker.speak("Voice assistant stopped.");
+            sessionManager.end('user_manual_stop');
             recognition.stop();
             speaker.cancel();
             stateMachine.setWakeState('Sleeping');
@@ -193,158 +233,130 @@ export class VoiceController {
         }
     }
 
-    /**
-     * Triggers a Push-to-Talk single session
-     */
+    /** Wires Push-to-Talk action */
     async startPushToTalk() {
         if (stateMachine.wakeState === 'Sleeping') {
             stateMachine.setWakeState('Awake');
         }
-        
         const granted = await permissionsBroker.requestMicrophonePermission();
         if (granted) {
             recognition.startPushToTalk();
         } else {
-            await speaker.speak("Microphone permission is required.");
+            await recoveryManager.handle('VOICE_001');
         }
     }
 
-    stopListening() {
-        recognition.stop();
-    }
-
     /**
-     * Callback when a final transcript is heard
+     * Resolves natural speech to local/remote intents sequentially.
+     * Tracks stage-level performance metrics.
      */
     async handleTranscript(text) {
-        console.log(`[Voice Engine Controller] Heard: "${text}"`);
+        logger.voice.info(`Command heard: "${text}"`);
         
-        if (window.NazarVoiceHUD) {
-            window.NazarVoiceHUD.updateTranscript(text);
+        if (this._overlayTranscriptEl) {
+            this._overlayTranscriptEl.innerText = `"${text}"`;
         }
 
-        // Get active language from settings or fallback to English
+        // Check if user spoke an exit phrase
+        if (conversationManager.isExitPhrase(text)) {
+            await conversationManager.handleExit();
+            return;
+        }
+
+        const stages = {
+            wakeDetectionMs: 0, // Not applicable here
+            localParseMs: 0,
+            fuzzyMatchMs: 0,
+            geminiRTTMs: 0,
+            skillExecutionMs: 0,
+            speechStartMs: 0,
+            totalMs: 0
+        };
+
+        const startTime = Date.now();
         let activeLang = 'en-US';
+
         if (window.NazarVoiceAPI) {
-            const settings = window.NazarVoiceAPI.getSettings();
-            activeLang = settings.preferredLanguage || 'en-US';
+            activeLang = window.NazarVoiceAPI.getSettings().preferredLanguage || 'en-US';
         }
 
-        // 1. Check for active Gemini confirmation loop
-        if (this.pendingGeminiConfirmation) {
-            const cleanText = text.trim().toLowerCase();
-            if (cleanText.includes('yes') || cleanText.includes('confirm') || cleanText.includes('हाँ') || cleanText.includes('ಹೌದು')) {
-                const intent = this.pendingGeminiConfirmation;
-                this.pendingGeminiConfirmation = null;
-                await speaker.speak("Executing command.");
-                taskQueue.push(intent);
-                return;
-            } else if (cleanText.includes('no') || cleanText.includes('cancel') || cleanText.includes('नहीं') || cleanText.includes('ಬೇಡ')) {
-                this.pendingGeminiConfirmation = null;
-                await speaker.speak("Command cancelled.");
-                stateMachine.setEngineState('Idle');
+        let intent = null;
+
+        // Stage 1: Exact / Regex Local parsing (Layers 1 & 2)
+        const tStartParse = Date.now();
+        intent = parser.parse(text, activeLang);
+        if (!intent) {
+            intent = parser.parseRegex(text, activeLang);
+        }
+        stages.localParseMs = Date.now() - tStartParse;
+
+        // Stage 2: Fuzzy local parsing (Layer 2.5)
+        if (!intent && voiceConfig.flags.fuzzyMatcher) {
+            const tStartFuzzy = Date.now();
+            intent = fuzzyMatcher.match(text);
+            stages.fuzzyMatchMs = Date.now() - tStartFuzzy;
+        }
+
+        // Stage 3: Gemini remote Function Calling (Layer 3)
+        if (!intent && voiceConfig.flags.functionCalling && navigator.onLine) {
+            const tStartGemini = Date.now();
+            const geminiRes = await geminiService.resolveIntent(text);
+            intent = geminiRes.intent;
+            stages.geminiRTTMs = geminiRes.duration;
+        }
+
+        // Enforce intent-based 500ms command deduplication (Revision R3)
+        if (intent) {
+            const intentKey = `${intent.skill}.${intent.action}`;
+            if (intentKey === this._lastIntentKey && Date.now() - this._lastIntentTime < (voiceConfig.conversation.dedupWindowMs || 500)) {
+                logger.voice.warn(`Deduplicated command ignored: ${intentKey}`);
+                eventBus.emit(VoiceEvents.COMMAND_DUPLICATE, { intentKey });
                 return;
             }
+            this._lastIntentKey = intentKey;
+            this._lastIntentTime = Date.now();
         }
 
-        // 2. Check for active emergency SOS confirmation loop
-        const sosSkill = router.skills['emergency'];
-        if (sosSkill && sosSkill.pendingConfirmation) {
-            const cleanText = text.trim().toLowerCase();
-            if (cleanText.includes('yes') || cleanText.includes('confirm') || cleanText.includes('हाँ') || cleanText.includes('ಹೌದು')) {
-                taskQueue.push({ skill: 'emergency', action: 'confirmSOS', params: {}, confidence: 1.0, source: 'local_confirm' });
-                return;
-            } else if (cleanText.includes('no') || cleanText.includes('cancel') || cleanText.includes('नहीं') || cleanText.includes('ಬೇಡ')) {
-                taskQueue.push({ skill: 'emergency', action: 'cancelSOS', params: {}, confidence: 1.0, source: 'local_cancel' });
-                return;
-            }
-        }
-
-        // 3. Generate execution plan for compound commands
-        const plan = planner.plan(text, activeLang);
-
-        if (plan.length > 0) {
-            console.log('[Voice Engine Controller] Resolved local plan:', plan);
-            // Push all resolved steps sequentially onto the queue
-            plan.forEach(task => taskQueue.push(task));
-        } else {
-            console.log('[Voice Engine Controller] No local matches. Falling back to Gemini intent resolution...');
+        // 4. Dispatch resolved intent
+        if (intent) {
+            const tStartSkill = Date.now();
             
-            // Resolve natural language via Gemini
-            const resolvedIntent = await geminiService.resolveIntent(text);
+            // Record statistics
+            voiceAnalytics.recordCommand(intent.source, intent.skill, true);
+            
+            // Feed into Task Queue (safely queued)
+            taskQueue.push(intent);
 
-            if (resolvedIntent) {
-                console.log('[Voice Engine Controller] Resolved Gemini intent:', resolvedIntent);
-                
-                // Enforce Confidence Bands
-                const conf = resolvedIntent.confidence || 0.0;
-                
-                if (conf >= 0.90) {
-                    // Band A: Execute Immediately
-                    taskQueue.push(resolvedIntent);
-                } else if (conf >= 0.70) {
-                    // Band B: Execute and Log in developer HUD
-                    if (window.NazarVoiceHUD) {
-                        window.NazarVoiceHUD.logTelemetry(resolvedIntent);
-                    }
-                    taskQueue.push(resolvedIntent);
-                } else if (conf >= 0.50) {
-                    // Band C: Vocal Confirmation Loop
-                    this.pendingGeminiConfirmation = resolvedIntent;
-                    const question = this.getConfirmationQuestion(resolvedIntent);
-                    await speaker.speak(question);
-                } else {
-                    // Band D: Vocal Deny Feedback
-                    await speaker.speak("I didn't understand that.");
-                    stateMachine.setEngineState('Idle');
-                }
-            } else {
-                await speaker.speak("I had trouble resolving that command. Please try again.");
-                stateMachine.setEngineState('Idle');
-            }
+            stages.skillExecutionMs = Date.now() - tStartSkill;
+        } else {
+            logger.voice.warn(`Command failed to resolve: "${text}"`);
+            voiceAnalytics.recordCommand('unknown', 'unknown', false);
+            await recoveryManager.handle('VOICE_004');
         }
-    }
 
-    /**
-     * Formulates user-friendly confirmation questions based on resolved intent
-     */
-    getConfirmationQuestion(intent) {
-        if (intent.skill === 'navigate') {
-            const target = intent.params.target || 'home';
-            return `Did you mean to open ${target}?`;
-        }
-        if (intent.skill === 'camera') {
-            if (intent.action === 'startScan') return "Did you mean to start scanning surroundings?";
-            if (intent.action === 'switchTextMode' || intent.action === 'switch_ocr') return "Did you mean to switch to text reading mode?";
-            if (intent.action === 'switchSceneMode' || intent.action === 'switch_scene') return "Did you mean to switch to scene description mode?";
-        }
-        if (intent.skill === 'emergency') {
-            if (intent.action === 'sendSOS') return "Did you mean to send an emergency SOS?";
-        }
-        // General fallback format
-        return `Did you mean to run the command to ${intent.action.replace(/([A-Z])/g, ' $1').toLowerCase()}?`;
-    }
-
-    /**
-     * Callback when a SpeechRecognition error is thrown
-     */
-    handleRecognitionError(error) {
-        console.warn('[Voice Engine Controller] Recognition error callback:', error);
+        stages.totalMs = Date.now() - startTime;
         
-        // If microphone is blocked, alert visually and vocally
+        // Log timing stats
+        commandHistory.add({
+            transcript: text,
+            skill: intent ? intent.skill : 'unknown',
+            action: intent ? intent.action : 'unknown',
+            source: intent ? intent.source : 'failed',
+            success: !!intent,
+            stages
+        });
+    }
+
+    handleRecognitionError(error) {
+        logger.voice.warn('Recognition error callback triggered:', error);
         if (error === 'not-allowed') {
             stateMachine.setEngineState('Offline');
-            speaker.speak("Microphone access blocked. Please enable permissions.");
+            recoveryManager.handle('VOICE_001');
         }
     }
 
-    /**
-     * Callback for priority commands (Stop, Cancel, Repeat, Help)
-     * These commands bypass the parser/queue and execute immediately.
-     */
     handlePriorityCommand(command) {
-        console.log(`[Voice Engine Controller] PRIORITY INTERRUPT: "${command}"`);
-        
+        logger.voice.info(`Priority interrupt received: "${command}"`);
         if (command === 'stop') {
             taskQueue.interruptStop();
         } else if (command === 'cancel') {
@@ -355,17 +367,88 @@ export class VoiceController {
             speaker.repeat();
         }
     }
+
+    // ─── UI Overlay Sync ───────────────────────────────────────────────────────
+    _updateVoiceButtonUI(state) {
+        if (!this._voiceBtnEl) return;
+        
+        if (state === 'Listening') {
+            this._voiceBtnEl.classList.add('status-voice-listening');
+            this._voiceBtnEl.setAttribute('aria-label', 'Listening active. Click to mute');
+        } else {
+            this._voiceBtnEl.classList.remove('status-voice-listening');
+            this._voiceBtnEl.setAttribute('aria-label', 'Activate voice assistant');
+        }
+    }
+
+    _updateOverlayUI(state) {
+        if (!this._overlayEl || !voiceConfig.flags.overlay) return;
+
+        if (state === 'Listening' || state === 'Thinking') {
+            this._overlayEl.style.display = 'flex';
+            if (this._overlayStatusEl) {
+                this._overlayStatusEl.innerText = state === 'Listening' ? 'Listening...' : 'Thinking...';
+            }
+        } else {
+            this._overlayEl.style.display = 'none';
+            if (this._overlayTranscriptEl) {
+                this._overlayTranscriptEl.innerText = '';
+            }
+        }
+    }
+
+    _updateHudUI() {
+        if (!voiceConfig.flags.devHud) return;
+
+        const session = sessionManager.snapshot();
+        const context = conversationContext.snapshot();
+        const report = voiceAnalytics.getReport();
+
+        const sEl = document.getElementById('hud-session-id');
+        const wEl = document.getElementById('hud-wake-state');
+        const aEl = document.getElementById('hud-active-skill');
+        const lEl = document.getElementById('hud-avg-latency');
+        const kEl = document.getElementById('hud-api-key');
+        const qEl = document.getElementById('hud-quota-used');
+        const wcEl = document.getElementById('hud-wake-count');
+        const nEl = document.getElementById('hud-network');
+        const hEl = document.getElementById('hud-skill-health');
+
+        if (sEl) sEl.innerText = session.sessionId || '-';
+        if (wEl) wEl.innerText = stateMachine.wakeState || 'Sleeping';
+        if (aEl) aEl.innerText = router.activeSkill ? router.activeSkill.name() : '-';
+        if (lEl) lEl.innerText = report.avgTotalMs ? report.avgTotalMs.toFixed(0) : '-';
+        if (wcEl) wcEl.innerText = report.wakeWordDetections;
+        if (nEl) nEl.innerText = navigator.onLine ? 'Online' : 'Offline';
+
+        // Read active skills state
+        if (hEl) {
+            const list = Object.values(router.skills).map(s => `${s.name()}:${s.healthCheck()}`);
+            hEl.innerText = list.join(', ');
+        }
+
+        // Read API quota status from express endpoint asynchronously
+        if (document.getElementById('developer-hud').style.display === 'block') {
+            fetch('/api/health')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        if (kEl) kEl.innerText = `#${data.activeApiKeyIndex || 1}`;
+                        if (qEl) qEl.innerText = data.remainingToday !== undefined ? (495 - data.remainingToday) : '-';
+                    }
+                })
+                .catch(() => {});
+        }
+    }
 }
 
-// Instantiate and expose globally so app.js can bridge gestures to it
+// Instantiate and expose globally
 window.NazarVoiceController = new VoiceController();
 
-// Automatically initialize the voice engine on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
-    // Wait a short moment to ensure app.js has completed its layout setups
     setTimeout(() => {
         window.NazarVoiceController.initialize().catch(err => {
-            console.error('[Voice Engine] Auto-initialization failed:', err);
+            console.error('[Voice Controller] Auto-initialization failed:', err);
         });
     }, 150);
 });

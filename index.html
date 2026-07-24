@@ -954,6 +954,21 @@
         </div>
     </div>
 
+    <!-- Voice Overlay -->
+    <div id="voice-overlay" class="voice-overlay" style="display: none;" aria-live="assertive">
+        <div class="voice-overlay-content">
+            <div class="voice-wave-container">
+                <div class="voice-wave-bar bar-1"></div>
+                <div class="voice-wave-bar bar-2"></div>
+                <div class="voice-wave-bar bar-3"></div>
+                <div class="voice-wave-bar bar-4"></div>
+                <div class="voice-wave-bar bar-5"></div>
+            </div>
+            <p id="voice-overlay-status" class="voice-overlay-status">Listening...</p>
+            <p id="voice-overlay-transcript" class="voice-overlay-transcript"></p>
+        </div>
+    </div>
+
     <!-- Developer HUD Overlay -->
     <div id="developer-hud" class="dev-hud-card" style="display: none;">
         <div class="hud-header">
@@ -965,6 +980,15 @@
             <p><strong>Resolved Intent:</strong> <span id="hud-intent">-</span></p>
             <p><strong>Confidence:</strong> <span id="hud-confidence">-</span></p>
             <p><strong>Source:</strong> <span id="hud-source">-</span></p>
+            <p><strong>Session ID:</strong> <span id="hud-session-id">-</span></p>
+            <p><strong>Wake State:</strong> <span id="hud-wake-state">-</span></p>
+            <p><strong>Active Skill:</strong> <span id="hud-active-skill">-</span></p>
+            <p><strong>API Key:</strong> <span id="hud-api-key">-</span></p>
+            <p><strong>Quota:</strong> <span id="hud-quota-used">-</span> / 495</p>
+            <p><strong>Wake Detections:</strong> <span id="hud-wake-count">0</span></p>
+            <p><strong>Avg Latency:</strong> <span id="hud-avg-latency">-</span> ms</p>
+            <p><strong>Skill Health:</strong> <span id="hud-skill-health">-</span></p>
+            <p><strong>Network:</strong> <span id="hud-network">-</span></p>
             <p><strong>Recent Telemetry:</strong></p>
             <ul id="hud-telemetry-list" style="margin: 0; padding-left: 15px; max-height: 80px; overflow-y: auto;"></ul>
         </div>

@@ -1,9 +1,10 @@
 /**
  * NAZAR Voice Engine Settings Skill
- * v1.0.0
+ * v2.0.0
  */
 import { BaseSkill } from './BaseSkill.js';
 import { speaker } from '../core/speaker.js';
+import { logger } from '../utils/logger.js';
 
 export class SettingsSkill extends BaseSkill {
     constructor() {
@@ -11,27 +12,13 @@ export class SettingsSkill extends BaseSkill {
         this.previousVolume = 1.0;
     }
 
-    name() {
-        return 'settings';
-    }
-
-    supportedActions() {
-        return [
-            'increaseVolume', 'decreaseVolume',
-            'speakFaster', 'speakSlower',
-            'speak_faster', 'speak_slower',
-            'muteVoice', 'unmuteVoice',
-            'enableDarkMode', 'disableDarkMode'
-        ];
-    }
-
     async execute(action, params = {}) {
-        console.log(`[SettingsSkill] Adjusting setting: ${action}`);
+        logger.skill.info(`Executing SettingsSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
             return {
                 success: false,
-                spokenText: "Settings service is unavailable.",
+                responseKey: 'settings.error',
                 nextState: "Idle",
                 data: {}
             };
@@ -39,7 +26,7 @@ export class SettingsSkill extends BaseSkill {
 
         try {
             const currentSettings = window.NazarVoiceAPI.getSettings();
-            let responseText = '';
+            let responseKey = '';
 
             switch (action) {
                 case 'speakFaster':
@@ -48,7 +35,7 @@ export class SettingsSkill extends BaseSkill {
                     rate = Math.min(3.0, +(rate + 0.2).toFixed(2));
                     window.NazarVoiceAPI.saveSetting('speechRate', rate);
                     speaker.setPreferences({ rate });
-                    responseText = "Speaking faster.";
+                    responseKey = 'settings.speak_faster.success';
                     break;
                 }
 
@@ -58,7 +45,7 @@ export class SettingsSkill extends BaseSkill {
                     rate = Math.max(0.5, +(rate - 0.2).toFixed(2));
                     window.NazarVoiceAPI.saveSetting('speechRate', rate);
                     speaker.setPreferences({ rate });
-                    responseText = "Speaking slower.";
+                    responseKey = 'settings.speak_slower.success';
                     break;
                 }
 
@@ -67,7 +54,7 @@ export class SettingsSkill extends BaseSkill {
                     volume = Math.min(1.0, +(volume + 0.15).toFixed(2));
                     window.NazarVoiceAPI.saveSetting('speechVolume', volume);
                     speaker.setPreferences({ volume });
-                    responseText = "Volume increased.";
+                    responseKey = 'settings.increaseVolume.success';
                     break;
                 }
 
@@ -76,7 +63,7 @@ export class SettingsSkill extends BaseSkill {
                     volume = Math.max(0.1, +(volume - 0.15).toFixed(2));
                     window.NazarVoiceAPI.saveSetting('speechVolume', volume);
                     speaker.setPreferences({ volume });
-                    responseText = "Volume decreased.";
+                    responseKey = 'settings.decreaseVolume.success';
                     break;
                 }
 
@@ -87,7 +74,7 @@ export class SettingsSkill extends BaseSkill {
                     }
                     window.NazarVoiceAPI.saveSetting('speechVolume', 0.0);
                     speaker.setPreferences({ volume: 0.0 });
-                    responseText = ""; // Silent confirmation
+                    responseKey = 'settings.decreaseVolume.success'; // silent / low confirmation handled by cues
                     break;
                 }
 
@@ -95,26 +82,26 @@ export class SettingsSkill extends BaseSkill {
                     const volume = this.previousVolume || 1.0;
                     window.NazarVoiceAPI.saveSetting('speechVolume', volume);
                     speaker.setPreferences({ volume });
-                    responseText = "Voice unmuted.";
+                    responseKey = 'settings.increaseVolume.success';
                     break;
                 }
 
                 case 'enableDarkMode': {
                     window.NazarVoiceAPI.saveSetting('darkModeEnabled', true);
-                    responseText = "Dark theme enabled.";
+                    responseKey = 'settings.enableDarkMode.success';
                     break;
                 }
 
                 case 'disableDarkMode': {
                     window.NazarVoiceAPI.saveSetting('darkModeEnabled', false);
-                    responseText = "Light theme enabled.";
+                    responseKey = 'settings.disableDarkMode.success';
                     break;
                 }
 
                 default:
                     return {
                         success: false,
-                        spokenText: "Action not recognized.",
+                        responseKey: 'settings.error',
                         nextState: "Idle",
                         data: {}
                     };
@@ -122,18 +109,36 @@ export class SettingsSkill extends BaseSkill {
 
             return {
                 success: true,
-                spokenText: responseText,
+                responseKey,
                 nextState: "Idle",
                 data: { action }
             };
         } catch (err) {
-            console.error('[SettingsSkill] Execution error:', err);
+            logger.skill.error('[SettingsSkill] Execution error:', err);
             return {
                 success: false,
-                spokenText: "Failed to adjust settings.",
+                responseKey: 'settings.error',
                 nextState: "Idle",
                 data: {}
             };
         }
     }
 }
+
+// Static manifest for registration and capability discovery
+SettingsSkill.manifest = {
+    id: 'settings',
+    version: '2.0.0',
+    priority: 100,
+    description: 'adjust voice settings, speech speed, volume, and toggle dark mode theme',
+    commands: [
+        'increaseVolume', 'decreaseVolume',
+        'speakFaster', 'speakSlower',
+        'speak_faster', 'speak_slower',
+        'muteVoice', 'unmuteVoice',
+        'enableDarkMode', 'disableDarkMode'
+    ],
+    permissions: [],
+    busyDescription: 'adjusting application settings'
+};
+

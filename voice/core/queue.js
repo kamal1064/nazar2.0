@@ -1,15 +1,19 @@
 /**
  * NAZAR Voice Engine Sequential Task Queue
- * v1.0.0
+ * v2.0.0
  */
 import { router } from './router.js';
 import { speaker } from './speaker.js';
 import { stateMachine } from './state.js';
+import { logger } from '../utils/logger.js';
+import { eventBus } from './eventBus.js';
+import { VoiceEvents } from '../events.js';
 
 export class TaskQueue {
     constructor() {
         this.queue = [];
         this.isProcessing = false;
+        this.activeTask = null;
     }
 
     /**
@@ -19,7 +23,8 @@ export class TaskQueue {
     push(task) {
         if (!task) return;
         this.queue.push(task);
-        console.log(`[TaskQueue] Task pushed to queue. Current size: ${this.queue.length}`);
+        logger.router.info(`Task pushed to queue. Current size: ${this.queue.length}`);
+        eventBus.emit(VoiceEvents.COMMAND_QUEUED, { task });
         
         if (!this.isProcessing) {
             this.processNext();
@@ -32,7 +37,7 @@ export class TaskQueue {
     async processNext() {
         if (this.queue.length === 0) {
             this.isProcessing = false;
-            // Return back to Idle if execution completes
+            this.activeTask = null;
             if (stateMachine.engineState === 'Executing') {
                 stateMachine.setEngineState('Idle');
             }
@@ -40,13 +45,18 @@ export class TaskQueue {
         }
 
         this.isProcessing = true;
-        const task = this.queue.shift();
+        this.activeTask = this.queue.shift();
 
         try {
-            console.log(`[TaskQueue] Executing sequential task: ${task.skill}.${task.action}`);
-            await router.executeIntent(task);
+            logger.router.info(`Executing sequential task: ${this.activeTask.skill}.${this.activeTask.action}`);
+            eventBus.emit(VoiceEvents.COMMAND_STARTED, { task: this.activeTask });
+            
+            await router.executeIntent(this.activeTask);
+            
+            eventBus.emit(VoiceEvents.COMMAND_COMPLETED, { task: this.activeTask });
         } catch (err) {
-            console.error('[TaskQueue] Task execution error:', err);
+            logger.router.error('Task execution error:', err);
+            eventBus.emit(VoiceEvents.COMMAND_FAILED, { task: this.activeTask, error: err.message });
         }
 
         // Delay briefly before starting next task to allow speech cues to complete
@@ -59,7 +69,8 @@ export class TaskQueue {
     clear() {
         this.queue = [];
         this.isProcessing = false;
-        console.log('[TaskQueue] Execution queue cleared.');
+        this.activeTask = null;
+        logger.router.info('Execution queue cleared.');
     }
 
     /**
@@ -67,8 +78,9 @@ export class TaskQueue {
      * Halts speech output only
      */
     interruptStop() {
-        console.log('[TaskQueue] Priority Interrupt: STOP speech.');
+        logger.router.info('Priority Interrupt: STOP speech.');
         speaker.cancel();
+        eventBus.emit(VoiceEvents.SPEECH_PRIORITY, { type: 'stop' });
     }
 
     /**
@@ -76,10 +88,21 @@ export class TaskQueue {
      * Clears the execution queue and cancels speech
      */
     interruptCancel() {
-        console.log('[TaskQueue] Priority Interrupt: CANCEL current queue.');
+        logger.router.info('Priority Interrupt: CANCEL current queue.');
+        
+        // Call cancel() on currently active skill if it supports it
+        if (this.activeTask && router.skills[this.activeTask.skill]) {
+            try {
+                router.skills[this.activeTask.skill].cancel();
+            } catch (err) {
+                logger.router.error(`Failed to cancel skill ${this.activeTask.skill}:`, err.message);
+            }
+        }
+
         this.clear();
         speaker.cancel();
         stateMachine.setEngineState('Idle');
+        eventBus.emit(VoiceEvents.SPEECH_PRIORITY, { type: 'cancel' });
     }
 
     /**
@@ -87,7 +110,17 @@ export class TaskQueue {
      * Resets queue, speech, camera scanning, and puts assistant to sleep
      */
     interruptEmergency() {
-        console.log('[TaskQueue] Priority Interrupt: EMERGENCY STOP.');
+        logger.router.info('Priority Interrupt: EMERGENCY STOP.');
+        
+        // Cancel active skill
+        if (this.activeTask && router.skills[this.activeTask.skill]) {
+            try {
+                router.skills[this.activeTask.skill].cancel();
+            } catch (err) {
+                logger.router.error(`Failed to cancel skill ${this.activeTask.skill}:`, err.message);
+            }
+        }
+
         this.clear();
         speaker.cancel();
         
@@ -95,12 +128,13 @@ export class TaskQueue {
             try {
                 window.NazarVoiceAPI.stopScan();
             } catch (err) {
-                console.warn('[TaskQueue] Failed to stop scan on emergency shutdown:', err);
+                logger.router.warn('Failed to stop scan on emergency shutdown:', err.message);
             }
         }
 
         stateMachine.setWakeState('Sleeping');
         stateMachine.setEngineState('Idle');
+        eventBus.emit(VoiceEvents.SPEECH_PRIORITY, { type: 'emergency' });
     }
 }
 

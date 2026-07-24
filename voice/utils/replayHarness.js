@@ -1,8 +1,9 @@
 /**
  * NAZAR Voice Engine Replay regression test harness
- * v1.0.0
+ * v2.0.0
  */
 import { parser } from '../core/parser.js';
+import { fuzzyMatcher } from '../core/fuzzyMatcher.js';
 
 export const testCases = [
     { command: "go home", expectedSkill: "navigate", expectedAction: "home" },
@@ -21,12 +22,24 @@ export const testCases = [
     { command: "speak slower", expectedSkill: "settings", expectedAction: "speak_slower" },
     
     { command: "send sos", expectedSkill: "emergency", expectedAction: "sendSOS" },
-    { command: "cancel sos", expectedSkill: "emergency", expectedAction: "cancelSOS" }
+    { command: "cancel sos", expectedSkill: "emergency", expectedAction: "cancelSOS" },
+
+    // New Skill Tests (v4.1 additions)
+    { command: "stop speaking", expectedSkill: "speech", expectedAction: "stop" },
+    { command: "pause speaking", expectedSkill: "speech", expectedAction: "pause" },
+    { command: "repeat last description", expectedSkill: "speech", expectedAction: "repeat" },
+    { command: "scroll down please", expectedSkill: "ui", expectedAction: "scrollDown" },
+    { command: "scroll up", expectedSkill: "ui", expectedAction: "scrollUp" },
+    { command: "what can you do", expectedSkill: "ui", expectedAction: "openHelp" },
+    { command: "find my bottle", expectedSkill: "objectFinder", expectedAction: "find" },
+    { command: "locate my keys", expectedSkill: "objectFinder", expectedAction: "find" },
+    { command: "yes confirm that", expectedSkill: "permission", expectedAction: "confirm" },
+    { command: "no reject that", expectedSkill: "permission", expectedAction: "cancel" }
 ];
 
 export function runReplayTests() {
     console.log('====================================================');
-    console.log('         NAZAR Voice Replay Test Harness             ');
+    console.log('         NAZAR Voice Replay Test Harness v2.0.0      ');
     console.log('====================================================');
     
     let passed = 0;
@@ -35,7 +48,16 @@ export function runReplayTests() {
 
     for (const test of testCases) {
         try {
-            const resolved = parser.parse(test.command, 'en-US');
+            // Level 1 & 2: Parser (exact / regex)
+            let resolved = parser.parse(test.command, 'en-US');
+            if (!resolved) {
+                resolved = parser.parseRegex(test.command, 'en-US');
+            }
+
+            // Level 2.5: Fuzzy Local Matcher fallback
+            if (!resolved) {
+                resolved = fuzzyMatcher.match(test.command);
+            }
             
             if (!resolved) {
                 console.error(`❌ FAILED: "${test.command}" -> Returned null intent.`);
@@ -48,7 +70,7 @@ export function runReplayTests() {
             const actionMatch = resolved.action === test.expectedAction;
 
             if (skillMatch && actionMatch) {
-                console.log(`✓ PASSED: "${test.command}" -> Resolved to ${resolved.skill}.${resolved.action} (Confidence: ${resolved.confidence})`);
+                console.log(`✓ PASSED: "${test.command}" -> Resolved to ${resolved.skill}.${resolved.action} (Source: ${resolved.source || 'local'}, Confidence: ${resolved.confidence})`);
                 passed++;
                 report.push({ command: test.command, success: true });
             } else {
@@ -81,3 +103,4 @@ export function runReplayTests() {
 
 // Expose on window for easy browser console execution
 window.runVoiceReplayTests = runReplayTests;
+

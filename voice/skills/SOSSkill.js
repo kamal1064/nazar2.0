@@ -1,35 +1,18 @@
 /**
  * NAZAR Voice Engine SOS Skill
- * v1.0.0
+ * v2.0.0
  */
 import { BaseSkill } from './BaseSkill.js';
+import { logger } from '../utils/logger.js';
 
 export class SOSSkill extends BaseSkill {
-    constructor() {
-        super();
-        this.pendingConfirmation = false;
-        this.confirmationTimeout = null;
-    }
-
-    name() {
-        return 'emergency';
-    }
-
-    supportedActions() {
-        return ['sendSOS', 'cancelSOS', 'shareLocation', 'confirmSOS'];
-    }
-
-    requiredPermissions() {
-        return []; // Permission checks are done internally within local location services
-    }
-
     async execute(action, params = {}) {
-        console.log(`[SOSSkill] Executing: ${action}`);
+        logger.skill.info(`Executing SOSSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
             return {
                 success: false,
-                spokenText: "Emergency system is unavailable.",
+                responseKey: 'emergency.error',
                 nextState: "Idle",
                 data: {}
             };
@@ -37,98 +20,66 @@ export class SOSSkill extends BaseSkill {
 
         try {
             switch (action) {
-                case 'sendSOS':
-                    // Trigger confirmation safety loop
-                    this.pendingConfirmation = true;
-                    this.startConfirmationTimeout();
+                case 'sendSOS': {
+                    window.NazarVoiceAPI.sendSOS(false); // Send real SOS email
                     return {
                         success: true,
-                        spokenText: "Are you sure you want to send an emergency SOS? Say Yes to confirm.",
+                        responseKey: 'emergency.sendSOS.confirmed',
                         nextState: "Idle",
-                        data: { pendingConfirmation: true }
+                        data: { sosSent: true }
                     };
+                }
 
-                case 'confirmSOS':
-                    if (this.pendingConfirmation) {
-                        this.clearConfirmationTimeout();
-                        this.pendingConfirmation = false;
-                        window.NazarVoiceAPI.sendSOS(false); // Send real SOS email
-                        return {
-                            success: true,
-                            spokenText: "Emergency alert sent.",
-                            nextState: "Idle",
-                            data: { sosSent: true }
-                        };
-                    } else {
-                        return {
-                            success: false,
-                            spokenText: "No SOS alert was pending confirmation.",
-                            nextState: "Idle",
-                            data: {}
-                        };
-                    }
-
-                case 'cancelSOS':
-                    this.clearConfirmationTimeout();
-                    this.pendingConfirmation = false;
-                    // Trigger "I'm Safe" / Cancel SOS action
+                case 'cancelSOS': {
                     const cancelBtn = document.getElementById('cancel-sos');
                     if (cancelBtn) cancelBtn.click();
                     return {
                         success: true,
-                        spokenText: "Emergency alert cancelled.",
+                        responseKey: 'emergency.cancelSOS.success',
                         nextState: "Idle",
                         data: { cancelled: true }
                     };
+                }
 
-                case 'shareLocation':
-                    // Trigger Location announcement
-                    if (typeof window.NazarVoiceAPI.navigate === 'function') {
-                        // Switch to camera/home if location handles it
-                    }
+                case 'shareLocation': {
                     const whereAmIBtn = document.getElementById('feature-places');
                     if (whereAmIBtn) whereAmIBtn.click();
                     return {
                         success: true,
-                        spokenText: "Retrieving location.",
+                        responseKey: 'emergency.shareLocation.success',
                         nextState: "Idle",
                         data: {}
                     };
+                }
 
                 default:
                     return {
                         success: false,
-                        spokenText: "Emergency action not supported.",
+                        responseKey: 'emergency.error',
                         nextState: "Idle",
                         data: {}
                     };
             }
         } catch (err) {
-            console.error('[SOSSkill] Execution error:', err);
+            logger.skill.error('[SOSSkill] Execution error:', err);
             return {
                 success: false,
-                spokenText: "Emergency SOS failed to send.",
+                responseKey: 'emergency.error',
                 nextState: "Idle",
                 data: {}
             };
         }
     }
-
-    startConfirmationTimeout() {
-        this.clearConfirmationTimeout();
-        // Discard confirmation if user waits longer than 15 seconds
-        this.confirmationTimeout = setTimeout(() => {
-            if (this.pendingConfirmation) {
-                console.log('[SOSSkill] SOS Confirmation timeout reached.');
-                this.pendingConfirmation = false;
-            }
-        }, 15000);
-    }
-
-    clearConfirmationTimeout() {
-        if (this.confirmationTimeout) {
-            clearTimeout(this.confirmationTimeout);
-            this.confirmationTimeout = null;
-        }
-    }
 }
+
+// Static manifest for registration and capability discovery
+SOSSkill.manifest = {
+    id: 'emergency',
+    version: '2.0.0',
+    priority: 800, // High action priority below SpeechSkill
+    description: 'trigger emergency alerts and share your current location',
+    commands: ['sendSOS', 'cancelSOS', 'shareLocation'],
+    permissions: [],
+    busyDescription: 'sending an emergency alert'
+};
+

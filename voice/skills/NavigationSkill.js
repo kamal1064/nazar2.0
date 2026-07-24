@@ -1,18 +1,11 @@
 /**
  * NAZAR Voice Engine Navigation Skill
- * v1.0.0
+ * v2.0.0
  */
 import { BaseSkill } from './BaseSkill.js';
+import { logger } from '../utils/logger.js';
 
 export class NavigationSkill extends BaseSkill {
-    name() {
-        return 'navigate';
-    }
-
-    supportedActions() {
-        return ['home', 'camera', 'profile', 'settings', 'back', 'navigate'];
-    }
-
     async execute(action, params = {}) {
         let target = action;
 
@@ -21,12 +14,12 @@ export class NavigationSkill extends BaseSkill {
             target = params.target || 'home';
         }
 
-        console.log(`[NavigationSkill] Navigating to: ${target}`);
+        logger.skill.info(`Executing NavigationSkill target: ${target}`);
 
         if (!window.NazarVoiceAPI) {
             return {
                 success: false,
-                spokenText: "Navigation service is unavailable.",
+                responseKey: 'navigate.error',
                 nextState: "Idle",
                 data: {}
             };
@@ -34,11 +27,10 @@ export class NavigationSkill extends BaseSkill {
 
         try {
             if (target === 'back') {
-                // Navigate back
                 window.history.back();
                 return {
                     success: true,
-                    spokenText: "Navigating back.",
+                    responseKey: 'navigate.back.success',
                     nextState: "Idle",
                     data: {}
                 };
@@ -47,22 +39,32 @@ export class NavigationSkill extends BaseSkill {
             // Perform panel switch
             window.NazarVoiceAPI.navigate(target);
 
-            // Capitalize target for announcement
-            const targetLabel = target.charAt(0).toUpperCase() + target.slice(1);
             return {
                 success: true,
-                spokenText: `${targetLabel} opened.`,
+                responseKey: `navigate.${target}.success`,
                 nextState: "Idle",
                 data: { target }
             };
         } catch (err) {
-            console.error('[NavigationSkill] Execution error:', err);
+            logger.skill.error('[NavigationSkill] Execution error:', err);
             return {
                 success: false,
-                spokenText: "Failed to navigate.",
+                responseKey: 'navigate.error',
                 nextState: "Idle",
                 data: {}
             };
         }
     }
 }
+
+// Static manifest for registration and capability discovery
+NavigationSkill.manifest = {
+    id: 'navigate',
+    version: '2.0.0',
+    priority: 500,
+    description: 'navigate the application screens',
+    commands: ['home', 'camera', 'profile', 'settings', 'back', 'navigate'],
+    permissions: [],
+    busyDescription: 'navigating application pages'
+};
+

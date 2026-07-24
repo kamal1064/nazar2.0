@@ -1,35 +1,44 @@
 /**
  * NAZAR Voice Engine Scene Description Skill
- * v1.0.0
+ * v2.0.0
  */
 import { BaseSkill } from './BaseSkill.js';
+import { logger } from '../utils/logger.js';
+import { conversationContext } from '../core/context.js';
+import { speaker } from '../core/speaker.js';
 
 export class SceneSkill extends BaseSkill {
-    name() {
-        return 'scene';
-    }
-
-    supportedActions() {
-        return ['describe', 'scan_scene'];
-    }
-
-    requiredPermissions() {
-        return ['camera'];
-    }
-
     async execute(action, params = {}) {
-        console.log(`[SceneSkill] Executing: ${action}`);
+        logger.skill.info(`Executing SceneSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
             return {
                 success: false,
-                spokenText: "Scene analysis service is unavailable.",
+                responseKey: 'scene.error',
                 nextState: "Idle",
                 data: {}
             };
         }
 
         try {
+            // Check vision cache (60s TTL)
+            const cache = conversationContext.lastScene;
+            const forceNew = params.scan_again || action === 'scan_again';
+            
+            if (cache && !forceNew) {
+                logger.vision.info('[SceneSkill] Vision cache hit. Reusing description.');
+                await speaker.speak(cache, { mode: 'replace' });
+                return {
+                    success: true,
+                    responseKey: 'scene.describe.cacheHit',
+                    nextState: "Idle",
+                    data: { cached: true, summary: cache }
+                };
+            }
+
+            // Invalidate cache before starting a new scan
+            conversationContext.invalidateVisionCache('new_scan_triggered');
+
             // 1. Force Scene description mode
             window.NazarVoiceAPI.switchScene();
             
@@ -38,18 +47,30 @@ export class SceneSkill extends BaseSkill {
 
             return {
                 success: true,
-                spokenText: "Analyzing surroundings.",
+                responseKey: 'scene.describe.success',
                 nextState: "Scanning",
-                data: {}
+                data: { cached: false }
             };
         } catch (err) {
-            console.error('[SceneSkill] Execution error:', err);
+            logger.skill.error('[SceneSkill] Execution error:', err);
             return {
                 success: false,
-                spokenText: "Failed to analyze scene surroundings.",
+                responseKey: 'scene.error',
                 nextState: "Idle",
                 data: {}
             };
         }
     }
 }
+
+// Static manifest for registration and capability discovery
+SceneSkill.manifest = {
+    id: 'scene',
+    version: '2.0.0',
+    priority: 200,
+    description: 'describe your surroundings and environmental hazards',
+    commands: ['describe', 'scan_scene', 'scan_again'],
+    permissions: ['camera'],
+    busyDescription: 'describing surroundings'
+};
+

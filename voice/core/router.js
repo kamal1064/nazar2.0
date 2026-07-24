@@ -1,16 +1,50 @@
 /**
  * NAZAR Voice Engine Skill Registry & Intent Router
- * v1.0.0
+ * v2.0.0
  */
 import { stateMachine } from './state.js';
 import { speaker } from './speaker.js';
 import { permissionsBroker } from '../services/permissions.js';
+import { resourceLock } from './resourceLock.js';
+import { logger } from '../utils/logger.js';
+import { eventBus } from './eventBus.js';
+import { VoiceEvents } from '../events.js';
+import { recoveryManager } from './recoveryManager.js';
+import { ALL_SKILLS } from '../skills/index.js';
 
 export class Router {
     constructor() {
         this.skills = {};
         this.consecutiveFailures = 0;
         this.pendingRecoveryTask = null; // Stash intent here if waiting for permission approval
+        this.activeSkill = null;
+    }
+
+    /**
+     * Set up and auto-discover all barrel-exported skills on startup.
+     * (v3 Improvement 3)
+     */
+    async initialize() {
+        logger.router.info('Initializing Skill Router and auto-discovering plugins...');
+        
+        for (const { SkillClass, manifest } of ALL_SKILLS) {
+            const instance = new SkillClass();
+            
+            // Auto-health check during registration (v3 Improvement 8)
+            const health = instance.healthCheck();
+            if (health === 'Unavailable' || health === 'Offline') {
+                logger.router.warn(`Skill '${manifest.id}' registered but is currently INACTIVE (Health: ${health})`);
+            }
+
+            // Run lifecycle initialize
+            try {
+                await instance.initialize();
+            } catch (err) {
+                logger.router.error(`Failed to initialize skill '${manifest.id}':`, err.message);
+            }
+
+            this.registerSkill(instance);
+        }
     }
 
     /**
@@ -18,18 +52,20 @@ export class Router {
      * @param {BaseSkill} skill 
      */
     registerSkill(skill) {
-        const name = skill.name();
-        this.skills[name] = skill;
-        console.log(`[Router] Skill registered: "${name}" (v${skill.version()}, Priority: ${skill.priority()})`);
+        const id = skill.name();
+        this.skills[id] = skill;
+        logger.router.info(`Skill registered: "${id}" (v${skill.version()}, Priority: ${skill.priority()})`);
+        eventBus.emit(VoiceEvents.SKILL_REGISTERED, { id, version: skill.version() });
     }
 
     /**
-     * Resolves and routes an intent to its matching registered skill
+     * Resolves and routes an intent to its matching registered skill.
+     * Integrates background task checks and R15 Resource Mutex locking.
      * @param {Object} intent JSON intent matching IntentContract.v1
      */
     async executeIntent(intent) {
         if (!intent) {
-            this.handleFailure('VOICE_004', "I'm sorry, I didn't understand that.");
+            await recoveryManager.handle('VOICE_004', { detail: 'Empty intent' });
             return;
         }
 
@@ -39,33 +75,44 @@ export class Router {
             .find(s => s.canHandle(intent));
 
         if (!skill) {
-            console.warn('[Router] No registered skill can handle intent:', intent);
-            this.handleFailure('VOICE_004', "Command not recognized.");
+            logger.router.warn('No registered skill can handle intent:', intent);
+            await recoveryManager.handle('VOICE_004', { intent });
+            return;
+        }
+
+        const manifest = skill.constructor.manifest || {};
+
+        // ─── Background Task Check (Improvement 7) ───────────────────────────
+        // High priority commands (>=800) always interrupt. Others check busy state.
+        const currentActive = this.activeSkill;
+        if (currentActive && manifest.priority < 800 && currentActive.constructor.manifest?.priority >= 800) {
+            logger.router.info(`Decline low-priority skill execution ${manifest.id} because high priority ${currentActive.name()} is running.`);
+            eventBus.emit(VoiceEvents.COMMAND_DEFERRED, { intent });
             return;
         }
 
         stateMachine.setEngineState('Executing');
+        this.activeSkill = skill;
+        eventBus.emit(VoiceEvents.SKILL_STARTED, { id: manifest.id, action: intent.action });
 
-        // 1. Health Checks
+        // ─── 1. Health Checks ───────────────────────────
         const health = skill.healthCheck();
         if (health === 'Busy') {
-            await speaker.speak("Assistant is busy. Please wait a moment.");
-            stateMachine.setEngineState('Idle');
+            await speaker.speak("I'm currently busy. Please wait a moment.", { mode: 'replace' });
+            this._resetExecutionState();
             return;
-        } else if (health === 'Unavailable') {
-            await speaker.speak("This feature is currently unavailable.");
-            stateMachine.setEngineState('Idle');
+        } else if (health === 'Unavailable' || health === 'Offline') {
+            await recoveryManager.handle(health === 'Offline' ? 'VOICE_003' : 'SKILL_ERROR', { skill: manifest.id });
+            this._resetExecutionState();
             return;
         }
 
-        // 2. Permission Validation
+        // ─── 2. Permission Validation ───────────────────────────
         const requiredPerms = skill.requiredPermissions();
         let allPermissionsApproved = true;
         let missingPermissionName = '';
 
         for (const perm of requiredPerms) {
-            // Note: permissionsBroker currently supports 'microphone' checks.
-            // We can add location checks or mock other permissions as needed.
             if (perm === 'microphone' && !permissionsBroker.isGranted()) {
                 const approved = await permissionsBroker.requestMicrophonePermission();
                 if (!approved) {
@@ -84,57 +131,88 @@ export class Router {
         }
 
         if (!allPermissionsApproved) {
-            // Permission Recovery Loop: Stash intent and request permission
             this.pendingRecoveryTask = intent;
-            await speaker.speak(`${missingPermissionName} access is required. Please enable it to continue.`);
-            stateMachine.setEngineState('Idle');
-            
-            // Trigger browser permission recovery flow (e.g. camera enable buttons)
-            if (missingPermissionName === 'Camera' && window.CameraPermissionManager) {
-                window.CameraPermissionManager.checkStatus().then(async () => {
-                    if (window.CameraPermissionManager.state === 'granted') {
-                        console.log('[Router] Permission recovered. Resuming stashed command...');
-                        const task = this.pendingRecoveryTask;
-                        this.pendingRecoveryTask = null;
-                        await this.executeIntent(task);
-                    }
-                });
-            }
+            await recoveryManager.handle('VOICE_005', { permission: missingPermissionName });
+            this._resetExecutionState();
             return;
         }
 
-        // 3. Execution
+        // ─── 3. R15 Resource Mutex Locking ───────────────────────────
+        const lockedResources = [];
+        for (const resource of requiredPerms) {
+            const acquired = resourceLock.acquire(resource, manifest.id);
+            if (!acquired) {
+                const owner = resourceLock.getOwner(resource);
+                const ownerDesc = this.skills[owner]?.constructor.manifest?.busyDescription || 'processing';
+
+                // Check priority: if incoming priority is higher, force release and acquire
+                if (manifest.priority > (this.skills[owner]?.constructor.manifest?.priority || 0)) {
+                    logger.router.info(`Force-releasing ${resource} lock from ${owner} for higher priority ${manifest.id}`);
+                    resourceLock.forceRelease(resource);
+                    resourceLock.acquire(resource, manifest.id);
+                    lockedResources.push(resource);
+                } else {
+                    // Lower priority: prompt user and defer execution
+                    logger.router.warn(`Resource lock conflict on ${resource}. Owner: ${owner}, Requestor: ${manifest.id}`);
+                    await speaker.speak(`I'm currently ${ownerDesc}. Please wait or cancel the current task.`, { mode: 'replace' });
+                    this._resetExecutionState();
+                    return;
+                }
+            } else {
+                lockedResources.push(resource);
+            }
+        }
+
+        // ─── 4. Execution ───────────────────────────
         try {
             const response = await skill.execute(intent.action, intent.params);
             
             if (response.success) {
                 this.consecutiveFailures = 0;
-                if (response.spokenText) {
-                    await speaker.speak(response.spokenText);
+                // Resolve responseKey via responseVariations (v3 Personality Layer)
+                if (response.responseKey) {
+                    const { pickResponse } = await import('../utils/responseVariations.js');
+                    const variation = pickResponse(response.responseKey);
+                    if (variation && variation !== 'Done.') {
+                        await speaker.speak(variation, { mode: 'replace' });
+                    }
                 }
             } else {
-                this.handleFailure('VOICE_004', response.spokenText || "Something went wrong.");
+                await recoveryManager.handle(response.errorCode || 'VOICE_004', { response });
             }
 
             stateMachine.setEngineState(response.nextState || 'Idle');
+            eventBus.emit(VoiceEvents.SKILL_FINISHED, { id: manifest.id, response });
         } catch (err) {
-            console.error(`[Router] Execution error in skill "${skill.name()}":`, err);
-            this.handleFailure('VOICE_004', "Failed to execute command.");
+            logger.router.error(`Execution error in skill "${manifest.id}":`, err);
+            await recoveryManager.handle('SKILL_ERROR', { skill: manifest.id, error: err.message });
             stateMachine.setEngineState('Idle');
+        } finally {
+            // Auto-release all locks acquired by this skill
+            for (const res of lockedResources) {
+                resourceLock.release(res, manifest.id);
+            }
+            this.activeSkill = null;
         }
     }
 
-    handleFailure(code, spokenError) {
-        this.consecutiveFailures++;
-        console.warn(`[Router] Error [${code}]. Consecutive failures: ${this.consecutiveFailures}`);
+    _resetExecutionState() {
+        this.activeSkill = null;
+        stateMachine.setEngineState('Idle');
+    }
 
-        // Recovery Mode: If consecutive errors > 3, provide help context
-        if (this.consecutiveFailures > 3) {
-            this.consecutiveFailures = 0; // Reset
-            speaker.speak("I'm having trouble understanding. You can say Help to hear available commands.");
-        } else {
-            speaker.speak(spokenError);
+    /** Clean shutdown of all registered skills */
+    dispose() {
+        logger.router.info('Disposing all registered skills...');
+        for (const skill of Object.values(this.skills)) {
+            try {
+                skill.dispose();
+            } catch (err) {
+                logger.router.error(`Error during dispose of skill ${skill.name()}:`, err.message);
+            }
         }
+        this.skills = {};
+        this.activeSkill = null;
     }
 }
 

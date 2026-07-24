@@ -1,22 +1,27 @@
 /**
  * NAZAR Voice Engine Pluggable Base Skill
- * v1.0.0
+ * v2.0.0
  */
 export class BaseSkill {
+    constructor() {
+        this._disabled = false;
+        this._offlineDisabled = false;
+    }
+
     /**
      * Unique identifier for the skill (e.g. 'navigation')
      * @returns {string}
      */
     name() {
-        throw new Error('Skill name must be implemented');
+        return this.constructor.manifest?.id || 'base';
     }
 
     /**
      * Semantic version of the skill
-     * @returns {string} e.g. '1.0.0'
+     * @returns {string}
      */
     version() {
-        return '1.0.0';
+        return this.constructor.manifest?.version || '1.0.0';
     }
 
     /**
@@ -24,7 +29,7 @@ export class BaseSkill {
      * @returns {number}
      */
     priority() {
-        return 100;
+        return this.constructor.manifest?.priority || 100;
     }
 
     /**
@@ -32,22 +37,32 @@ export class BaseSkill {
      * @returns {Array<string>}
      */
     supportedActions() {
-        return [];
+        return this.constructor.manifest?.commands || [];
     }
 
     /**
-     * Required hardware/browser permissions (e.g. ['camera', 'microphone', 'location'])
+     * Required hardware/browser permissions (e.g. ['camera', 'microphone'])
      * @returns {Array<string>}
      */
     requiredPermissions() {
-        return [];
+        return this.constructor.manifest?.permissions || [];
+    }
+
+    /**
+     * Called once after registration to set up listeners or background timers.
+     * @returns {Promise<void>}
+     */
+    async initialize() {
+        // Optional override
     }
 
     /**
      * Queries skill state to ensure it's ready to handle actions
-     * @returns {string} 'Ready', 'Busy', or 'Unavailable'
+     * @returns {string|Promise<string>} 'Ready', 'Busy', or 'Unavailable'
      */
     healthCheck() {
+        if (this._disabled) return 'Unavailable';
+        if (this._offlineDisabled) return 'Offline';
         return 'Ready';
     }
 
@@ -61,24 +76,42 @@ export class BaseSkill {
     }
 
     /**
-     * Core execution logic of the skill
+     * Called when a higher-priority command interrupts this skill mid-execution.
+     * Skills should clean up any in-progress async operations or camera sessions.
+     */
+    cancel() {
+        // Optional override
+    }
+
+    /**
+     * Called on voice engine shutdown or skill unregistration.
+     * Skills should remove all event listeners and release resources.
+     */
+    dispose() {
+        // Optional override
+    }
+
+    /**
+     * Core execution logic of the skill.
+     * Returns a SkillResponse matching contracts/SkillResponse.v1.json.
      * @param {string} action 
      * @param {Object} params 
-     * @returns {Promise<Object>} Standardized Skill Response
+     * @returns {Promise<Object>} Standardized Skill Response with responseKey
      */
     async execute(action, params = {}) {
         return {
             success: false,
-            spokenText: "Action not implemented.",
+            responseKey: 'recovery.generic',
             nextState: "Idle",
             data: {}
         };
     }
 
     /**
-     * Cleans up local state or listeners
+     * Legacy cleanup fallback (aliases to dispose)
      */
     cleanup() {
-        // Optional override
+        this.dispose();
     }
 }
+

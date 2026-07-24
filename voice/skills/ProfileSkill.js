@@ -1,25 +1,18 @@
 /**
  * NAZAR Voice Engine Profile/Account Skill
- * v1.0.0
+ * v2.0.0
  */
 import { BaseSkill } from './BaseSkill.js';
+import { logger } from '../utils/logger.js';
 
 export class ProfileSkill extends BaseSkill {
-    name() {
-        return 'profile';
-    }
-
-    supportedActions() {
-        return ['open', 'signOut', 'showAccount'];
-    }
-
     async execute(action, params = {}) {
-        console.log(`[ProfileSkill] Executing: ${action}`);
+        logger.skill.info(`Executing ProfileSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
             return {
                 success: false,
-                spokenText: "Profile service is unavailable.",
+                responseKey: 'profile.error',
                 nextState: "Idle",
                 data: {}
             };
@@ -34,14 +27,14 @@ export class ProfileSkill extends BaseSkill {
                         btn.click();
                         return {
                             success: true,
-                            spokenText: "Account panel opened.",
+                            responseKey: 'profile.open.success',
                             nextState: "Idle",
                             data: {}
                         };
                     }
                     return {
                         success: false,
-                        spokenText: "Could not open account panel.",
+                        responseKey: 'profile.error',
                         nextState: "Idle",
                         data: {}
                     };
@@ -53,7 +46,7 @@ export class ProfileSkill extends BaseSkill {
                         signOutBtn.click();
                         return {
                             success: true,
-                            spokenText: "Signed out successfully.",
+                            responseKey: 'profile.signOut.success',
                             nextState: "Idle",
                             data: {}
                         };
@@ -69,14 +62,14 @@ export class ProfileSkill extends BaseSkill {
                         }, 200);
                         return {
                             success: true,
-                            spokenText: "Signing out.",
+                            responseKey: 'profile.signOut.success',
                             nextState: "Idle",
                             data: {}
                         };
                     }
                     return {
                         success: false,
-                        spokenText: "You are not signed in.",
+                        responseKey: 'profile.error', // generic or already signed out
                         nextState: "Idle",
                         data: {}
                     };
@@ -85,19 +78,31 @@ export class ProfileSkill extends BaseSkill {
                 default:
                     return {
                         success: false,
-                        spokenText: "Account action not supported.",
+                        responseKey: 'profile.error',
                         nextState: "Idle",
                         data: {}
                     };
             }
         } catch (err) {
-            console.error('[ProfileSkill] Execution error:', err);
+            logger.skill.error('[ProfileSkill] Execution error:', err);
             return {
                 success: false,
-                spokenText: "Account management action failed.",
+                responseKey: 'profile.error',
                 nextState: "Idle",
                 data: {}
             };
         }
     }
 }
+
+// Static manifest for registration and capability discovery
+ProfileSkill.manifest = {
+    id: 'profile',
+    version: '2.0.0',
+    priority: 100,
+    description: 'open account panel and sign out of your account',
+    commands: ['open', 'signOut', 'showAccount'],
+    permissions: [],
+    busyDescription: 'managing account settings'
+};
+

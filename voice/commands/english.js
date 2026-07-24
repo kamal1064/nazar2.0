@@ -44,6 +44,9 @@ export const english = {
         'emergency.sendSOS': ['send sos', 'trigger emergency', 'send emergency alert', 'sos', 'emergency alert', 'help me'],
         'emergency.shareLocation': ['share location', 'send my location', 'where am i', 'current location'],
         'emergency.cancelSOS': ['cancel sos', 'cancel emergency', 'cancel alert', 'i am safe', 'im safe'],
+        
+        'permission.confirm': ['yes', 'yeah', 'sure', 'confirm', 'correct', 'do it', 'yup', 'please do', 'approve'],
+        'permission.cancel': ['no', 'nope', 'cancel', 'dont', 'stop', 'back', 'never mind', 'reject'],
 
         'ui.whatCanISay': ['what can i say', 'help instructions', 'show voice commands']
     }

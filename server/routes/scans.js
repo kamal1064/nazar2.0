@@ -37,7 +37,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
     console.log("Received POST /api/scan");
 
     try {
-        const { image, ocrMode } = req.body;
+        const { image, ocrMode, prompt } = req.body;
         const rawUserId = req.body.userId || null;
         const userId = (rawUserId && rawUserId.startsWith('local-')) ? null : rawUserId;
 
@@ -74,7 +74,7 @@ router.post('/', scanLimiter, async (req, res, next) => {
 
         const targetModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
         const timeoutMs = parseInt(process.env.GEMINI_TIMEOUT || '60000', 10);
-        const systemInstruction = ocrMode ? OCR_INSTRUCTION : SCENE_INSTRUCTION;
+        const systemInstruction = prompt || (ocrMode ? OCR_INSTRUCTION : SCENE_INSTRUCTION);
 
         const buildRequestBody = () => ({
             contents: [

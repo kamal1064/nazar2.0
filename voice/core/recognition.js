@@ -1,9 +1,12 @@
 /**
  * NAZAR Voice Engine Speech Recognition Wrapper
- * v1.0.0
+ * v2.0.0
  */
 import { stateMachine } from './state.js';
 import { voiceConfig } from '../utils/voiceConfig.js';
+import { logger } from '../utils/logger.js';
+import { eventBus } from './eventBus.js';
+import { VoiceEvents } from '../events.js';
 
 export class Recognition {
     constructor() {
@@ -19,6 +22,8 @@ export class Recognition {
         this.onTranscriptCallback = null;
         this.onErrorCallback = null;
         this.onPriorityCallback = null;
+        // Interim callback for WakeWordDetector — called on every partial result
+        this.onInterimCallback = null;
     }
 
     /**
@@ -55,10 +60,9 @@ export class Recognition {
 
             this.recognition.onerror = (e) => {
                 // Ignore empty/no-speech errors without throwing critical alarms
-                if (e.error === 'no-speech') {
-                    return;
-                }
-                console.warn('[Recognition] SpeechRecognition error:', e.error);
+                if (e.error === 'no-speech') return;
+                logger.voice.warn('[Recognition] SpeechRecognition error:', e.error);
+                eventBus.emit(VoiceEvents.SPEECH_ERROR, { error: e.error });
                 if (this.onErrorCallback) this.onErrorCallback(e.error);
             };
 
@@ -68,10 +72,11 @@ export class Recognition {
                 
                 // Auto-restart if in Continuous/Awake mode and unexpectedly stopped
                 if (this.isContinuous && stateMachine.wakeState === 'Awake') {
-                    console.log('[Recognition] Unexpected disconnect. Restarting continuous recognition...');
+                    logger.voice.info('[Recognition] Unexpected disconnect. Restarting continuous recognition...');
                     this.start();
                 } else {
                     stateMachine.setEngineState('Idle');
+                    eventBus.emit(VoiceEvents.SPEECH_ENDED);
                 }
             };
 
@@ -138,6 +143,11 @@ export class Recognition {
             }
         }
 
+        // Forward INTERIM transcripts to WakeWordDetector (for <100ms detection)
+        if (interimTranscript && this.onInterimCallback) {
+            this.onInterimCallback(interimTranscript.trim());
+        }
+
         const activeText = (finalTranscript || interimTranscript).trim().toLowerCase();
         
         // Simple VAD filtering: Ignore extremely short accidental bursts/noises
@@ -150,9 +160,10 @@ export class Recognition {
             return;
         }
 
-        // Forward transcripts to the core parser
+        // Forward FINAL transcripts to the core parser
         if (finalTranscript && this.onTranscriptCallback) {
             this.onTranscriptCallback(finalTranscript.trim());
+            eventBus.emit(VoiceEvents.SPEECH_HEARD, { transcript: finalTranscript.trim() });
             
             // In Push-to-Talk mode, stop listening immediately after receiving a final result
             if (!this.isContinuous) {
@@ -167,7 +178,7 @@ export class Recognition {
         // Only run inactivity timeouts in push-to-talk single mode
         if (!this.isContinuous) {
             this.inactivityTimer = setTimeout(() => {
-                console.log('[Recognition] Inactivity timeout reached. Stopping microphone.');
+                logger.voice.info('[Recognition] Inactivity timeout reached. Stopping microphone.');
                 this.stop();
             }, voiceConfig.recognitionInactivityTimeout);
         }

@@ -1,7 +1,10 @@
 /**
  * NAZAR Voice Engine Permissions Broker
- * v1.0.0
+ * v2.0.0
  */
+import { eventBus } from '../core/eventBus.js';
+import { VoiceEvents } from '../events.js';
+
 export class PermissionsBroker {
     constructor() {
         this.micPermission = 'prompt'; // 'prompt', 'granted', 'denied'
@@ -33,7 +36,11 @@ export class PermissionsBroker {
                 
                 // Watch for changes in permission
                 status.onchange = () => {
+                    const old = this.micPermission;
                     this.micPermission = status.state;
+                    if (status.state === 'granted' && old !== 'granted') {
+                        eventBus.emit(VoiceEvents.PERMISSION_RECOVERED, { resource: 'microphone' });
+                    }
                 };
                 return status.state;
             }

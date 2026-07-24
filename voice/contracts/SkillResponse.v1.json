@@ -1,26 +1,41 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SkillResponse",
-  "version": "1.0.0",
-  "type": "object",
-  "properties": {
-    "success": {
-      "type": "boolean",
-      "description": "Indicator if the skill executed successfully."
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SkillResponse",
+    "version": "1.1.0",
+    "description": "Standardized return value from every skill's execute() method. Skills return responseKey (not spokenText) so the Voice Personality Layer resolves the spoken string from responseVariations.js.",
+    "type": "object",
+    "required": ["success", "responseKey", "nextState", "data"],
+    "properties": {
+        "success": {
+            "type": "boolean",
+            "description": "True if the skill action completed without error."
+        },
+        "responseKey": {
+            "type": "string",
+            "description": "Dot-notation key into responseVariations.js. Example: 'camera.startScan.success'. The router resolves this to a natural-language spoken string.",
+            "pattern": "^[a-z][a-zA-Z0-9]+\\.[a-zA-Z0-9.]+$",
+            "examples": [
+                "camera.startScan.success",
+                "navigate.home.success",
+                "emergency.sendSOS.confirmed",
+                "recovery.camera.unavailable"
+            ]
+        },
+        "nextState": {
+            "type": "string",
+            "description": "Target voice engine state after execution.",
+            "enum": ["Idle", "Scanning", "Listening", "Sleeping", "Error"]
+        },
+        "data": {
+            "type": "object",
+            "description": "Additional payload for HUD telemetry or follow-up context updates.",
+            "additionalProperties": true
+        },
+        "errorCode": {
+            "type": "string",
+            "description": "Optional. VOICE_001–VOICE_005 error code if success is false. Routes to RecoveryManager.",
+            "pattern": "^VOICE_\\d{3}$"
+        }
     },
-    "spokenText": {
-      "type": "string",
-      "description": "The textual voice feedback phrase that the Speech Synthesis should announce."
-    },
-    "nextState": {
-      "type": "string",
-      "description": "The target state of the Voice Engine state machine after execution (e.g. Idle, Scanning)."
-    },
-    "data": {
-      "type": "object",
-      "description": "Additional payload return values for debugging or HUD telemetry."
-    }
-  },
-  "required": ["success", "spokenText", "nextState", "data"],
-  "additionalProperties": false
+    "additionalProperties": false
 }
