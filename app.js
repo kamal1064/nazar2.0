@@ -1843,9 +1843,18 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const target = item.getAttribute('data-target');
             console.log(`[Desktop Navigation] Sidebar item clicked: ${target}`);
-            switchTab(target);
+            if (target) switchTab(target);
         });
     });
+
+    const dSettingsBtn = document.getElementById('desktop-settings-btn');
+    if (dSettingsBtn) {
+        dSettingsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            console.log("[Desktop Navigation] Explicit settings button clicked");
+            switchTab('settings');
+        });
+    }
 
     // Keyboard Shortcuts (Ctrl+Shift+1 / Alt+1: Home, Ctrl+Shift+2 / Alt+2: Camera, Ctrl+Shift+3 / Alt+3: Settings)
     window.addEventListener('keydown', (e) => {

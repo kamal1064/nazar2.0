@@ -1525,6 +1525,7 @@ html, body {
     }
 
     #settings-panel {
+        display: none !important;
         position: static !important;
         transform: none !important;
         box-shadow: none !important;
@@ -1533,6 +1534,10 @@ html, body {
         max-width: 1100px;
         margin: 0 auto;
         padding: 2rem;
+    }
+
+    #settings-panel.active-panel {
+        display: flex !important;
     }
 }
 
