@@ -182,10 +182,41 @@ async function handleQr(req, res) {
     `);
 }
 
+/**
+ * Public Root Landing Page Endpoint
+ * GET /
+ */
+async function handleRoot(req, res) {
+    res.setHeader('Content-Type', 'text/html');
+    return res.send(`
+        <html>
+            <head>
+                <title>NAZAR WhatsApp Microservice</title>
+                <style>
+                    body { font-family: sans-serif; text-align: center; padding: 3rem; background: #f0f2f5; color: #333; }
+                    .card { background: white; padding: 2.5rem; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 450px; }
+                    h1 { color: #128c7e; margin-bottom: 0.5rem; }
+                    p { color: #666; margin-bottom: 1.5rem; line-height: 1.5; }
+                    .btn { background: #128c7e; color: white; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block; }
+                    .btn:hover { background: #0b665c; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>NAZAR WhatsApp Service</h1>
+                    <p>The standalone emergency SOS dispatch microservice is running successfully on Render.</p>
+                    <a href="/qr" class="btn">Pair WhatsApp Account</a>
+                </div>
+            </body>
+        </html>
+    `);
+}
+
 module.exports = {
     handleSendSos,
     handleReady,
     handleHealth,
     handleMetrics,
-    handleQr
+    handleQr,
+    handleRoot
 };

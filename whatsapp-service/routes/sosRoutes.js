@@ -4,6 +4,7 @@ const sosController = require('../controllers/sosController');
 const apiKeyAuth = require('../middleware/apiKeyAuth');
 
 // Public endpoints
+router.get('/', sosController.handleRoot);
 router.get('/ready', sosController.handleReady);
 router.get('/qr', sosController.handleQr);
 
