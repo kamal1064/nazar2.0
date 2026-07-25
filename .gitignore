@@ -4,7 +4,6 @@ node_modules/
 # Environment files and credentials
 .env
 .env.*
-!.env.example
 
 # Certificates and private keys
 *.pem
