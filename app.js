@@ -1886,6 +1886,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("[User Session] Offline-only mode — skipping server sync.");
             }
         }
+        
+        // Warm up the WhatsApp microservice (wakes Render from sleep)
+        fetch('/api/health').catch(() => {});
+        
+        // Keep the Render microservice awake by pinging every 5 minutes while user has the tab open
+        setInterval(() => {
+            fetch('/api/health').catch(() => {});
+        }, 5 * 60 * 1000);
     }
 
     async function loadSettingsFromServer(userId) {
