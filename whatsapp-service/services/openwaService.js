@@ -65,6 +65,14 @@ class OpenWaService {
             openwaVersion = require('@open-wa/wa-automate/package.json').version;
         } catch (e) {}
 
+        // Dynamically extract major Chrome version for the User-Agent to prevent browser outdated block pages
+        let chromeMajorVersion = '144';
+        const versionMatch = chromeVersion.match(/(\d+)\.\d+\.\d+\.\d+/);
+        if (versionMatch) {
+            chromeMajorVersion = versionMatch[1];
+        }
+        const dynamicUserAgent = `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajorVersion}.0.0.0 Safari/537.36`;
+
         console.log(JSON.stringify({
             level: 'info',
             message: 'Stage: Starting OpenWA diagnostic startup...',
@@ -73,11 +81,13 @@ class OpenWaService {
             chromeVersion,
             puppeteerVersion,
             openwaVersion,
+            detectedUserAgent: dynamicUserAgent,
             timestamp: new Date().toISOString()
         }));
 
         try {
             // Set configurations suitable for hosting environments (like Render/Docker)
+            // Note: chromiumArgs is omitted so we do not override OpenWA's built-in Multi-Device/Docker launcher configurations.
             const launchConfig = {
                 sessionId: 'nazar-sos-session',
                 sessionDataPath: sessionPath,
@@ -89,14 +99,7 @@ class OpenWaService {
                 autoClose: false,
                 killProcessOnBrowserClose: true,
                 throwErrorOnTosBlock: true,
-                userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                chromiumArgs: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-gpu',
-                    '--disable-blink-features=AutomationControlled'
-                ]
+                userAgent: dynamicUserAgent
             };
 
             // Use system Chrome executable path if specified
