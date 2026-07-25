@@ -93,7 +93,7 @@ class OpenWaService {
                 sessionDataPath: sessionPath,
                 multiDevice: true,
                 useChrome: !process.env.PUPPETEER_EXECUTABLE_PATH,
-                headless: true,
+                headless: false,
                 qrTimeout: 0,
                 authTimeout: 120,
                 autoClose: false,
