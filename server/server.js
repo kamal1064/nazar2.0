@@ -44,10 +44,16 @@ const usersRouter = require('./routes/users');
 const scansRouter = require('./routes/scans');
 const contactsRouter = require('./routes/contacts');
 const settingsRouter = require('./routes/settings');
-const emergencyRouter = require('./routes/emergency');
+const sosRouter = require('./routes/sosRoutes');
 const adminRouter = require('./routes/admin');
 const voiceRouter = require('./routes/voice');
 const keyRotationService = require('./services/keyRotationService');
+const openwaService = require('./services/openwaService');
+
+// Start OpenWA service asynchronously in the background
+openwaService.initialize().catch(err => {
+    console.error('[Server] OpenWA background boot failed:', err.message);
+});
 
 // Route bindings
 app.use('/api/auth', authRouter);
@@ -55,7 +61,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/scan', scansRouter);
 app.use('/api/emergency-contacts', contactsRouter);
 app.use('/api/settings', settingsRouter);
-app.use('/api/emergency', emergencyRouter);
+app.use('/api/sos', sosRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/voice', voiceRouter);
 
@@ -64,22 +70,31 @@ const healthHandler = async (req, res) => {
     const mongoose = require('mongoose');
     const dbConnected = mongoose.connection.readyState === 1;
     const analytics = await keyRotationService.getAnalyticsState();
+    
+    const openwaStatus = openwaService.isReady() ? 'ready' 
+                       : openwaService.initializing ? 'initializing' 
+                       : openwaService.isServerless ? 'disabled' : 'error';
 
     res.status(200).json({
         success: true,
-        status: dbConnected ? "healthy" : "degraded",
+        status: dbConnected && openwaStatus !== 'error' ? "healthy" : "degraded",
+        version: "1.0.0",
+        mongodb: dbConnected ? "connected" : "disconnected",
+        gemini: process.env.GEMINI_API_KEY_1 ? "available" : "unavailable",
+        openwa: {
+            status: openwaStatus,
+            connected: openwaService.isReady(),
+            authenticated: openwaService.authStatus,
+            lastReconnect: openwaService.lastReconnect
+        },
         uptimeSeconds: Math.floor(process.uptime()),
-        database: dbConnected ? "connected" : "disconnected",
-        model: analytics.model,
         activeApiKey: analytics.activeKey,
         configuredKeys: analytics.configuredKeys,
         availableKeys: analytics.availableKeys,
         remainingToday: analytics.remainingToday,
         totalCapacity: analytics.totalCapacity,
-        keyUsage: analytics.keyUsage,
         totalScans: analytics.totalScans,
-        timestamp: new Date().toISOString(),
-        version: "v34"
+        timestamp: new Date().toISOString()
     });
 };
 app.get('/health', healthHandler);

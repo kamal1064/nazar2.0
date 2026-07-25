@@ -65,10 +65,28 @@ const voiceLimiter = rateLimit({
     validate: { xForwardedForHeader: false, forwardedHeader: false }
 });
 
+const sosLimiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // 5 minutes
+    max: 3,
+    keyGenerator: (req) => {
+        // Limit by userId if authenticated, else IP
+        return req.user ? req.user._id.toString() : req.ip;
+    },
+    message: {
+        success: false,
+        message: 'Too many SOS requests, please try again after 5 minutes.',
+        code: 'TOO_MANY_REQUESTS'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    validate: { xForwardedForHeader: false, forwardedHeader: false }
+});
+
 module.exports = {
     userLimiter,
     scanLimiter,
     settingsLimiter,
     authLimiter,
-    voiceLimiter
+    voiceLimiter,
+    sosLimiter
 };

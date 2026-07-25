@@ -16,7 +16,7 @@ function runTestServer() {
     });
 }
 
-function makeRequest(port, method, reqPath, body = null) {
+function makeRequest(port, method, reqPath, body = null, headers = {}) {
     return new Promise((resolve, reject) => {
         const payload = body ? JSON.stringify(body) : '';
         const req = http.request({
@@ -26,7 +26,8 @@ function makeRequest(port, method, reqPath, body = null) {
             method,
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(payload)
+                'Content-Length': Buffer.byteLength(payload),
+                ...headers
             }
         }, (res) => {
             let data = '';
@@ -97,8 +98,10 @@ async function runErrorHandlingTests() {
         console.log('  ✓ Test 4 PASSED: Middleware validation error returns VALIDATION_ERROR code.');
 
         // Test 5: 400 Emergency Coordinates Error Test
-        console.log('  Testing 5: 400 Emergency Coordinates Error (POST /api/emergency/send-email)...');
-        const res5 = await makeRequest(port, 'POST', '/api/emergency/send-email', { latitude: 999, longitude: 999 });
+        console.log('  Testing 5: 400 Emergency Coordinates Error (POST /api/sos)...');
+        const res5 = await makeRequest(port, 'POST', '/api/sos', { latitude: 999, longitude: 999 }, {
+            'Authorization': 'Bearer test-token'
+        });
         assert.notStrictEqual(res5.statusCode, 200);
         assert.strictEqual(res5.statusCode, 400);
         assert.strictEqual(res5.body.success, false);

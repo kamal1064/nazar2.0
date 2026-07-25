@@ -880,11 +880,16 @@
         <div class="app-modal-layer" id="sos-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
             <div class="modal-card" style="background: var(--bg-card); border-radius: var(--radius-hero); padding: 2rem; max-width: 360px; width: 90%; text-align: center; box-shadow: var(--shadow-medium);">
                 <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--danger); margin-bottom: 0.5rem;">Dispatch SOS Alert?</h3>
-                <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.5rem;">This will immediately send your current GPS coordinates to emergency contacts.</p>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.5rem;">This will immediately send your current GPS coordinates to emergency contacts via WhatsApp.</p>
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     <button id="confirm-sos" style="background: var(--danger); color: white; border: none; padding: 1rem; border-radius: var(--radius-btn); font-weight: 800; cursor: pointer;">Press & Hold to Confirm (3s)</button>
                     <button id="btn-im-safe" style="display: none; background: var(--success); color: white; border: none; padding: 1rem; border-radius: var(--radius-btn); font-weight: 800; cursor: pointer;">✅ I'm Safe</button>
                     <button id="cancel-sos" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-main); padding: 0.75rem; border-radius: var(--radius-btn); font-weight: 600; cursor: pointer;">Cancel</button>
+                </div>
+                <div id="sos-cooldown-notice" style="display: none; font-size: 0.8rem; color: var(--danger); font-weight: 600; margin-top: 1rem;" role="alert"></div>
+                <div id="sos-status-spinner" style="display: none; font-size: 0.88rem; color: var(--primary); font-weight: 700; margin-top: 1rem;" role="status">
+                    <span class="spinner-loader" style="display: inline-block; width: 12px; height: 12px; border: 2px solid var(--primary); border-top-color: transparent; border-radius: 50%; animation: rotateRing 1s linear infinite; margin-right: 0.5rem; vertical-align: middle;"></span>
+                    <span id="sos-status-text" style="vertical-align: middle;">Sending WhatsApp emergency alerts...</span>
                 </div>
             </div>
         </div>
