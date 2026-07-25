@@ -110,9 +110,82 @@ async function handleMetrics(req, res) {
     });
 }
 
+/**
+ * Public Endpoint to serve QR Code pairing view
+ * GET /qr
+ */
+async function handleQr(req, res) {
+    if (openwaService.isReady()) {
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(`
+            <html>
+                <head>
+                    <title>NAZAR WhatsApp Pairing</title>
+                    <style>
+                        body { font-family: sans-serif; text-align: center; padding: 2rem; background: #e3eedc; color: #128c7e; }
+                        .card { background: white; padding: 2rem; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 10%; }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                         <h2>✅ WhatsApp Connected!</h2>
+                         <p>The NAZAR WhatsApp client is already logged in and running.</p>
+                    </div>
+                </body>
+            </html>
+        `);
+    }
+
+    if (!openwaService.latestQr) {
+        res.setHeader('Content-Type', 'text/html');
+        return res.send(`
+            <html>
+                <head>
+                    <title>NAZAR WhatsApp Pairing</title>
+                    <meta http-equiv="refresh" content="3">
+                    <style>
+                        body { font-family: sans-serif; text-align: center; padding: 2rem; background: #f0f2f5; }
+                        .card { background: white; padding: 2rem; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 10%; }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                         <h2>⏳ Waiting for QR Code...</h2>
+                         <p>The browser is starting up. This page will refresh automatically.</p>
+                    </div>
+                </body>
+            </html>
+        `);
+    }
+
+    res.setHeader('Content-Type', 'text/html');
+    return res.send(`
+        <html>
+            <head>
+                <title>NAZAR WhatsApp Pairing</title>
+                <meta http-equiv="refresh" content="5">
+                <style>
+                    body { font-family: sans-serif; text-align: center; padding: 2rem; background: #f0f2f5; }
+                    .card { background: white; padding: 2rem; border-radius: 8px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                    img { margin: 1rem 0; width: 280px; height: 280px; border: 1px solid #ccc; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h2>Scan QR Code to Link WhatsApp</h2>
+                    <p>Open WhatsApp on your phone -> Linked Devices -> Link a Device, and scan the QR code below:</p>
+                    <img src="${openwaService.latestQr}" alt="WhatsApp Web QR Code" />
+                    <p style="color: #666; font-size: 0.8rem;">This page auto-refreshes every 5 seconds.</p>
+                </div>
+            </body>
+        </html>
+    `);
+}
+
 module.exports = {
     handleSendSos,
     handleReady,
     handleHealth,
-    handleMetrics
+    handleMetrics,
+    handleQr
 };

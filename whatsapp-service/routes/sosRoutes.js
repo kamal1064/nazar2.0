@@ -5,6 +5,7 @@ const apiKeyAuth = require('../middleware/apiKeyAuth');
 
 // Public endpoints
 router.get('/ready', sosController.handleReady);
+router.get('/qr', sosController.handleQr);
 
 // Protected endpoints
 router.post('/api/send-sos', apiKeyAuth, sosController.handleSendSos);

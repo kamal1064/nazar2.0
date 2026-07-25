@@ -13,6 +13,7 @@ class OpenWaService {
         this.uptimeSeconds = 0;
         this.startTime = null;
         this.sessionReason = null;
+        this.latestQr = null;
         
         // Start uptime tracker
         setInterval(() => {
@@ -45,27 +46,18 @@ class OpenWaService {
         }));
 
         try {
-            // Set Puppeteer configurations suitable for hosting environments (like Render/Docker)
+            // Set configurations suitable for hosting environments (like Render/Docker)
             const launchConfig = {
                 sessionId: 'nazar-sos-session',
-                dataPath: sessionPath,
+                sessionDataPath: sessionPath,
                 multiDevice: true,
-                useChrome: false, // Use internal chromium
+                useChrome: true,
                 headless: true,
-                qrTimeout: 0, // Never timeout wait for QR
-                authTimeout: 60,
+                qrTimeout: 0,
+                authTimeout: 120,
                 autoClose: false,
                 killProcessOnBrowserClose: true,
-                throwErrorOnTosBlock: true,
-                chromiumArgs: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--disable-gpu'
-                ]
+                throwErrorOnTosBlock: true
             };
 
             // Use system Chrome executable path if specified
@@ -73,13 +65,20 @@ class OpenWaService {
                 launchConfig.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
             }
 
+            console.log(JSON.stringify({
+                level: 'info',
+                message: 'Waiting for QR...',
+                timestamp: new Date().toISOString()
+            }));
+
             // Hook QR code generation updates
             launchConfig.qrCallback = (base64Qr) => {
+                this.latestQr = base64Qr;
                 this.clientState = 'QR_REQUIRED';
                 this.sessionReason = 'QR code scanning required to authenticate';
                 console.log(JSON.stringify({
                     level: 'warn',
-                    message: 'WhatsApp Web authentication QR code required. Please scan via WhatsApp mobile application.',
+                    message: 'QR generated. QR callback invoked.',
                     timestamp: new Date().toISOString()
                 }));
             };
