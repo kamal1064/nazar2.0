@@ -1,5 +1,6 @@
 const wa = require('@open-wa/wa-automate');
 const path = require('path');
+const cp = require('child_process');
 
 class OpenWaService {
     constructor() {
@@ -38,10 +39,39 @@ class OpenWaService {
         
         const sessionPath = path.resolve(process.env.OPENWA_SESSION_PATH || '../.openwa-session');
 
+        // Log diagnostics on startup
+        let chromeVersion = 'Unknown';
+        const chromePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable';
+        try {
+            chromeVersion = cp.execSync(`"${chromePath}" --version`).toString().trim();
+        } catch (e) {
+            try {
+                chromeVersion = cp.execSync('google-chrome --version').toString().trim();
+            } catch (err) {}
+        }
+
+        let puppeteerVersion = 'Unknown';
+        try {
+            puppeteerVersion = require('puppeteer-core/package.json').version;
+        } catch (e) {
+            try {
+                puppeteerVersion = require('puppeteer/package.json').version;
+            } catch (err) {}
+        }
+
+        let openwaVersion = 'Unknown';
+        try {
+            openwaVersion = require('@open-wa/wa-automate/package.json').version;
+        } catch (e) {}
+
         console.log(JSON.stringify({
             level: 'info',
-            message: 'Starting asynchronous OpenWA initialization...',
+            message: 'Stage: Starting OpenWA diagnostic startup...',
             sessionPath,
+            chromePath,
+            chromeVersion,
+            puppeteerVersion,
+            openwaVersion,
             timestamp: new Date().toISOString()
         }));
 
@@ -57,7 +87,15 @@ class OpenWaService {
                 authTimeout: 120,
                 autoClose: false,
                 killProcessOnBrowserClose: true,
-                throwErrorOnTosBlock: true
+                throwErrorOnTosBlock: true,
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                chromiumArgs: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--disable-blink-features=AutomationControlled'
+                ]
             };
 
             // Use system Chrome executable path if specified
@@ -67,21 +105,31 @@ class OpenWaService {
 
             console.log(JSON.stringify({
                 level: 'info',
-                message: 'Waiting for QR...',
+                message: 'Stage: Config compiled. Waiting for browser launch...',
                 timestamp: new Date().toISOString()
             }));
 
             // Hook QR code generation updates
-            launchConfig.qrCallback = (base64Qr) => {
-                this.latestQr = base64Qr;
+            launchConfig.qrCallback = (qrCode, asciiQR, attempts) => {
+                this.latestQr = qrCode;
                 this.clientState = 'QR_REQUIRED';
-                this.sessionReason = 'QR code scanning required to authenticate';
+                this.sessionReason = `QR code scanning required (Attempt #${attempts})`;
+                
                 console.log(JSON.stringify({
                     level: 'warn',
-                    message: 'QR generated. QR callback invoked.',
+                    message: `Stage: QR generated. QR callback invoked. Attempt #${attempts}`,
                     timestamp: new Date().toISOString()
                 }));
+
+                // Print the ASCII QR to the terminal console
+                console.log(asciiQR);
             };
+
+            console.log(JSON.stringify({
+                level: 'info',
+                message: 'Stage: Spawning browser and navigating to WhatsApp Web...',
+                timestamp: new Date().toISOString()
+            }));
 
             this.client = await wa.create(launchConfig);
             
@@ -92,10 +140,11 @@ class OpenWaService {
             this.reconnectAttempts = 0;
             this.startTime = Date.now();
             this.sessionReason = null;
+            this.latestQr = null; // Clear QR once authenticated
 
             console.log(JSON.stringify({
                 level: 'info',
-                message: 'WhatsApp OpenWA Client successfully initialized and connected!',
+                message: 'Stage: WhatsApp OpenWA Client successfully initialized and connected!',
                 timestamp: new Date().toISOString()
             }));
 
