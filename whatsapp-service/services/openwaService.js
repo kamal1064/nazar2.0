@@ -82,7 +82,7 @@ class OpenWaService {
                 sessionId: 'nazar-sos-session',
                 sessionDataPath: sessionPath,
                 multiDevice: true,
-                useChrome: true,
+                useChrome: !process.env.PUPPETEER_EXECUTABLE_PATH,
                 headless: true,
                 qrTimeout: 0,
                 authTimeout: 120,
