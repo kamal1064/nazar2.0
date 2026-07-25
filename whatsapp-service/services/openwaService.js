@@ -1,6 +1,7 @@
 const wa = require('@open-wa/wa-automate');
 const path = require('path');
 const cp = require('child_process');
+const fs = require('fs');
 
 class OpenWaService {
     constructor() {
@@ -88,7 +89,7 @@ class OpenWaService {
                 autoClose: false,
                 killProcessOnBrowserClose: true,
                 throwErrorOnTosBlock: true,
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                userAgent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
                 chromiumArgs: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
@@ -177,10 +178,27 @@ class OpenWaService {
 
             console.error(JSON.stringify({
                 level: 'error',
-                message: 'OpenWA Client initialization failed',
+                message: 'OpenWA Client initialization failed. Wiping corrupted session directories...',
                 error: err.message,
                 timestamp: new Date().toISOString()
             }));
+
+            // Wipe session data to resolve potential integrity check corruption/browser mismatch hangs
+            try {
+                const subDir = path.join(sessionPath, '_IGNORE_nazar-sos-session');
+                const dataFile = path.join(sessionPath, 'nazar-sos-session.data.json');
+                
+                if (fs.existsSync(subDir)) {
+                    console.log(`[openwaService] Wiping session directory to clear corruption: ${subDir}`);
+                    fs.rmSync(subDir, { recursive: true, force: true });
+                }
+                if (fs.existsSync(dataFile)) {
+                    console.log(`[openwaService] Wiping session data file to clear corruption: ${dataFile}`);
+                    fs.rmSync(dataFile, { force: true });
+                }
+            } catch (clearErr) {
+                console.error(`[openwaService] Failed to clear session directory: ${clearErr.message}`);
+            }
 
             // Trigger reconnection loop
             this.handleReconnect();
