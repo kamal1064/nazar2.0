@@ -48,12 +48,6 @@ const sosRouter = require('./routes/sosRoutes');
 const adminRouter = require('./routes/admin');
 const voiceRouter = require('./routes/voice');
 const keyRotationService = require('./services/keyRotationService');
-const openwaService = require('./services/openwaService');
-
-// Start OpenWA service asynchronously in the background
-openwaService.initialize().catch(err => {
-    console.error('[Server] OpenWA background boot failed:', err.message);
-});
 
 // Route bindings
 app.use('/api/auth', authRouter);
@@ -71,22 +65,35 @@ const healthHandler = async (req, res) => {
     const dbConnected = mongoose.connection.readyState === 1;
     const analytics = await keyRotationService.getAnalyticsState();
     
-    const openwaStatus = openwaService.isReady() ? 'ready' 
-                       : openwaService.initializing ? 'initializing' 
-                       : openwaService.isServerless ? 'disabled' : 'error';
+    let openwaStatus = 'offline';
+    if (process.env.WHATSAPP_SERVICE_URL) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            
+            const response = await fetch(`${process.env.WHATSAPP_SERVICE_URL}/ready`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.ready) {
+                    openwaStatus = 'ready';
+                }
+            }
+        } catch (err) {
+            console.warn('[Server Health Check] Failed to query WhatsApp microservice readiness:', err.message);
+        }
+    }
 
     res.status(200).json({
         success: true,
-        status: dbConnected && openwaStatus !== 'error' ? "healthy" : "degraded",
+        status: dbConnected && openwaStatus === 'ready' ? "healthy" : "degraded",
         version: "1.0.0",
         mongodb: dbConnected ? "connected" : "disconnected",
         gemini: process.env.GEMINI_API_KEY_1 ? "available" : "unavailable",
-        openwa: {
-            status: openwaStatus,
-            connected: openwaService.isReady(),
-            authenticated: openwaService.authStatus,
-            lastReconnect: openwaService.lastReconnect
-        },
+        openwa: openwaStatus,
         uptimeSeconds: Math.floor(process.uptime()),
         activeApiKey: analytics.activeKey,
         configuredKeys: analytics.configuredKeys,

@@ -3,7 +3,14 @@ const mongoose = require('mongoose');
 const sosLogSchema = new mongoose.Schema({
     dispatchId: { type: String, required: true, unique: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    status: { type: String, enum: ['queued', 'processing', 'completed', 'failed'], default: 'queued' },
     timestamp: { type: Date, default: Date.now },
+    queuedAt: { type: Date, default: Date.now },
+    startedAt: { type: Date },
+    completedAt: { type: Date },
+    durationMs: { type: Number },
+    retryCount: { type: Number, default: 0 },
+    workerId: { type: String },
     location: {
         latitude: { type: Number, required: true },
         longitude: { type: Number, required: true },
@@ -13,7 +20,7 @@ const sosLogSchema = new mongoose.Schema({
         {
             name: { type: String, required: true },
             phone: { type: String, required: true },
-            status: { type: String, enum: ['sent', 'failed', 'skipped'], required: true },
+            status: { type: String, required: true },
             sentAt: { type: Date },
             durationMs: { type: Number },
             error: { type: String }
@@ -21,7 +28,6 @@ const sosLogSchema = new mongoose.Schema({
     ],
     sent: { type: Number, default: 0 },
     failed: { type: Number, default: 0 },
-    deliveryTime: { type: Number },
     overallError: { type: String }
 });
 
