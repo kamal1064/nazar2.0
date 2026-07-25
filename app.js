@@ -1825,6 +1825,10 @@ document.addEventListener('DOMContentLoaded', () => {
         screenPanels.forEach(panel => {
             panel.classList.toggle('active-panel', panel.id === `${tabId}-panel`);
         });
+
+        if (window.NazarVoiceController && typeof window.NazarVoiceController.onTabSwitched === 'function') {
+            window.NazarVoiceController.onTabSwitched(tabId);
+        }
     }
 
     console.log(`[Navigation] Found ${navItems.length} bottom navigation buttons.`);

@@ -87,7 +87,26 @@ const RESPONSE_POOLS = {
     'permission.timeout':           ['No response received. Action cancelled.'],
 
     // ─── Wake / Session ───────────────────────────────────────────────────────
-    'wake.greeting':                ["Yes? How can I help?", "I'm listening.", "How can I help?", "What can I do for you?"],
+    'wake.greeting':                [
+        "Go ahead.",
+        "Listening.",
+        "What can I do?",
+        "Tell me what you need.",
+        "I'm here.",
+        "Yes?",
+        "I'm ready.",
+        "How may I help?",
+        "Speak whenever you're ready.",
+        "Ready.",
+        "Ready for your command.",
+        "What is it?",
+        "Yes, I'm listening.",
+        "Talk to me.",
+        "At your service.",
+        "What's on your mind?",
+        "Say what you need.",
+        "I'm listening."
+    ],
     'wake.sleeping':                ["Alright. Say 'Hey Nazar' whenever you need me.", "Going to sleep. Wake me with 'Hey Nazar'."],
     'wake.keepListening':           ["I'll keep listening for 'Hey Nazar'.", "Wake me with 'Hey Nazar'."],
     'conversation.anythingElse':    ['Anything else?', 'Is there anything else?', 'What else can I help with?'],
@@ -99,6 +118,9 @@ const RESPONSE_POOLS = {
     'recovery.cameraUnavailable':   ["I couldn't access the camera. Would you like me to try again?"],
     'recovery.geminiUnavailable':   ["I'm temporarily unable to analyze images. Local commands still work."],
 };
+
+/** Keep track of recent index selections to prevent repeating the last 3 */
+const RECENT_SELECTIONS = {};
 
 /**
  * Pick a random spoken response for the given response key.
@@ -114,7 +136,30 @@ export function pickResponse(key) {
         return 'Done.';
     }
 
-    return pool[Math.floor(Math.random() * pool.length)];
+    if (pool.length <= 1) {
+        return pool[0];
+    }
+
+    if (!RECENT_SELECTIONS[key]) {
+        RECENT_SELECTIONS[key] = [];
+    }
+
+    const recent = RECENT_SELECTIONS[key];
+    let index;
+    let attempts = 0;
+
+    // Pick index, avoiding repeating the last 3 selections
+    do {
+        index = Math.floor(Math.random() * pool.length);
+        attempts++;
+    } while (recent.includes(index) && attempts < 15);
+
+    recent.push(index);
+    if (recent.length > 3) {
+        recent.shift();
+    }
+
+    return pool[index];
 }
 
 /**

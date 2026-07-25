@@ -95,8 +95,13 @@ export class VoiceController {
     _cacheUIElements() {
         this._overlayEl = document.getElementById('voice-overlay');
         this._overlayStatusEl = document.getElementById('voice-overlay-status');
+        this._overlaySubtitleEl = document.getElementById('voice-overlay-subtitle');
         this._overlayTranscriptEl = document.getElementById('voice-overlay-transcript');
-        this._voiceBtnEl = document.getElementById('header-voice-btn');
+        this._voiceBtnEl = document.getElementById('global-voice-btn');
+        this._voiceReadyToast = document.getElementById('voice-ready-toast');
+        this._visualizerBars = Array.from(document.querySelectorAll('.voice-wave-bar'));
+        this._overlayBackdrop = document.getElementById('voice-overlay-backdrop');
+        this._overlayDismissBtn = document.getElementById('voice-overlay-dismiss');
     }
 
     _registerEvents() {
@@ -104,6 +109,7 @@ export class VoiceController {
         eventBus.on(VoiceEvents.WAKE_DETECTED, async ({ transcript }) => {
             logger.voice.info(`Wake word triggered. Wake transcript: "${transcript}"`);
             voiceAnalytics.recordWake();
+            if (navigator.vibrate) navigator.vibrate(20);
             
             // Wake session start
             sessionManager.start();
@@ -113,12 +119,32 @@ export class VoiceController {
             stateMachine.setWakeState('Awake');
             await audioCues.play('wake');
             
-            // Announce wake greeting variations
+            // Wake triggers start continuous listening silently (prompt delay handled in ConversationManager)
+            recognition.startContinuous();
+        });
+
+        // Handle initial prompt speaking variation from ConversationManager
+        eventBus.on('conversation.speakPrompt', async () => {
             const { pickResponse } = await import('../utils/responseVariations.js');
             await speaker.speak(pickResponse('wake.greeting'), { mode: 'replace' });
-            
-            // Open mic for command input
-            recognition.startContinuous();
+        });
+
+        // Handle fade out overlay event from ConversationManager timeout
+        eventBus.on('conversation.fadeOverlay', () => {
+            if (this._overlayEl) {
+                this._overlayEl.style.opacity = '0';
+                setTimeout(() => {
+                    this._overlayEl.style.display = 'none';
+                    this._overlayEl.style.opacity = '';
+                }, 250);
+            }
+        });
+
+        // Handle progressive speech captions matching character index boundaries
+        eventBus.on('speech.boundary', ({ text }) => {
+            if (stateMachine.engineState === 'Speaking' && this._overlayTranscriptEl) {
+                this._overlayTranscriptEl.innerText = text;
+            }
         });
 
         // Handle offline/online state
@@ -168,6 +194,7 @@ export class VoiceController {
 
         // Clean up locks on command completion safety-net
         eventBus.on(VoiceEvents.COMMAND_COMPLETED, () => {
+            if (navigator.vibrate) navigator.vibrate(20);
             this._updateHudUI();
             sessionManager.resetIdleTimer();
         });
@@ -195,6 +222,144 @@ export class VoiceController {
                 window.NazarVoiceAPI.saveSetting('speechVolume', val);
             });
         }
+
+        // Bind interactive triggers on DOM elements
+        this._bindUIInteractions();
+    }
+
+    _bindUIInteractions() {
+        // Tapping / Double Tapping global button
+        if (this._voiceBtnEl) {
+            let clickTimeout = null;
+            this._voiceBtnEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (clickTimeout) {
+                    clearTimeout(clickTimeout);
+                    clickTimeout = null;
+                    logger.voice.info('[VoiceController] Double click detected. Cancelling session.');
+                    this.cancelSession();
+                } else {
+                    clickTimeout = setTimeout(() => {
+                        clickTimeout = null;
+                        this.handleGlobalButtonTap();
+                    }, 250);
+                }
+            });
+
+            // Keyboard accessibility (Space/Enter focused triggers)
+            this._voiceBtnEl.addEventListener('keydown', (e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                    e.preventDefault();
+                    this.handleGlobalButtonTap();
+                }
+            });
+        }
+
+        // Dismiss via backdrop click
+        if (this._overlayBackdrop) {
+            this._overlayBackdrop.addEventListener('click', () => {
+                logger.voice.info('[VoiceController] Clicked backdrop. Dismissing.');
+                this.cancelSession();
+            });
+        }
+
+        // Dismiss via stop button click
+        if (this._overlayDismissBtn) {
+            this._overlayDismissBtn.addEventListener('click', () => {
+                logger.voice.info('[VoiceController] Clicked stop button. Dismissing.');
+                this.cancelSession();
+            });
+        }
+
+        // Keyboard Escape & shortcut binds
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && stateMachine.wakeState === 'Awake') {
+                logger.voice.info('[VoiceController] Pressed Escape. Dismissing.');
+                this.cancelSession();
+            }
+            if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'v') {
+                e.preventDefault();
+                logger.voice.info('[VoiceController] Global Ctrl+Shift+V keyboard trigger activated.');
+                this.handleGlobalButtonTap();
+            }
+        });
+
+        // Android back button / navigation state pop dismissal
+        window.addEventListener('popstate', () => {
+            if (stateMachine.wakeState === 'Awake') {
+                logger.voice.info('[VoiceController] History popstate back triggered. Dismissing.');
+                this.cancelSession();
+            }
+        });
+
+        // Init discoverability toast PWA once per update version
+        this._initDiscoverabilityToast();
+    }
+
+    _initDiscoverabilityToast() {
+        if (!this._voiceReadyToast) return;
+
+        const savedVersion = parseInt(localStorage.getItem('voiceToastVersion') || '0', 10);
+        if (savedVersion < 6) {
+            this._voiceReadyToast.style.display = 'block';
+            
+            const fadeTimeout = setTimeout(() => {
+                if (this._voiceReadyToast) this._voiceReadyToast.style.display = 'none';
+            }, 3500);
+
+            const dismissToast = () => {
+                clearTimeout(fadeTimeout);
+                if (this._voiceReadyToast) this._voiceReadyToast.style.display = 'none';
+                document.removeEventListener('click', dismissToast);
+                document.removeEventListener('keydown', dismissToast);
+            };
+
+            setTimeout(() => {
+                document.addEventListener('click', dismissToast);
+                document.addEventListener('keydown', dismissToast);
+            }, 150);
+
+            localStorage.setItem('voiceToastVersion', '6');
+        }
+    }
+
+    onTabSwitched(tabId) {
+        if (this._voiceBtnEl) {
+            this._voiceBtnEl.classList.toggle('camera-layout-offset', tabId === 'camera');
+        }
+        this._updateHudUI();
+    }
+
+    async handleGlobalButtonTap() {
+        if (navigator.vibrate) navigator.vibrate(20);
+
+        const isWake = stateMachine.wakeState === 'Awake';
+        if (isWake) {
+            this.cancelSession();
+        } else {
+            logger.voice.info('[VoiceController] Global button manual trigger.');
+            sessionManager.start();
+            conversationManager.newSession();
+            conversationContext.startSession();
+
+            stateMachine.setWakeState('Awake');
+            await audioCues.play('wake');
+            
+            recognition.startContinuous();
+        }
+    }
+
+    cancelSession() {
+        logger.voice.info('[VoiceController] Cancelling voice session.');
+        sessionManager.end('user_manual_stop');
+        recognition.stop();
+        speaker.cancel();
+        
+        stateMachine.setWakeState('Sleeping');
+        stateMachine.setEngineState('Idle');
+
+        this._updateVoiceButtonUI('Idle');
+        this._updateOverlayUI('Idle');
     }
 
     _updateNetworkStatus(isOnline) {
@@ -259,6 +424,12 @@ export class VoiceController {
         
         if (this._overlayTranscriptEl) {
             this._overlayTranscriptEl.innerText = `"${text}"`;
+        }
+
+        // Cancel session immediately if exit phrase spoken
+        if (text.toLowerCase().trim() === 'stop' || text.toLowerCase().trim() === 'cancel') {
+            this.cancelSession();
+            return;
         }
 
         // Check if user spoke an exit phrase
@@ -335,6 +506,7 @@ export class VoiceController {
         } else {
             logger.voice.warn(`Command failed to resolve: "${text}"`);
             voiceAnalytics.recordCommand('unknown', 'unknown', false);
+            this.triggerErrorState();
             await recoveryManager.handle('VOICE_004');
         }
 
@@ -351,8 +523,31 @@ export class VoiceController {
         });
     }
 
+    async triggerErrorState() {
+        if (!this._voiceBtnEl) return;
+        
+        this._voiceBtnEl.className = 'global-voice-btn state-error';
+        const micIcon = this._voiceBtnEl.querySelector('.voice-icon-mic');
+        const errorIcon = this._voiceBtnEl.querySelector('.voice-icon-error');
+        if (micIcon) micIcon.style.display = 'none';
+        if (errorIcon) errorIcon.style.display = 'block';
+
+        const announcer = document.getElementById('aria-live-announcer');
+        if (announcer) announcer.innerText = 'Voice error occurred';
+
+        await audioCues.play('error');
+
+        // Reset display after shake concludes
+        setTimeout(() => {
+            if (stateMachine.engineState === 'Idle') {
+                this._updateVoiceButtonUI('Idle');
+            }
+        }, 1200);
+    }
+
     handleRecognitionError(error) {
         logger.voice.warn('Recognition error callback triggered:', error);
+        this.triggerErrorState();
         if (error === 'not-allowed') {
             stateMachine.setEngineState('Offline');
             recoveryManager.handle('VOICE_001');
@@ -376,11 +571,27 @@ export class VoiceController {
     _updateVoiceButtonUI(state) {
         if (!this._voiceBtnEl) return;
         
+        // Match camera panel state if active
+        const isCamera = document.getElementById('camera-panel')?.classList.contains('active-panel');
+        this._voiceBtnEl.classList.toggle('camera-layout-offset', isCamera);
+
+        this._voiceBtnEl.className = 'global-voice-btn';
+        const micIcon = this._voiceBtnEl.querySelector('.voice-icon-mic');
+        const errorIcon = this._voiceBtnEl.querySelector('.voice-icon-error');
+        if (micIcon) micIcon.style.display = 'block';
+        if (errorIcon) errorIcon.style.display = 'none';
+
         if (state === 'Listening') {
-            this._voiceBtnEl.classList.add('status-voice-listening');
-            this._voiceBtnEl.setAttribute('aria-label', 'Listening active. Click to mute');
+            this._voiceBtnEl.classList.add('state-listening');
+            this._voiceBtnEl.setAttribute('aria-label', 'Listening active. Click to cancel');
+        } else if (state === 'Thinking') {
+            this._voiceBtnEl.classList.add('state-processing');
+            this._voiceBtnEl.setAttribute('aria-label', 'Assistant processing');
+        } else if (state === 'Speaking') {
+            this._voiceBtnEl.classList.add('state-speaking');
+            this._voiceBtnEl.setAttribute('aria-label', 'Assistant speaking. Click to cancel');
         } else {
-            this._voiceBtnEl.classList.remove('status-voice-listening');
+            this._voiceBtnEl.classList.add('state-idle');
             this._voiceBtnEl.setAttribute('aria-label', 'Activate voice assistant');
         }
     }
@@ -388,16 +599,67 @@ export class VoiceController {
     _updateOverlayUI(state) {
         if (!this._overlayEl || !voiceConfig.flags.overlay) return;
 
-        if (state === 'Listening' || state === 'Thinking') {
+        const announcer = document.getElementById('aria-live-announcer');
+
+        if (state === 'Listening' || state === 'Thinking' || state === 'Speaking') {
             this._overlayEl.style.display = 'flex';
+            this._overlayEl.setAttribute('aria-hidden', 'false');
+
             if (this._overlayStatusEl) {
-                this._overlayStatusEl.innerText = state === 'Listening' ? 'Listening...' : 'Thinking...';
+                this._overlayStatusEl.innerText = state === 'Listening' ? 'Listening...' 
+                                               : state === 'Thinking' ? 'Processing...' 
+                                               : 'Speaking...';
+            }
+            if (this._overlaySubtitleEl) {
+                this._overlaySubtitleEl.innerText = state === 'Listening' ? 'Speak after the tone' : '';
+            }
+
+            if (announcer) {
+                announcer.innerText = state === 'Listening' ? 'Listening' 
+                                    : state === 'Thinking' ? 'Processing' 
+                                    : 'Speaking';
+            }
+
+            // Sync large overlay icons
+            const icons = {
+                listening: document.getElementById('overlay-icon-listening'),
+                processing: document.getElementById('overlay-icon-processing'),
+                speaking: document.getElementById('overlay-icon-speaking'),
+                error: document.getElementById('overlay-icon-error')
+            };
+
+            Object.entries(icons).forEach(([key, el]) => {
+                if (el) {
+                    el.style.display = ((state === 'Listening' && key === 'listening') ||
+                                       (state === 'Thinking' && key === 'processing') ||
+                                       (state === 'Speaking' && key === 'speaking')) ? 'block' : 'none';
+                }
+            });
+
+            // Start/Stop Audio Analyser
+            if (state === 'Listening') {
+                import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
+                    audioVisualizer.start(this._visualizerBars);
+                });
+            } else {
+                import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
+                    audioVisualizer.stop();
+                });
+            }
+            
+            if (state === 'Listening' || state === 'Thinking') {
+                if (this._overlayTranscriptEl) this._overlayTranscriptEl.innerText = '...';
             }
         } else {
             this._overlayEl.style.display = 'none';
-            if (this._overlayTranscriptEl) {
-                this._overlayTranscriptEl.innerText = '';
-            }
+            this._overlayEl.setAttribute('aria-hidden', 'true');
+            if (this._overlayTranscriptEl) this._overlayTranscriptEl.innerText = '';
+            
+            import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
+                audioVisualizer.stop();
+            });
+
+            if (announcer) announcer.innerText = 'Voice assistant stopped';
         }
     }
 
@@ -405,7 +667,6 @@ export class VoiceController {
         if (!voiceConfig.flags.devHud) return;
 
         const session = sessionManager.snapshot();
-        const context = conversationContext.snapshot();
         const report = voiceAnalytics.getReport();
 
         const sEl = document.getElementById('hud-session-id');

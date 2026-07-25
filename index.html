@@ -138,11 +138,7 @@
                                     </button>
                                 </div>
                             </div>
-                            <button class="voice-badge-btn" id="header-voice-btn" aria-label="Voice Assistant Status">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                                </svg>
-                            </button>
+                            <!-- Removed header-voice-btn in favor of Global Floating Voice Button -->
                         </div>
                     </header>
 
@@ -954,18 +950,82 @@
         </div>
     </div>
 
-    <!-- Voice Overlay -->
-    <div id="voice-overlay" class="voice-overlay" style="display: none;" aria-live="assertive">
+    <!-- Global Floating Voice Assistant Button -->
+    <button id="global-voice-btn" class="global-voice-btn state-idle" aria-label="Activate voice assistant" aria-haspopup="true">
+        <div class="voice-btn-pulse"></div>
+        <div class="voice-btn-spinner">
+            <svg viewBox="0 0 36 36">
+                <path class="spinner-track" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2.5"></path>
+                <path class="spinner-indicator" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="30, 100"></path>
+            </svg>
+        </div>
+        <div class="voice-btn-icon-wrap">
+            <svg class="voice-icon-mic" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+            </svg>
+            <svg class="voice-icon-error" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="24" height="24" style="display: none;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </div>
+    </button>
+
+    <!-- Voice Discoverability Ready Toast -->
+    <div id="voice-ready-toast" class="voice-ready-toast" style="display: none;" role="status">
+        <div class="toast-content">
+            <span class="toast-icon">🎤</span>
+            <div class="toast-text">
+                <span class="toast-title">Voice Assistant Ready</span>
+                <span class="toast-subtitle">Say "Hey Nazar" or tap microphone</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Voice Overlay (Translucent Blurred Backdrop) -->
+    <div id="voice-overlay" class="voice-overlay" style="display: none;" aria-live="assertive" aria-hidden="true">
+        <div class="voice-overlay-backdrop" id="voice-overlay-backdrop"></div>
         <div class="voice-overlay-content">
-            <div class="voice-wave-container">
+            <!-- Big central state icon wrapper -->
+            <div class="voice-large-icon-container" id="voice-overlay-icon-container">
+                <!-- Listening: Mic -->
+                <svg id="overlay-icon-listening" class="overlay-state-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="48" height="48">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+                <!-- Processing: Sparks -->
+                <svg id="overlay-icon-processing" class="overlay-state-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="48" height="48" style="display: none;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                <!-- Speaking: Volume/Soundwave -->
+                <svg id="overlay-icon-speaking" class="overlay-state-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="48" height="48" style="display: none;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <!-- Error: Warning -->
+                <svg id="overlay-icon-error" class="overlay-state-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="48" height="48" style="display: none;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+            </div>
+
+            <!-- Dynamic headings -->
+            <h2 id="voice-overlay-status" class="voice-overlay-status">Listening...</h2>
+            <p id="voice-overlay-subtitle" class="voice-overlay-subtitle">Speak after the tone</p>
+
+            <!-- 8-bar visualizer -->
+            <div class="voice-visualizer-container" id="voice-visualizer-container">
                 <div class="voice-wave-bar bar-1"></div>
                 <div class="voice-wave-bar bar-2"></div>
                 <div class="voice-wave-bar bar-3"></div>
                 <div class="voice-wave-bar bar-4"></div>
                 <div class="voice-wave-bar bar-5"></div>
+                <div class="voice-wave-bar bar-6"></div>
+                <div class="voice-wave-bar bar-7"></div>
+                <div class="voice-wave-bar bar-8"></div>
             </div>
-            <p id="voice-overlay-status" class="voice-overlay-status">Listening...</p>
-            <p id="voice-overlay-transcript" class="voice-overlay-transcript"></p>
+
+            <!-- Transcript section -->
+            <div class="voice-transcript-wrapper">
+                <p id="voice-overlay-transcript" class="voice-overlay-transcript"></p>
+            </div>
+            
+            <button class="voice-overlay-stop" id="voice-overlay-dismiss" aria-label="Cancel voice command">Stop</button>
         </div>
     </div>
 

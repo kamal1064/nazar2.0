@@ -76,6 +76,12 @@ class AudioCueManager {
                     await this._tone(ctx, 400, 0.08, cfg.successVolume * 0.5);
                     break;
 
+                case 'timeout':
+                    // Double-tone chime for silence timeout
+                    await this._tone(ctx, 480, 0.12, cfg.successVolume * 0.7);
+                    await this._tone(ctx, 480, 0.12, cfg.successVolume * 0.7);
+                    break;
+
                 default:
                     logger.voice.warn('[AudioCues] Unknown cue name:', name);
             }

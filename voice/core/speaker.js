@@ -5,6 +5,7 @@
 import { stateMachine } from './state.js';
 import { logger } from '../utils/logger.js';
 import { voiceConfig } from '../utils/voiceConfig.js';
+import { eventBus } from './eventBus.js';
 
 export class Speaker {
     constructor() {
@@ -103,6 +104,27 @@ export class Speaker {
 
         this.activeUtterance = utterance;
         window.activeUtterance = utterance;
+
+        let boundaryFired = false;
+        utterance.onboundary = (e) => {
+            if (e.name === 'word') {
+                boundaryFired = true;
+                const remainingText = text.substring(e.charIndex);
+                const nextSpaceIndex = remainingText.indexOf(' ');
+                const endIndex = nextSpaceIndex === -1 ? text.length : e.charIndex + nextSpaceIndex;
+                const progressiveText = text.substring(0, endIndex);
+                eventBus.emit('speech.boundary', { text: progressiveText });
+            }
+        };
+
+        utterance.onstart = () => {
+            // Check after 300ms if boundary event fired. If not, emit full text as fallback.
+            setTimeout(() => {
+                if (!boundaryFired) {
+                    eventBus.emit('speech.boundary', { text });
+                }
+            }, 300);
+        };
 
         utterance.onend = () => {
             this.cleanupUtterance();
