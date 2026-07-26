@@ -112,7 +112,7 @@ class OpenWaService {
                 useChrome: !process.env.PUPPETEER_EXECUTABLE_PATH,
                 headless: process.env.OPENWA_HEADLESS === 'true',
                 qrTimeout: 0,
-                timeout: 120,                       // 120s default timeout for Puppeteer operations instead of 30s
+                timeout: 120000,                    // 120s default timeout for Puppeteer operations instead of 30s
                 authTimeout: 300,                  // Increased to allow slow/constrained environments to initialize
                 waitForRipeSessionTimeout: 120,     // Wait up to 120s for session page readiness
                 oorTimeout: 120,                    // Out of reach check timeout
