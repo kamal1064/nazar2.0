@@ -6,7 +6,7 @@ const whatsappService = require('./services/whatsappService');
 const { MemoryQueue } = require('./services/queueService');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.WHATSAPP_SERVICE_PORT || process.env.PORT || 5000;
 let isShuttingDown = false;
 
 // Structured logging helper
