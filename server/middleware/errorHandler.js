@@ -86,7 +86,7 @@ const errorHandler = (err, req, res, next) => {
         clientMessage = 'A database operation error occurred.';
 
     // 2. External API Exception Sanitization
-    } else if (err.isGeminiError || (err.message && (err.message.includes('Gemini') || err.message.includes('Vision API')))) {
+    } else if (err.isGeminiError || err.isGroqError || (err.message && (err.message.includes('Gemini') || err.message.includes('Groq') || err.message.includes('Vision API')))) {
         statusCode = 502;
         errorCode = 'AI_SERVICE_UNAVAILABLE';
         clientMessage = 'The AI service is temporarily unavailable. Please try again later.';

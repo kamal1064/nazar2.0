@@ -40,6 +40,10 @@ function validateConfig() {
         warnings.push('No GEMINI_API_KEY_1 configured. Scan requests will fail until an API key is provided.');
     }
 
+    if (!process.env.GROQ_API_KEY_1) {
+        warnings.push('No GROQ_API_KEY_1 configured. Voice assistant will fail until a Groq API key is provided.');
+    }
+
     if (!process.env.JWT_SECRET) {
         warnings.push('JWT_SECRET is not set. A temporary development fallback secret will be used. Configure JWT_SECRET in production.');
     }
@@ -70,6 +74,7 @@ validateConfig();
 module.exports = {
     port: parseInt(process.env.PORT || '5000', 10),
     env: process.env.NODE_ENV || 'development',
+    groqModel: process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
     geminiModel: process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite',
     geminiTimeoutMs: parseInt(process.env.GEMINI_TIMEOUT || '60000', 10),
     mongoUri: process.env.MONGODB_URI || '',

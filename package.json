@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js",
-    "test": "node server/tests/errorHandling.test.js && node server/tests/postRefactorVerification.test.js && node server/tests/authSystem.test.js && node server/tests/googleOAuth.test.js"
+    "test": "node server/tests/groqService.test.js && node server/tests/errorHandling.test.js && node server/tests/postRefactorVerification.test.js && node server/tests/authSystem.test.js && node server/tests/googleOAuth.test.js"
   },
   "repository": {
     "type": "git",

@@ -7,7 +7,7 @@
  */
 const express = require('express');
 const router = express.Router();
-const voiceKeyRotationService = require('../services/voiceKeyRotationService');
+const groqService = require('../services/groqService');
 const { voiceLimiter } = require('../middleware/rateLimiter');
 
 const VOICE_INTENT_INSTRUCTION = `You are NAZAR's voice intent parser. Analyze the user's spoken command and choose the most appropriate function call tool.
@@ -270,155 +270,145 @@ function mapFunctionCallToIntent(name, args) {
     return { skill, action, params, confidence };
 }
 
-// POST /api/voice/intent
+function convertToGroqTools(geminiToolsArray) {
+    if (!geminiToolsArray || !Array.isArray(geminiToolsArray) || geminiToolsArray.length === 0) return [];
+    const declarations = geminiToolsArray[0].functionDeclarations || geminiToolsArray;
+    return declarations.map(decl => {
+        const convertSchema = (schema) => {
+            if (!schema || typeof schema !== 'object') return schema;
+            const newSchema = { ...schema };
+            if (typeof newSchema.type === 'string') {
+                newSchema.type = newSchema.type.toLowerCase();
+            }
+            if (newSchema.properties) {
+                const newProps = {};
+                for (const [k, v] of Object.entries(newSchema.properties)) {
+                    newProps[k] = convertSchema(v);
+                }
+                newSchema.properties = newProps;
+            }
+            if (newSchema.items) {
+                newSchema.items = convertSchema(newSchema.items);
+            }
+            return newSchema;
+        };
+
+        return {
+            type: 'function',
+            function: {
+                name: decl.name,
+                description: decl.description,
+                parameters: convertSchema(decl.parameters || { type: 'object', properties: {} })
+            }
+        };
+    });
+}
+
+// POST /api/voice/intent - Powered by Groq llama-3.1-8b-instant
 router.post('/intent', voiceLimiter, async (req, res, next) => {
-    console.log("Received POST /api/voice/intent");
+    console.log("Received POST /api/voice/intent (Groq Backend)");
     const { text, sessionId, context } = req.body;
 
     if (!text || typeof text !== 'string') {
         return res.status(400).json({ success: false, message: 'Missing speech command text.', code: 'BAD_REQUEST' });
     }
 
-    const targetModel = process.env.GEMINI_INTENT_MODEL || 'gemini-2.5-flash-lite';
-    const timeoutMs = parseInt(process.env.GEMINI_TIMEOUT || '10000', 10);
     const history = getSessionHistory(sessionId);
 
-    // Build standard generative language payload with tools
-    const buildRequestBody = () => {
-        const contents = [];
-        
-        // Push recent sliding window history
-        history.forEach(turn => {
-            contents.push({
-                role: turn.role,
-                parts: turn.parts
-            });
+    // Build OpenAI-compatible messages array for Groq
+    const messages = [];
+    let systemInstructionText = VOICE_INTENT_INSTRUCTION;
+    if (context) {
+        systemInstructionText = `Current user application context:\n${JSON.stringify(context, null, 2)}\n\n` + VOICE_INTENT_INSTRUCTION;
+    }
+    messages.push({ role: 'system', content: systemInstructionText });
+
+    history.forEach(turn => {
+        const role = (turn.role === 'model' || turn.role === 'assistant') ? 'assistant' : 'user';
+        const content = turn.parts && turn.parts[0] ? turn.parts[0].text : (turn.content || '');
+        if (content) {
+            messages.push({ role, content });
+        }
+    });
+
+    messages.push({ role: 'user', content: text });
+
+    const groqTools = convertToGroqTools(tools);
+
+    const groqRes = await groqService.generate_response({
+        messages,
+        tools: groqTools,
+        tool_choice: 'auto'
+    });
+
+    if (!groqRes.success || groqRes.friendlyResponse) {
+        return res.status(503).json({
+            success: false,
+            message: groqRes.message || "The assistant is temporarily busy. Please try again in a few minutes.",
+            code: 'SERVICE_UNAVAILABLE'
         });
-
-        // Push current prompt
-        contents.push({
-            role: 'user',
-            parts: [{ text }]
-        });
-
-        // Prepend context description if provided
-        let systemInstructionText = VOICE_INTENT_INSTRUCTION;
-        if (context) {
-            systemInstructionText = `Current user application context:\n${JSON.stringify(context, null, 2)}\n\n` + VOICE_INTENT_INSTRUCTION;
-        }
-
-        return {
-            contents,
-            systemInstruction: {
-                parts: [{ text: systemInstructionText }]
-            },
-            tools
-        };
-    };
-
-    const requestBody = buildRequestBody();
-
-    // Helper for single HTTP request to Gemini API
-    const makeSingleGeminiCall = async (currentApiKey, attemptNum) => {
-        console.log(`[Gemini Voice] Request started (Attempt ${attemptNum}, Model: ${targetModel})`);
-        const startTime = Date.now();
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${currentApiKey}`;
-        
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-        try {
-            const response = await fetch(geminiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
-                signal: controller.signal
-            });
-
-            const duration = Date.now() - startTime;
-
-            if (!response.ok) {
-                const errText = await response.text();
-                console.warn(`[Gemini Voice] HTTP ${response.status} (${duration}ms):`, errText.substring(0, 250));
-                const errorObj = new Error(`HTTP ${response.status}: ${errText}`);
-                errorObj.status = response.status;
-                throw errorObj;
-            }
-
-            console.log(`[Gemini Voice] Request completed in ${duration} ms`);
-            const rawData = await response.json();
-            return { rawData, duration };
-        } catch (err) {
-            if (err.name === 'AbortError') {
-                console.error(`[Gemini Voice] Request timed out after ${timeoutMs / 1000} seconds.`);
-                const timeoutError = new Error(`Gemini request timed out after ${timeoutMs / 1000} seconds.`);
-                timeoutError.isTimeout = true;
-                throw timeoutError;
-            }
-            throw err;
-        } finally {
-            clearTimeout(timer);
-        }
-    };
-
-    // Retry loop with failover key rotation support
-    let apiResult = null;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts) {
-        attempts++;
-        try {
-            const activeKey = await voiceKeyRotationService.getActiveKey();
-            apiResult = await makeSingleGeminiCall(activeKey, attempts);
-            await voiceKeyRotationService.incrementUsage();
-            break;
-        } catch (err) {
-            console.error(`[Gemini Voice] Attempt ${attempts} failed:`, err.message);
-            if (err.status === 429 || err.status === 403 || err.isTimeout) {
-                console.warn('[Gemini Voice] Rotating key due to HTTP error or timeout...');
-                await voiceKeyRotationService.rotateKey(err.message);
-            }
-
-            if (attempts >= maxAttempts) {
-                return res.status(502).json({
-                    success: false,
-                    message: 'Gemini intent resolution failed after repeated retries.',
-                    code: 'BAD_GATEWAY'
-                });
-            }
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 500));
-        }
     }
 
     try {
-        const candidates = apiResult.rawData.candidates;
-        if (!candidates || candidates.length === 0 || !candidates[0].content || !candidates[0].content.parts || candidates[0].content.parts.length === 0) {
-            throw new Error('Empty Gemini response content.');
+        const choice = groqRes.data.choices && groqRes.data.choices[0];
+        if (!choice || !choice.message) {
+            throw new Error('Empty response from Groq assistant.');
         }
 
-        const part = candidates[0].content.parts[0];
-        if (!part.functionCall) {
-            throw new Error('Gemini did not return a functionCall tool invocation.');
+        const msg = choice.message;
+        let name = 'unknown_command';
+        let args = { transcript: text };
+
+        if (msg.tool_calls && msg.tool_calls.length > 0) {
+            const call = msg.tool_calls[0].function;
+            name = call.name;
+            try {
+                args = JSON.parse(call.arguments || '{}');
+            } catch (e) {
+                args = {};
+            }
+        } else if (msg.content) {
+            try {
+                const parsed = JSON.parse(msg.content);
+                if (parsed.name || parsed.function || parsed.tool) {
+                    name = parsed.name || (parsed.function && parsed.function.name) || parsed.tool;
+                    args = parsed.arguments || parsed.args || (parsed.function && parsed.function.arguments) || {};
+                    if (typeof args === 'string') {
+                        try { args = JSON.parse(args); } catch (e) { args = {}; }
+                    }
+                } else {
+                    name = 'unknown_command';
+                    args = { transcript: text, speechResponse: msg.content };
+                }
+            } catch (e) {
+                name = 'unknown_command';
+                args = { transcript: text, speechResponse: msg.content };
+            }
         }
 
-        const call = part.functionCall;
-        const parsedIntent = mapFunctionCallToIntent(call.name, call.args || {});
+        const parsedIntent = mapFunctionCallToIntent(name, args);
         parsedIntent.rawTranscript = text;
+        if (args && args.speechResponse) {
+            parsedIntent.speechResponse = args.speechResponse;
+        }
 
-        // Stash result to sliding window conversation memory on success
+        // Update session history
         updateSessionHistory(sessionId, 'user', text);
-        updateSessionHistory(sessionId, 'model', JSON.stringify(call));
+        if (msg.tool_calls && msg.tool_calls.length > 0) {
+            updateSessionHistory(sessionId, 'assistant', `[Tool Call: ${name}]`);
+        } else if (msg.content) {
+            updateSessionHistory(sessionId, 'assistant', msg.content);
+        }
 
         return res.json({
             success: true,
             intent: parsedIntent
         });
     } catch (parseErr) {
-        console.error('[Gemini Voice] Processing error:', parseErr.message);
+        console.error('[Groq Voice] Processing error:', parseErr.message);
         return res.status(502).json({
             success: false,
-            message: 'Invalid tool calling response returned from Gemini.',
+            message: 'Invalid response returned from Groq assistant.',
             code: 'BAD_GATEWAY'
         });
     }
