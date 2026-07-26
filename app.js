@@ -1,6 +1,11 @@
 // Global Client-Side Promise Rejection Guard
 window.addEventListener('unhandledrejection', (event) => {
-    console.warn('[NAZAR Client Guard] Unhandled promise rejection captured:', event.reason?.message || 'Asynchronous request failed');
+    console.groupCollapsed('[NAZAR Client Guard] Unhandled Promise Rejection');
+    console.error('Reason:', event.reason);
+    if (event.reason?.stack) {
+        console.error(event.reason.stack);
+    }
+    console.groupEnd();
     event.preventDefault();
 });
 

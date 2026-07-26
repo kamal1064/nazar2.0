@@ -83,6 +83,14 @@ export class StateMachine {
         }
 
         switch (this.engineState) {
+            case 'Starting':
+                statusDot.classList.add('status-voice-thinking');
+                if (statusText) statusText.innerText = "Starting...";
+                break;
+            case 'Processing':
+                statusDot.classList.add('status-voice-thinking');
+                if (statusText) statusText.innerText = "Processing...";
+                break;
             case 'Listening':
                 statusDot.classList.add('status-voice-listening');
                 if (statusText) statusText.innerText = "Listening...";

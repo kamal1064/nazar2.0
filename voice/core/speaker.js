@@ -82,6 +82,7 @@ export class Speaker {
     _doSpeak(text, resolve) {
         this.lastSpokenText = text;
         stateMachine.setEngineState('Speaking');
+        eventBus.emit('speech.started');
 
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.volume = this.volume;
@@ -134,6 +135,7 @@ export class Speaker {
                 this._doSpeak(next.text, next.resolve);
             } else {
                 stateMachine.setEngineState('Idle');
+                eventBus.emit('speech.finished');
             }
             resolve();
         };
@@ -146,6 +148,7 @@ export class Speaker {
                 this._doSpeak(next.text, next.resolve);
             } else {
                 stateMachine.setEngineState('Idle');
+                eventBus.emit('speech.finished');
             }
             resolve(); // Don't reject — prevents unhandled promise crashes on cancel
         };
@@ -192,6 +195,7 @@ export class Speaker {
         if (stateMachine.engineState === 'Speaking') {
             stateMachine.setEngineState('Idle');
         }
+        eventBus.emit('speech.cancelled');
     }
 
     /**

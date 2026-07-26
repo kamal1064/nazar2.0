@@ -14,10 +14,10 @@
 const RESPONSE_POOLS = {
 
     // ─── Navigation ───────────────────────────────────────────────────────────
-    'navigate.home.success':        ['Home opened.', 'Going to the home screen.', 'Here's the home page.'],
+    'navigate.home.success':        ['Home opened.', 'Going to the home screen.', "Here's the home page."],
     'navigate.camera.success':      ['Camera opened.', 'Launching camera.', 'Camera is ready.', 'Let me open the camera.'],
     'navigate.settings.success':    ['Settings opened.', 'Here are your settings.', 'Opening settings.'],
-    'navigate.profile.success':     ['Profile opened.', 'Opening your account.', 'Here's your profile.'],
+    'navigate.profile.success':     ['Profile opened.', 'Opening your account.', "Here's your profile."],
     'navigate.back.success':        ['Going back.', 'Navigating back.', 'One step back.'],
     'navigate.error':               ['Navigation failed. Please try again.'],
 
@@ -56,7 +56,7 @@ const RESPONSE_POOLS = {
     'settings.error':                   ['Settings change failed.'],
 
     // ─── Profile ──────────────────────────────────────────────────────────────
-    'profile.open.success':         ['Account panel opened.', 'Here's your profile.'],
+    'profile.open.success':         ['Account panel opened.', "Here's your profile."],
     'profile.signOut.pending':      ['Are you sure you want to sign out? Say Yes to confirm.'],
     'profile.signOut.success':      ['Signed out successfully.', 'You have been signed out.'],
     'profile.error':                ['Profile action failed.'],
@@ -72,7 +72,7 @@ const RESPONSE_POOLS = {
     'ui.scrollUp.success':          ['Scrolled up.'],
     'ui.openMenu.success':          ['Menu opened.'],
     'ui.closeMenu.success':         ['Menu closed.'],
-    'ui.openHelp.success':          ['Sure, here's what I can do.'],
+    'ui.openHelp.success':          ["Sure, here's what I can do."],
     'ui.openHistory.success':       ['Scan history opened.'],
     'ui.error':                     ['That action is not available right now.'],
 

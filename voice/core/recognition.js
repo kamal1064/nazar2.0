@@ -7,11 +7,12 @@ import { voiceConfig } from '../utils/voiceConfig.js';
 import { logger } from '../utils/logger.js';
 import { eventBus } from './eventBus.js';
 import { VoiceEvents } from '../events.js';
+import { sessionManager } from './sessionManager.js';
 
 export class Recognition {
     constructor() {
         this.recognition = null;
-        this.isListening = false;
+        this.isListening = false; // Backward compatibility check for other modules
         this.isContinuous = false;
         this.inactivityTimer = null;
         this.lastTranscriptTime = 0;
@@ -24,6 +25,18 @@ export class Recognition {
         this.onPriorityCallback = null;
         // Interim callback for WakeWordDetector — called on every partial result
         this.onInterimCallback = null;
+
+        // Cooldown and retry parameters for network/disconnect errors (Production-grade)
+        this.consecutiveErrors = 0;
+        this.lastErrorTime = 0;
+        this._restartTimeout = null;
+
+        // State Machine and Lifecycle Ownership
+        this.recognitionState = 'Idle'; // 'Idle', 'Starting', 'Listening', 'Stopping'
+        this.sessionGeneration = 0;
+        this.stopReason = null; // 'USER', 'SPEAKER', 'VISIBILITY', 'SESSION_END', 'ERROR', 'PERMISSION'
+        this.failureTimes = [];
+        this.lastError = null;
     }
 
     /**
@@ -48,10 +61,16 @@ export class Recognition {
             this.recognition.lang = 'en-US';
 
             this.recognition.onstart = () => {
+                this.recognitionState = 'Listening';
                 this.isListening = true;
                 this.lastTranscriptTime = Date.now();
                 this.resetInactivityTimer();
                 stateMachine.setEngineState('Listening');
+                
+                // Reset consecutive errors if it runs successfully without errors for 10s
+                if (Date.now() - this.lastErrorTime > 10000) {
+                    this.consecutiveErrors = 0;
+                }
             };
 
             this.recognition.onresult = (event) => {
@@ -59,25 +78,123 @@ export class Recognition {
             };
 
             this.recognition.onerror = (e) => {
-                // Ignore empty/no-speech errors without throwing critical alarms
-                if (e.error === 'no-speech') return;
-                logger.voice.warn('[Recognition] SpeechRecognition error:', e.error);
-                eventBus.emit(VoiceEvents.SPEECH_ERROR, { error: e.error });
-                if (this.onErrorCallback) this.onErrorCallback(e.error);
+                this.recognitionState = 'Idle'; // Error breaks the active session
+                this.isListening = false;
+                
+                const err = e.error;
+                this.lastError = err;
+                
+                if (err === 'no-speech') {
+                    eventBus.emit(VoiceEvents.SPEECH_ERROR, { error: err });
+                    return;
+                }
+
+                if (err === 'aborted') {
+                    logger.voice.info('[Recognition] SpeechRecognition aborted internally.');
+                    return;
+                }
+
+                // Increment failures for health monitoring
+                this.failureTimes.push(Date.now());
+                this.failureTimes = this.failureTimes.filter(t => Date.now() - t < 60000);
+
+                if (this.failureTimes.length >= 5) {
+                    logger.voice.error('[Recognition] Health Monitor: 5 failures in under 60 seconds. Stopping voice engine.');
+                    this.stop('ERROR');
+                    this.isContinuous = false;
+                    
+                    import('./speaker.js').then(({ speaker }) => {
+                        speaker.speak("Voice recognition is experiencing persistent errors. Please check your internet connection.", { mode: 'replace' });
+                    });
+                    import('./conversationManager.js').then(({ conversationManager }) => {
+                        conversationManager._endConversation('health_monitor_disabled');
+                    });
+                    return;
+                }
+
+                this.consecutiveErrors++;
+                this.lastErrorTime = Date.now();
+
+                logger.voice.warn('[Recognition] SpeechRecognition error:', err);
+                eventBus.emit(VoiceEvents.SPEECH_ERROR, { error: err });
+                if (this.onErrorCallback) this.onErrorCallback(err);
             };
 
             this.recognition.onend = () => {
+                this.recognitionState = 'Idle';
                 this.isListening = false;
                 this.clearInactivityTimer();
-                
+
+                // If stopped intentionally due to speaker or session cancellation, don't auto-restart
+                if (this.stopReason === 'USER' || this.stopReason === 'SESSION_END' || this.stopReason === 'PERMISSION' || this.stopReason === 'SPEAKER') {
+                    logger.voice.info(`[Recognition] Intentional stop (Reason: ${this.stopReason}). Not restarting.`);
+                    return;
+                }
+
+                // If hidden, don't restart here. Let VoiceController handle document visibility restore.
+                if (document.hidden || this.stopReason === 'VISIBILITY') {
+                    logger.voice.info('[Recognition] Tab is hidden. Pausing auto-restart.');
+                    return;
+                }
+
                 // Auto-restart if in Continuous/Awake mode and unexpectedly stopped
                 if (this.isContinuous && stateMachine.wakeState === 'Awake') {
-                    logger.voice.info('[Recognition] Unexpected disconnect. Restarting continuous recognition...');
-                    this.start();
+                    if (this.lastError === 'not-allowed' || this.lastError === 'service-not-allowed') {
+                        logger.voice.warn('[Recognition] Permission or service error. Disabling continuous restart.');
+                        this.lastError = null;
+                        return;
+                    }
+
+                    if (this.lastError === 'no-speech') {
+                        logger.voice.info('[Recognition] No speech. Restarting continuous recognition in 500ms...');
+                        this.lastError = null;
+                        
+                        if (this._restartTimeout) clearTimeout(this._restartTimeout);
+                        const currentGen = this.sessionGeneration;
+                        this._restartTimeout = setTimeout(() => {
+                            if (currentGen !== this.sessionGeneration) return;
+                            this.start();
+                        }, 500);
+                        return;
+                    }
+
+                    if (this.consecutiveErrors >= 5) {
+                        logger.voice.error('[Recognition] Maximum retries reached. Stopping voice engine.');
+                        this.isContinuous = false;
+
+                        import('./speaker.js').then(({ speaker }) => {
+                            speaker.speak("Voice recognition is unavailable. Please check your internet connection.", { mode: 'replace' });
+                        });
+                        import('./conversationManager.js').then(({ conversationManager }) => {
+                            conversationManager._endConversation('max_retries_exceeded');
+                        });
+                    } else {
+                        const delay = this._getRestartDelay();
+                        
+                        // Structured Logging
+                        logger.voice.info(
+                            `[Recognition]\n` +
+                            `Session: ${sessionManager.sessionId || 'N/A'}\n` +
+                            `Generation: ${this.sessionGeneration}\n` +
+                            `State: ${this.recognitionState}\n` +
+                            `Attempt: ${this.consecutiveErrors}/5\n` +
+                            `Delay: ${delay}ms\n` +
+                            `Reason: ${this.lastError || 'disconnect'}`
+                        );
+
+                        if (this._restartTimeout) clearTimeout(this._restartTimeout);
+                        const currentGen = this.sessionGeneration;
+                        this._restartTimeout = setTimeout(() => {
+                            if (currentGen !== this.sessionGeneration) return;
+                            this.start();
+                        }, delay);
+                    }
                 } else {
                     stateMachine.setEngineState('Idle');
                     eventBus.emit(VoiceEvents.SPEECH_ENDED);
                 }
+
+                this.lastError = null;
             };
 
             return true;
@@ -90,26 +207,81 @@ export class Recognition {
     setLanguage(langCode) {
         if (this.recognition) {
             this.recognition.lang = langCode;
-            // Restart if currently listening to apply new language
             if (this.isListening) {
-                this.stop();
+                this.stop('LANGUAGE_CHANGE');
                 setTimeout(() => this.start(), 200);
             }
         }
     }
 
+    /** Unified Pre-Start Validation Gate */
+    validateStart() {
+        if (!this.recognition) {
+            return { valid: false, reason: 'SpeechRecognition not initialized' };
+        }
+        if (stateMachine.wakeState !== 'Awake') {
+            return { valid: false, reason: 'WakeState is Sleeping' };
+        }
+        if (this.recognitionState !== 'Idle') {
+            return { valid: false, reason: `RecognitionState is not Idle (${this.recognitionState})` };
+        }
+        if (stateMachine.engineState === 'Speaking') {
+            return { valid: false, reason: 'Speaker is speaking' };
+        }
+        if (document.hidden) {
+            return { valid: false, reason: 'Document is hidden' };
+        }
+        return { valid: true };
+    }
+
     start() {
-        if (!this.recognition || this.isListening) return;
+        if (this._restartTimeout) {
+            clearTimeout(this._restartTimeout);
+            this._restartTimeout = null;
+        }
+
+        const gate = this.validateStart();
+        if (!gate.valid) {
+            logger.voice.info(`[Recognition] Start validation failed. Reason: ${gate.reason}`);
+            return;
+        }
+
         try {
+            this.sessionGeneration++;
+            this.stopReason = null;
+            this.recognitionState = 'Starting';
+            stateMachine.setEngineState('Starting');
             this.recognition.start();
         } catch (e) {
+            this.recognitionState = 'Idle';
+            stateMachine.setEngineState('Idle');
             console.warn('[Recognition] Failed to start recognition:', e);
         }
     }
 
-    stop() {
-        if (this.recognition && this.isListening) {
-            this.recognition.stop();
+    stop(reason = 'USER') {
+        this.sessionGeneration++;
+        this.stopReason = reason;
+
+        if (this._restartTimeout) {
+            clearTimeout(this._restartTimeout);
+            this._restartTimeout = null;
+        }
+
+        if (reason === 'USER' || reason === 'SESSION_END' || reason === 'PERMISSION') {
+            this.isContinuous = false;
+            this.consecutiveErrors = 0;
+            this.failureTimes = [];
+        }
+
+        if (this.recognition && (this.recognitionState === 'Listening' || this.recognitionState === 'Starting')) {
+            try {
+                this.recognitionState = 'Stopping';
+                this.recognition.stop();
+            } catch (e) {
+                this.recognitionState = 'Idle';
+                console.warn('[Recognition] Error stopping recognition:', e);
+            }
         }
     }
 
@@ -128,6 +300,7 @@ export class Recognition {
      * @param {SpeechRecognitionEvent} event 
      */
     handleResult(event) {
+        this.consecutiveErrors = 0;
         this.lastTranscriptTime = Date.now();
         this.resetInactivityTimer();
 
@@ -162,12 +335,13 @@ export class Recognition {
 
         // Forward FINAL transcripts to the core parser
         if (finalTranscript && this.onTranscriptCallback) {
+            stateMachine.setEngineState('Processing');
             this.onTranscriptCallback(finalTranscript.trim());
             eventBus.emit(VoiceEvents.SPEECH_HEARD, { transcript: finalTranscript.trim() });
             
             // In Push-to-Talk mode, stop listening immediately after receiving a final result
             if (!this.isContinuous) {
-                this.stop();
+                this.stop('USER');
             }
         }
     }
@@ -179,7 +353,7 @@ export class Recognition {
         if (!this.isContinuous) {
             this.inactivityTimer = setTimeout(() => {
                 logger.voice.info('[Recognition] Inactivity timeout reached. Stopping microphone.');
-                this.stop();
+                this.stop('USER');
             }, voiceConfig.recognitionInactivityTimeout);
         }
     }
@@ -189,6 +363,15 @@ export class Recognition {
             clearTimeout(this.inactivityTimer);
             this.inactivityTimer = null;
         }
+    }
+
+    _getRestartDelay() {
+        if (this.consecutiveErrors === 0) return 0;
+        // Exponential backoff capped at 30 seconds (min 2 seconds)
+        const baseDelay = Math.max(2000, Math.min(30000, Math.pow(2, this.consecutiveErrors - 1) * 2000));
+        // Add random jitter between 80% and 120%
+        const jitter = 0.8 + Math.random() * 0.4;
+        return Math.round(baseDelay * jitter);
     }
 }
 

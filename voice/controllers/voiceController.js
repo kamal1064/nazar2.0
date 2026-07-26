@@ -85,6 +85,11 @@ export class VoiceController {
         // Check online status initially
         this._updateNetworkStatus(navigator.onLine);
 
+        // 7. Deterministic beforeunload cleanup
+        window.addEventListener('beforeunload', () => {
+            this.cleanup();
+        });
+
         this.initialized = true;
         logger.voice.info('NAZAR Voice Engine booted successfully.');
 
@@ -223,6 +228,60 @@ export class VoiceController {
             });
         }
 
+        // Tab visibility handlers (debounced by 300ms)
+        this._visibilityTimeout = null;
+        this._wasVoiceActiveBeforeHide = false;
+        document.addEventListener('visibilitychange', () => {
+            if (this._visibilityTimeout) {
+                clearTimeout(this._visibilityTimeout);
+            }
+            this._visibilityTimeout = setTimeout(async () => {
+                if (document.hidden) {
+                    logger.voice.info('[VoiceController] Page hidden. Pausing recognition.');
+                    this._wasVoiceActiveBeforeHide = (stateMachine.wakeState === 'Awake');
+                    if (this._wasVoiceActiveBeforeHide) {
+                        recognition.stop('VISIBILITY');
+                    }
+                } else {
+                    if (this._wasVoiceActiveBeforeHide && stateMachine.wakeState === 'Awake') {
+                        if (navigator.permissions) {
+                            try {
+                                const permission = await navigator.permissions.query({ name: 'microphone' });
+                                if (permission.state !== 'granted') {
+                                    logger.voice.warn('[VoiceController] Visibility change: Microphone permission not granted. Not resuming.');
+                                    return;
+                                }
+                            } catch (err) {
+                                // Fallback
+                            }
+                        }
+                        logger.voice.info('[VoiceController] Page visible and active. Resuming recognition.');
+                        recognition.startContinuous();
+                    }
+                    this._wasVoiceActiveBeforeHide = false;
+                }
+            }, 300);
+        });
+
+        // Pause/resume recognition during speech playback (Speaker decoupling)
+        eventBus.on('speech.started', () => {
+            if (stateMachine.wakeState === 'Awake') {
+                logger.voice.info('[VoiceController] Speech playback started. Pausing recognition.');
+                recognition.stop('SPEAKER');
+            }
+        });
+
+        eventBus.on('speech.finished', () => {
+            if (stateMachine.wakeState === 'Awake') {
+                logger.voice.info('[VoiceController] Speech playback completed. Resuming recognition.');
+                recognition.startContinuous();
+            }
+        });
+
+        eventBus.on('speech.cancelled', () => {
+            logger.voice.info('[VoiceController] Speech playback cancelled.');
+        });
+
         // Bind interactive triggers on DOM elements
         this._bindUIInteractions();
     }
@@ -230,17 +289,17 @@ export class VoiceController {
     _bindUIInteractions() {
         // Tapping / Double Tapping global button
         if (this._voiceBtnEl) {
-            let clickTimeout = null;
+            this._clickTimeout = null;
             this._voiceBtnEl.addEventListener('click', (e) => {
                 e.preventDefault();
-                if (clickTimeout) {
-                    clearTimeout(clickTimeout);
-                    clickTimeout = null;
+                if (this._clickTimeout) {
+                    clearTimeout(this._clickTimeout);
+                    this._clickTimeout = null;
                     logger.voice.info('[VoiceController] Double click detected. Cancelling session.');
                     this.cancelSession();
                 } else {
-                    clickTimeout = setTimeout(() => {
-                        clickTimeout = null;
+                    this._clickTimeout = setTimeout(() => {
+                        this._clickTimeout = null;
                         this.handleGlobalButtonTap();
                     }, 250);
                 }
@@ -333,6 +392,12 @@ export class VoiceController {
     async handleGlobalButtonTap() {
         if (navigator.vibrate) navigator.vibrate(20);
 
+        if (!this.initialized) {
+            logger.voice.error('Voice assistant not initialized / SpeechRecognition not supported.');
+            await recoveryManager.handle('VOICE_002');
+            return;
+        }
+
         const isWake = stateMachine.wakeState === 'Awake';
         if (isWake) {
             this.cancelSession();
@@ -350,16 +415,58 @@ export class VoiceController {
     }
 
     cancelSession() {
-        logger.voice.info('[VoiceController] Cancelling voice session.');
-        sessionManager.end('user_manual_stop');
-        recognition.stop();
+        logger.voice.info('[VoiceController] Cancelling voice session (Deterministic Cleanup).');
+        
+        // 1. Set session inactive
+        stateMachine.setWakeState('Sleeping');
+        
+        // 2 & 5. Stop recognition (increments generation, stops recognition, clears retry timer, clears retry counts)
+        recognition.stop('SESSION_END');
+        
+        // 3 & 4. Cancel speech synthesis
         speaker.cancel();
         
-        stateMachine.setWakeState('Sleeping');
+        // 6. Reset conversation state and clear silence/prompt timers
+        conversationManager._cancelTimers();
+        conversationManager._active = false;
+        conversationManager._depth = 0;
+        
+        // Clear local voiceController timeouts
+        if (this._visibilityTimeout) {
+            clearTimeout(this._visibilityTimeout);
+            this._visibilityTimeout = null;
+        }
+        if (this._clickTimeout) {
+            clearTimeout(this._clickTimeout);
+            this._clickTimeout = null;
+        }
+        
+        // 8. Return engine to Idle
         stateMachine.setEngineState('Idle');
+        
+        // 7. End session Manager cleanly
+        sessionManager.end('user_manual_stop');
 
         this._updateVoiceButtonUI('Idle');
         this._updateOverlayUI('Idle');
+    }
+
+    cleanup() {
+        logger.voice.info('[VoiceController] Performing page unload cleanup.');
+        stateMachine.setWakeState('Sleeping');
+        recognition.stop('SESSION_END');
+        speaker.cancel();
+        conversationManager._cancelTimers();
+        
+        if (this._visibilityTimeout) {
+            clearTimeout(this._visibilityTimeout);
+            this._visibilityTimeout = null;
+        }
+        if (this._clickTimeout) {
+            clearTimeout(this._clickTimeout);
+            this._clickTimeout = null;
+        }
+        stateMachine.setEngineState('Idle');
     }
 
     _updateNetworkStatus(isOnline) {
@@ -375,6 +482,12 @@ export class VoiceController {
 
     /** Set up microphone toggles based on click */
     async toggleWakeState() {
+        if (!this.initialized) {
+            logger.voice.error('Voice assistant not initialized / SpeechRecognition not supported.');
+            await recoveryManager.handle('VOICE_002');
+            return;
+        }
+
         if (stateMachine.wakeState === 'Sleeping') {
             sessionManager.start();
             conversationManager.newSession();
@@ -390,16 +503,18 @@ export class VoiceController {
                 await recoveryManager.handle('VOICE_001');
             }
         } else {
-            sessionManager.end('user_manual_stop');
-            recognition.stop();
-            speaker.cancel();
-            stateMachine.setWakeState('Sleeping');
-            stateMachine.setEngineState('Idle');
+            this.cancelSession();
         }
     }
 
     /** Wires Push-to-Talk action */
     async startPushToTalk() {
+        if (!this.initialized) {
+            logger.voice.error('Voice assistant not initialized / SpeechRecognition not supported.');
+            await recoveryManager.handle('VOICE_002');
+            return;
+        }
+
         if (stateMachine.wakeState === 'Sleeping') {
             stateMachine.setWakeState('Awake');
         }
@@ -412,7 +527,7 @@ export class VoiceController {
     }
 
     stopListening() {
-        recognition.stop();
+        recognition.stop('USER');
     }
 
     /**
@@ -548,9 +663,24 @@ export class VoiceController {
     handleRecognitionError(error) {
         logger.voice.warn('Recognition error callback triggered:', error);
         this.triggerErrorState();
-        if (error === 'not-allowed') {
-            stateMachine.setEngineState('Offline');
-            recoveryManager.handle('VOICE_001');
+        
+        switch (error) {
+            case 'not-allowed':
+                stateMachine.setEngineState('Offline');
+                recoveryManager.handle('VOICE_001'); // microphone permission error
+                break;
+            case 'audio-capture':
+                speaker.speak("I couldn't access the microphone. Please check your connection and settings.", { mode: 'replace' });
+                break;
+            case 'service-not-allowed':
+                speaker.speak("Voice service is not allowed or supported by this browser.", { mode: 'replace' });
+                this.cancelSession();
+                break;
+            case 'network':
+                // Handled internally in recognition backoff retry
+                break;
+            default:
+                break;
         }
     }
 
