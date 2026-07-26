@@ -45,7 +45,13 @@ class OpenWaService {
         let chromeVersion = 'Unknown';
         const chromePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable';
         try {
-            chromeVersion = cp.execSync(`"${chromePath}" --version`).toString().trim();
+            if (process.platform === 'win32') {
+                const regOut = cp.execSync('reg query "HKEY_CURRENT_USER\\Software\\Google\\Chrome\\BLBeacon" /v version').toString();
+                const match = regOut.match(/version\s+REG_SZ\s+([\d.]+)/i);
+                if (match) chromeVersion = match[1];
+            } else {
+                chromeVersion = cp.execSync(`"${chromePath}" --version`).toString().trim();
+            }
         } catch (e) {
             try {
                 chromeVersion = cp.execSync('google-chrome --version').toString().trim();
@@ -106,13 +112,14 @@ class OpenWaService {
                 useChrome: !process.env.PUPPETEER_EXECUTABLE_PATH,
                 headless: process.env.OPENWA_HEADLESS === 'true',
                 qrTimeout: 0,
+                timeout: 120,                       // 120s default timeout for Puppeteer operations instead of 30s
                 authTimeout: 300,                  // Increased to allow slow/constrained environments to initialize
                 waitForRipeSessionTimeout: 120,     // Wait up to 120s for session page readiness
                 oorTimeout: 120,                    // Out of reach check timeout
                 autoClose: false,
                 killProcessOnBrowserClose: true,
                 throwErrorOnTosBlock: true,
-                userAgent: process.env.OPENWA_USER_AGENT || (isLinux ? dynamicUserAgent : undefined),
+                userAgent: process.env.OPENWA_USER_AGENT || dynamicUserAgent,
                 chromiumArgs: isLinux ? [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
