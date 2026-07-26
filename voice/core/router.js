@@ -81,6 +81,7 @@ export class Router {
         }
 
         const manifest = skill.constructor.manifest || {};
+        logger.router.info(`[Router]\nSelected Skill:\n${skill.constructor.name}`);
 
         // ─── Background Task Check (Improvement 7) ───────────────────────────
         // High priority commands (>=800) always interrupt. Others check busy state.
@@ -165,7 +166,9 @@ export class Router {
 
         // ─── 4. Execution ───────────────────────────
         try {
+            logger.router.info(`[Skill]\nExecuting:\n${skill.constructor.name}.${intent.action}()`);
             const response = await skill.execute(intent.action, intent.params);
+            logger.router.info('[Skill]\nExecution Complete');
             
             if (response.success) {
                 this.consecutiveFailures = 0;

@@ -29,6 +29,8 @@ class WakeWordDetector {
      * @param {import('./recognition.js').Recognition} recognition
      */
     attach(recognition) {
+        const originalOnTranscript = recognition.onTranscriptCallback;
+
         // Subscribe to interim transcripts for early detection
         recognition.onInterimCallback = (text) => {
             if (this._enabled) this._check(text);
@@ -37,6 +39,9 @@ class WakeWordDetector {
         // Also check final transcripts in case interim was missed
         recognition.onTranscriptCallback = (text) => {
             if (this._enabled) this._check(text);
+            if (originalOnTranscript) {
+                originalOnTranscript(text);
+            }
         };
 
         logger.voice.info('[WakeWord] Detector attached to recognition.');
@@ -85,6 +90,7 @@ class WakeWordDetector {
         if (matched) {
             this._cooldownUntil = Date.now() + this._cooldownMs;
             logger.voice.info('[WakeWord] Wake phrase detected in:', JSON.stringify(normalized));
+            logger.voice.info('[WakeWord]\nDetected:\ntrue');
             eventBus.emit(VoiceEvents.WAKE_DETECTED, { transcript: rawText });
         }
     }

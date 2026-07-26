@@ -214,13 +214,12 @@ export class Recognition {
         }
     }
 
-    /** Unified Pre-Start Validation Gate */
     validateStart() {
         if (!this.recognition) {
             return { valid: false, reason: 'SpeechRecognition not initialized' };
         }
-        if (stateMachine.wakeState !== 'Awake') {
-            return { valid: false, reason: 'WakeState is Sleeping' };
+        if (stateMachine.wakeState !== 'Awake' && !voiceConfig.flags.wakeWord) {
+            return { valid: false, reason: 'WakeState is Sleeping and WakeWord is disabled' };
         }
         if (this.recognitionState !== 'Idle') {
             return { valid: false, reason: `RecognitionState is not Idle (${this.recognitionState})` };
@@ -238,6 +237,11 @@ export class Recognition {
         if (this._restartTimeout) {
             clearTimeout(this._restartTimeout);
             this._restartTimeout = null;
+        }
+
+        if (this.recognitionState === 'Listening') {
+            logger.voice.info('[Recognition] Already listening. Preserving active stream.');
+            return;
         }
 
         const gate = this.validateStart();
@@ -335,6 +339,7 @@ export class Recognition {
 
         // Forward FINAL transcripts to the core parser
         if (finalTranscript && this.onTranscriptCallback) {
+            logger.voice.info(`[Recognition]\nTranscript:\n"${finalTranscript.trim()}"`);
             stateMachine.setEngineState('Processing');
             this.onTranscriptCallback(finalTranscript.trim());
             eventBus.emit(VoiceEvents.SPEECH_HEARD, { transcript: finalTranscript.trim() });

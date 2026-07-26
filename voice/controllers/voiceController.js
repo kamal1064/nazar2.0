@@ -85,6 +85,11 @@ export class VoiceController {
         // Check online status initially
         this._updateNetworkStatus(navigator.onLine);
 
+        // Start passive background listening if wake word enabled
+        if (voiceConfig.flags.wakeWord) {
+            recognition.startContinuous();
+        }
+
         // 7. Deterministic beforeunload cleanup
         window.addEventListener('beforeunload', () => {
             this.cleanup();
@@ -124,8 +129,25 @@ export class VoiceController {
             stateMachine.setWakeState('Awake');
             await audioCues.play('wake');
             
-            // Wake triggers start continuous listening silently (prompt delay handled in ConversationManager)
-            recognition.startContinuous();
+            // If already listening, do not call start again. Simply let it continue.
+            if (recognition.recognitionState !== 'Listening' && recognition.recognitionState !== 'Starting') {
+                recognition.startContinuous();
+            } else {
+                logger.voice.info('[VoiceController] SpeechRecognition already active. Preserving active stream.');
+            }
+        });
+
+        // Setup session wake word state management
+        eventBus.on(VoiceEvents.SESSION_STARTED, () => {
+            wakeWordDetector.disable();
+            logger.voice.info('[VoiceController] Session started. Disabling wake-word detector.');
+        });
+
+        eventBus.on(VoiceEvents.SESSION_ENDED, () => {
+            if (voiceConfig.flags.wakeWord) {
+                wakeWordDetector.enable();
+                logger.voice.info('[VoiceController] Session ended. Enabling wake-word detector.');
+            }
         });
 
         // Handle initial prompt speaking variation from ConversationManager
@@ -535,20 +557,60 @@ export class VoiceController {
      * Tracks stage-level performance metrics.
      */
     async handleTranscript(text) {
-        logger.voice.info(`Command heard: "${text}"`);
+        const isWake = stateMachine.wakeState === 'Awake';
         
+        let cleanText = text;
+        const aliases = voiceConfig.conversation.wakeAliases || ['hey nazar', 'nazar'];
+        
+        // Find if the text starts with a wake alias
+        let hasWakeWord = false;
+        const lowerText = cleanText.toLowerCase().trim();
+        for (const alias of aliases) {
+            const normalizedAlias = alias.toLowerCase().trim();
+            if (lowerText.startsWith(normalizedAlias)) {
+                // Strip the alias and any whitespace/newline following it
+                cleanText = cleanText.substring(cleanText.toLowerCase().indexOf(normalizedAlias) + normalizedAlias.length).trim();
+                hasWakeWord = true;
+                break;
+            }
+        }
+
+        // If the session is sleeping and there's no wake word, ignore the transcript
+        if (!isWake && !hasWakeWord) {
+            logger.voice.debug('[VoiceController] Ignoring transcript in Sleeping state (no wake word).');
+            return;
+        }
+
+        // If it was sleeping but had the wake word, we wake up (safety net in case event was delayed)
+        if (!isWake && hasWakeWord) {
+            logger.voice.info('[VoiceController] Wake word detected in final transcript. Waking up assistant.');
+            sessionManager.start();
+            conversationManager.newSession();
+            conversationContext.startSession();
+            stateMachine.setWakeState('Awake');
+            await audioCues.play('wake');
+        }
+
+        if (!cleanText) {
+            logger.voice.info('[VoiceController] Cleaned transcript is empty (wake phrase only). Waiting for command...');
+            return;
+        }
+
+        logger.voice.info(`[Clean Transcript]\nClean Transcript:\n"${cleanText}"`);
+        logger.voice.info(`[Conversation]\nReceived:\n"${cleanText}"`);
+
         if (this._overlayTranscriptEl) {
-            this._overlayTranscriptEl.innerText = `"${text}"`;
+            this._overlayTranscriptEl.innerText = `"${cleanText}"`;
         }
 
         // Cancel session immediately if exit phrase spoken
-        if (text.toLowerCase().trim() === 'stop' || text.toLowerCase().trim() === 'cancel') {
+        if (cleanText.toLowerCase().trim() === 'stop' || cleanText.toLowerCase().trim() === 'cancel') {
             this.cancelSession();
             return;
         }
 
         // Check if user spoke an exit phrase
-        if (conversationManager.isExitPhrase(text)) {
+        if (conversationManager.isExitPhrase(cleanText)) {
             await conversationManager.handleExit();
             return;
         }
@@ -574,23 +636,23 @@ export class VoiceController {
 
         // Stage 1: Exact / Regex Local parsing (Layers 1 & 2)
         const tStartParse = Date.now();
-        intent = parser.parse(text, activeLang);
+        intent = parser.parse(cleanText, activeLang);
         if (!intent) {
-            intent = parser.parseRegex(text, activeLang);
+            intent = parser.parseRegex(cleanText, activeLang);
         }
         stages.localParseMs = Date.now() - tStartParse;
 
         // Stage 2: Fuzzy local parsing (Layer 2.5)
         if (!intent && voiceConfig.flags.fuzzyMatcher) {
             const tStartFuzzy = Date.now();
-            intent = fuzzyMatcher.match(text);
+            intent = fuzzyMatcher.match(cleanText);
             stages.fuzzyMatchMs = Date.now() - tStartFuzzy;
         }
 
         // Stage 3: Gemini remote Function Calling (Layer 3)
         if (!intent && voiceConfig.flags.functionCalling && navigator.onLine) {
             const tStartGemini = Date.now();
-            const geminiRes = await geminiService.resolveIntent(text);
+            const geminiRes = await geminiService.resolveIntent(cleanText);
             intent = geminiRes.intent;
             stages.geminiRTTMs = geminiRes.duration;
         }
@@ -609,6 +671,7 @@ export class VoiceController {
 
         // 4. Dispatch resolved intent
         if (intent) {
+            logger.voice.info(`[Intent]\n${intent.skill}.${intent.action}`);
             const tStartSkill = Date.now();
             
             // Record statistics
@@ -619,7 +682,7 @@ export class VoiceController {
 
             stages.skillExecutionMs = Date.now() - tStartSkill;
         } else {
-            logger.voice.warn(`Command failed to resolve: "${text}"`);
+            logger.voice.warn(`Command failed to resolve: "${cleanText}"`);
             voiceAnalytics.recordCommand('unknown', 'unknown', false);
             this.triggerErrorState();
             await recoveryManager.handle('VOICE_004');
@@ -629,7 +692,7 @@ export class VoiceController {
         
         // Log timing stats
         commandHistory.add({
-            transcript: text,
+            transcript: cleanText,
             skill: intent ? intent.skill : 'unknown',
             action: intent ? intent.action : 'unknown',
             source: intent ? intent.source : 'failed',
