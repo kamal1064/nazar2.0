@@ -112,14 +112,18 @@ class OpenWaService {
                 useChrome: !process.env.PUPPETEER_EXECUTABLE_PATH,
                 headless: process.env.OPENWA_HEADLESS === 'true',
                 qrTimeout: 0,
-                timeout: 120000,                    // 120s default timeout for Puppeteer operations instead of 30s
-                authTimeout: 300,                  // Increased to allow slow/constrained environments to initialize
+                timeout: 120000,                    // 120s browser launch timeout
+                authTimeout: 300,                   // Increased to allow slow/constrained environments to initialize
                 waitForRipeSessionTimeout: 120,     // Wait up to 120s for session page readiness
                 oorTimeout: 120,                    // Out of reach check timeout
                 autoClose: false,
                 killProcessOnBrowserClose: true,
                 throwErrorOnTosBlock: true,
-                userAgent: process.env.OPENWA_USER_AGENT || dynamicUserAgent,
+                useStealth: true,                   // Bypass Puppeteer automation detection
+                bypassCSP: true,                    // Allow OpenWA script injection past Content Security Policy
+                // Only override UA on Linux containers where Chrome isn't installed natively.
+                // On Windows/macOS, let Chrome use its real UA so Client Hints match perfectly.
+                ...(isLinux ? { userAgent: process.env.OPENWA_USER_AGENT || dynamicUserAgent } : {}),
                 chromiumArgs: isLinux ? [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
