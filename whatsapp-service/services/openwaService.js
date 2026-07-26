@@ -112,7 +112,7 @@ class OpenWaService {
                 autoClose: false,
                 killProcessOnBrowserClose: true,
                 throwErrorOnTosBlock: true,
-                userAgent: dynamicUserAgent,
+                userAgent: process.env.OPENWA_USER_AGENT || (isLinux ? dynamicUserAgent : undefined),
                 chromiumArgs: isLinux ? [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
