@@ -87,6 +87,7 @@ class OpenWaService {
         }));
 
         try {
+            const isLinux = process.platform === 'linux';
             // Set configurations suitable for hosting environments (like Render/Docker)
             const launchConfig = {
                 sessionId: 'nazar-sos-session',
@@ -102,7 +103,7 @@ class OpenWaService {
                 killProcessOnBrowserClose: true,
                 throwErrorOnTosBlock: true,
                 userAgent: dynamicUserAgent,
-                chromiumArgs: [
+                chromiumArgs: isLinux ? [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
@@ -112,7 +113,7 @@ class OpenWaService {
                     '--disable-background-networking',
                     '--disable-background-timer-throttling',
                     '--disable-renderer-backgrounding'
-                ]
+                ] : []
             };
 
             // Use system Chrome executable path if specified
