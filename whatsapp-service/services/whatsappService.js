@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const qrcodeTerminal = require('qrcode-terminal');
 
 // Connection state enum for rich status tracking
 const ConnectionState = {
@@ -86,7 +87,7 @@ class WhatsAppService {
             // Load ESM dependencies
             await this._loadDependencies();
 
-            const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = this._baileys;
+            const { default: makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion, Browsers } = this._baileys;
             const pino = this._pino.default || this._pino;
             const QRCode = this._qrcode.default || this._qrcode;
 
@@ -123,8 +124,7 @@ class WhatsAppService {
             this.sock = makeWASocket({
                 auth: state,
                 logger,
-                printQRInTerminal: true,
-                browser: ['NAZAR SOS', 'Chrome', '1.0.0'],
+                browser: Browsers.ubuntu('Chrome'),
                 connectTimeoutMs: 60000,
                 defaultQueryTimeoutMs: 30000,
                 syncFullHistory: false,
@@ -145,7 +145,7 @@ class WhatsAppService {
             this.sock.ev.on('connection.update', async (update) => {
                 const { connection, lastDisconnect, qr } = update;
 
-                // QR code generated — convert to data URL for /qr endpoint
+                // QR code generated — convert to data URL for /qr endpoint and print in terminal
                 if (qr) {
                     try {
                         this.latestQr = await QRCode.toDataURL(qr);
@@ -160,6 +160,9 @@ class WhatsAppService {
                         message: 'Stage: QR code generated. Scan with WhatsApp -> Linked Devices -> Link a Device.',
                         timestamp: new Date().toISOString()
                     }));
+
+                    // Print small QR code directly in the terminal
+                    qrcodeTerminal.generate(qr, { small: true });
                 }
 
                 if (connection === 'connecting') {
