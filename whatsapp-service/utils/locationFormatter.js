@@ -4,21 +4,27 @@
  */
 
 /**
- * Clean phone numbers and append @c.us JID namespace suffix
+ * Clean phone numbers and append @s.whatsapp.net JID namespace suffix.
+ * Validates length and strips invalid characters.
  */
 function normalizePhoneNumber(rawNumber) {
     if (!rawNumber) return null;
     
-    // Strip all non-numeric characters
+    // Strip all non-numeric characters (including +, spaces, dashes)
     let cleaned = rawNumber.replace(/[^0-9]/g, '');
 
     // Prepend default country code if exactly 10 digits
-    const defaultCountry = process.env.OPENWA_DEFAULT_COUNTRY_CODE || '91';
+    const defaultCountry = process.env.WA_DEFAULT_COUNTRY_CODE || process.env.OPENWA_DEFAULT_COUNTRY_CODE || '91';
     if (cleaned.length === 10) {
         cleaned = defaultCountry + cleaned;
     }
 
-    return `${cleaned}@c.us`;
+    // Validate: WhatsApp JIDs are typically 10-15 digits (country code + number)
+    if (cleaned.length < 10 || cleaned.length > 15) {
+        return null;
+    }
+
+    return `${cleaned}@s.whatsapp.net`;
 }
 
 /**

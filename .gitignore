@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
-OpenWA/
+# WhatsApp session/auth data (never commit credentials)
+.baileys-auth/
+.openwa-session/
 # Environment files and credentials
 .env
 .env.*

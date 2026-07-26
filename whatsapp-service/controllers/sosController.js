@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const openwaService = require('../services/openwaService');
+const whatsappService = require('../services/whatsappService');
 const { MemoryQueue } = require('../services/queueService');
 
 /**
@@ -68,7 +68,7 @@ async function handleSendSos(req, res) {
  * GET /ready
  */
 async function handleReady(req, res) {
-    const isReady = openwaService.isReady();
+    const isReady = whatsappService.isReady();
     return res.status(isReady ? 200 : 503).json({
         ready: isReady
     });
@@ -79,18 +79,21 @@ async function handleReady(req, res) {
  * GET /health
  */
 async function handleHealth(req, res) {
-    const isReady = openwaService.isReady();
+    const isReady = whatsappService.isReady();
     
     return res.status(isReady ? 200 : 503).json({
         success: true,
         status: isReady ? 'healthy' : 'degraded',
-        openwa: {
+        whatsapp: {
             ready: isReady,
-            connected: openwaService.connected,
-            authenticated: openwaService.authenticated,
-            clientState: openwaService.clientState,
-            sessionReason: openwaService.sessionReason,
-            lastReconnect: openwaService.lastReconnect
+            connected: whatsappService.connected,
+            authenticated: whatsappService.authenticated,
+            state: whatsappService.clientState,
+            sessionReason: whatsappService.sessionReason,
+            lastReconnect: whatsappService.lastReconnect,
+            reconnectAttempts: whatsappService.reconnectAttempts,
+            uptimeSeconds: whatsappService.uptimeSeconds,
+            library: 'Baileys'
         }
     });
 }
@@ -106,7 +109,7 @@ async function handleMetrics(req, res) {
         success: true,
         status: 'healthy',
         queue: queueStats,
-        uptimeSeconds: openwaService.uptimeSeconds
+        uptimeSeconds: whatsappService.uptimeSeconds
     });
 }
 
@@ -115,7 +118,7 @@ async function handleMetrics(req, res) {
  * GET /qr
  */
 async function handleQr(req, res) {
-    if (openwaService.isReady()) {
+    if (whatsappService.isReady()) {
         res.setHeader('Content-Type', 'text/html');
         return res.send(`
             <html>
@@ -136,7 +139,7 @@ async function handleQr(req, res) {
         `);
     }
 
-    if (!openwaService.latestQr) {
+    if (!whatsappService.latestQr) {
         res.setHeader('Content-Type', 'text/html');
         return res.send(`
             <html>
@@ -174,7 +177,7 @@ async function handleQr(req, res) {
                 <div class="card">
                     <h2>Scan QR Code to Link WhatsApp</h2>
                     <p>Open WhatsApp on your phone -> Linked Devices -> Link a Device, and scan the QR code below:</p>
-                    <img src="${openwaService.latestQr}" alt="WhatsApp Web QR Code" />
+                    <img src="${whatsappService.latestQr}" alt="WhatsApp Web QR Code" />
                     <p style="color: #666; font-size: 0.8rem;">This page auto-refreshes every 5 seconds.</p>
                 </div>
             </body>

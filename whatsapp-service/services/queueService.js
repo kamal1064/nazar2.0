@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const openwaService = require('./openwaService');
+const whatsappService = require('./whatsappService');
 const locationFormatter = require('../utils/locationFormatter');
 
 /**
@@ -180,12 +180,12 @@ class MemoryQueue extends QueueService {
         }));
 
         try {
-            if (!openwaService.isReady()) {
+            if (!whatsappService.isReady()) {
                 throw new Error('WhatsApp service not initialized or authenticated.');
             }
 
-            const sendTimeout = parseInt(process.env.OPENWA_SEND_TIMEOUT_MS || '10000', 10);
-            const concurrentLimit = parseInt(process.env.OPENWA_MAX_CONCURRENT_SENDS || '4', 10);
+            const sendTimeout = parseInt(process.env.WA_SEND_TIMEOUT_MS || process.env.OPENWA_SEND_TIMEOUT_MS || '10000', 10);
+            const concurrentLimit = parseInt(process.env.WA_MAX_CONCURRENT_SENDS || process.env.OPENWA_MAX_CONCURRENT_SENDS || '4', 10);
             const results = [];
 
             // Process contacts in concurrency pools
@@ -209,7 +209,7 @@ class MemoryQueue extends QueueService {
                     let isLocationDelivered = false;
                     try {
                         await Promise.race([
-                            openwaService.client.sendLocation(jid, job.latitude, job.longitude, `SOS: ${contact.name}`),
+                            whatsappService.sendLocation(jid, job.latitude, job.longitude, `SOS: ${contact.name}`),
                             new Promise((_, reject) => setTimeout(() => reject(new Error('Send location timeout')), sendTimeout))
                         ]);
                         isLocationDelivered = true;
@@ -226,7 +226,7 @@ class MemoryQueue extends QueueService {
                     // Send alert message body details
                     try {
                         await Promise.race([
-                            openwaService.client.sendText(jid, messageBody),
+                            whatsappService.sendText(jid, messageBody),
                             new Promise((_, reject) => setTimeout(() => reject(new Error('Send text timeout')), sendTimeout))
                         ]);
                         return { phone: contact.phone, status: isLocationDelivered ? 'delivered' : 'fallback_link_delivered' };
