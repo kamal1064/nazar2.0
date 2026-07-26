@@ -66,6 +66,13 @@ class OpenWaService {
             openwaVersion = require('@open-wa/wa-automate/package.json').version;
         } catch (e) {}
 
+        // Dynamically extract major Chrome version for the User-Agent
+        let chromeMajorVersion = '144';
+        const versionMatch = chromeVersion.match(/(\d+)\.\d+\.\d+\.\d+/);
+        if (versionMatch) {
+            chromeMajorVersion = versionMatch[1];
+        }
+
         // Match user agent operating system platform to avoid fingerprinting blockages during phone linking
         const isWin = process.platform === 'win32';
         const isMac = process.platform === 'darwin';
