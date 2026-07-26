@@ -66,13 +66,16 @@ class OpenWaService {
             openwaVersion = require('@open-wa/wa-automate/package.json').version;
         } catch (e) {}
 
-        // Dynamically extract major Chrome version for the User-Agent to prevent browser outdated block pages
-        let chromeMajorVersion = '144';
-        const versionMatch = chromeVersion.match(/(\d+)\.\d+\.\d+\.\d+/);
-        if (versionMatch) {
-            chromeMajorVersion = versionMatch[1];
+        // Match user agent operating system platform to avoid fingerprinting blockages during phone linking
+        const isWin = process.platform === 'win32';
+        const isMac = process.platform === 'darwin';
+        let platformStr = 'X11; Linux x86_64';
+        if (isWin) {
+            platformStr = 'Windows NT 10.0; Win64; x64';
+        } else if (isMac) {
+            platformStr = 'Macintosh; Intel Mac OS X 10_15_7';
         }
-        const dynamicUserAgent = `Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajorVersion}.0.0.0 Safari/537.36`;
+        const dynamicUserAgent = `Mozilla/5.0 (${platformStr}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeMajorVersion}.0.0.0 Safari/537.36`;
 
         console.log(JSON.stringify({
             level: 'info',
