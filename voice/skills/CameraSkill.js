@@ -6,7 +6,7 @@ import { BaseSkill } from './BaseSkill.js';
 import { logger } from '../utils/logger.js';
 
 export class CameraSkill extends BaseSkill {
-    async execute(action, params = {}) {
+    async execute(action, params = {}, context = {}) {
         logger.skill.info(`Executing CameraSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
@@ -19,7 +19,21 @@ export class CameraSkill extends BaseSkill {
         }
 
         try {
+            // Check camera readiness for all actions except open itself (which initializes the camera)
+            if (action !== 'open') {
+                await window.NazarVoiceAPI.ensureCameraReady();
+            }
+
             switch (action) {
+                case 'open':
+                    await window.NazarVoiceAPI.ensureCameraReady();
+                    return {
+                        success: true,
+                        responseKey: 'navigate.camera.success',
+                        nextState: "Idle",
+                        data: {}
+                    };
+
                 case 'startScan':
                     window.NazarVoiceAPI.startScan();
                     return {
@@ -94,6 +108,12 @@ export class CameraSkill extends BaseSkill {
             };
         }
     }
+
+    cancel() {
+        if (window.NazarVoiceAPI && typeof window.NazarVoiceAPI.stopScan === 'function') {
+            window.NazarVoiceAPI.stopScan();
+        }
+    }
 }
 
 // Static manifest for registration and capability discovery
@@ -106,7 +126,7 @@ CameraSkill.manifest = {
         'startScan', 'stopScan',
         'switchTextMode', 'switchSceneMode',
         'switch_ocr', 'switch_scene',
-        'captureImage', 'readLastResult'
+        'captureImage', 'readLastResult', 'open'
     ],
     permissions: ['camera'],
     busyDescription: 'controlling the camera'

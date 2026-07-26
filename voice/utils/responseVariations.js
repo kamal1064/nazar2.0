@@ -44,6 +44,8 @@ const RESPONSE_POOLS = {
     'emergency.cancelSOS.success':  ['Alert cancelled.', 'SOS cancelled.', 'Emergency alert stopped.'],
     'emergency.shareLocation.pending': ['Should I share your current location? Say Yes to confirm.'],
     'emergency.shareLocation.success': ['Location shared.'],
+    'emergency.callContact.success': ['Calling your emergency contact.', 'Calling helper.', 'Initiating emergency contact call.'],
+    'emergency.callContact.notConfigured': ['Emergency contact not configured. Please add an emergency contact in Settings.'],
     'emergency.error':              ['Emergency action failed. Please try again or call for help directly.'],
 
     // ─── Settings ─────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import { BaseSkill } from './BaseSkill.js';
 import { logger } from '../utils/logger.js';
 
 export class OCRSkill extends BaseSkill {
-    async execute(action, params = {}) {
+    async execute(action, params = {}, context = {}) {
         logger.skill.info(`Executing OCRSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
@@ -19,6 +19,9 @@ export class OCRSkill extends BaseSkill {
         }
 
         try {
+            // Wait for camera to be fully ready before proceeding
+            await window.NazarVoiceAPI.ensureCameraReady();
+
             // 1. Force OCR text mode
             window.NazarVoiceAPI.switchOCR();
             
@@ -39,6 +42,12 @@ export class OCRSkill extends BaseSkill {
                 nextState: "Idle",
                 data: {}
             };
+        }
+    }
+
+    cancel() {
+        if (window.NazarVoiceAPI && typeof window.NazarVoiceAPI.stopScan === 'function') {
+            window.NazarVoiceAPI.stopScan();
         }
     }
 }

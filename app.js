@@ -412,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lastAnnouncedText: '',
 
         announce(text, priority = false) {
+            console.log("[TTS]\nSpeaking:\n" + JSON.stringify(text));
             const startSpeechTime = performance.now();
 
             // Accessible ARIA Live Region Sync (Smart Accessibility Mode)
@@ -2322,6 +2323,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return;
         }
+        console.log("[Vision]\nFrame captured");
 
         // Reuse shared canvas to avoid reallocation churn
         if (!this._resizeCanvas) {
@@ -2368,7 +2370,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 60000);
 
             updateStatusIndicator('processing');
-            console.log("[VISION] Sending request to Gemini via /api/scan...");
+            console.log("[Vision]\nGemini request sent");
             let response;
             try {
                 response = await fetch(endpoint, {
@@ -2396,7 +2398,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            console.log("[VISION] Gemini response received:", data);
+            console.log("[Vision]\nResponse received");
 
             // Update Desktop Live AI Panel dynamically
             const latencyMs = Math.round(performance.now() - (scanStartTime || performance.now()));
@@ -3848,6 +3850,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Expose a minimal bridge for NAZAR Voice Engine to invoke local functions
     window.NazarVoiceAPI = {
+        ensureCameraReady: async () => {
+            const currentTab = document.querySelector('.nav-item.active')?.getAttribute('data-tab');
+            if (currentTab !== 'camera') {
+                await switchTab('camera');
+            }
+            
+            const video = document.getElementById('camera-stream');
+            if (!video) {
+                throw new Error('Camera stream element not found');
+            }
+            
+            if (video.readyState >= video.HAVE_ENOUGH_DATA && !video.paused) {
+                return true;
+            }
+            
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    video.removeEventListener('playing', onPlaying);
+                    video.removeEventListener('loadedmetadata', onPlaying);
+                    reject(new Error('Camera initialization timed out'));
+                }, 5000);
+
+                function onPlaying() {
+                    if (video.readyState >= video.HAVE_ENOUGH_DATA) {
+                        clearTimeout(timeout);
+                        video.removeEventListener('playing', onPlaying);
+                        video.removeEventListener('loadedmetadata', onPlaying);
+                        resolve(true);
+                    }
+                }
+
+                video.addEventListener('playing', onPlaying);
+                video.addEventListener('loadedmetadata', onPlaying);
+                
+                const interval = setInterval(() => {
+                    if (video.readyState >= video.HAVE_ENOUGH_DATA) {
+                        clearInterval(interval);
+                        clearTimeout(timeout);
+                        video.removeEventListener('playing', onPlaying);
+                        video.removeEventListener('loadedmetadata', onPlaying);
+                        resolve(true);
+                    }
+                }, 100);
+            });
+        },
         startScan: () => {
             triggerDescribeSurroundings(false);
         },

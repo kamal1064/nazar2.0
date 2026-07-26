@@ -6,7 +6,7 @@ export const english = {
     locale: 'en-US',
     commands: {
         'navigate.home': ['open home', 'go home', 'go to home', 'show home', 'home page', 'home screen'],
-        'navigate.camera': ['open camera', 'go to camera', 'camera mode', 'viewfinder', 'show camera'],
+        'camera.open': ['open camera', 'go to camera', 'camera mode', 'viewfinder', 'show camera', 'start camera', 'camera', 'open the camera', 'open scanner', 'start scanning'],
         'navigate.profile': ['open profile', 'go to profile', 'show profile', 'my profile', 'open account', 'profile page'],
         'navigate.settings': ['open settings', 'go to settings', 'show settings', 'settings page', 'open preferences', 'preferences'],
         'navigate.back': ['go back', 'back page', 'back', 'previous screen'],
@@ -19,12 +19,15 @@ export const english = {
         'ui.openHelp': ['open help', 'show help', 'help center', 'how to use'],
         'ui.openAbout': ['open about', 'show about', 'about nazar', 'app info'],
 
-        'camera.startScan': ['start scan', 'scan surroundings', 'analyze scene', 'describe scene', 'start scanning', 'scan now'],
+        'camera.startScan': ['start scan', 'scan now'],
         'camera.stopScan': ['stop scan', 'stop scanning', 'cancel scan', 'abort scan'],
         'camera.switch_ocr': ['switch to text mode', 'enable text mode', 'text mode', 'ocr mode', 'switch text mode', 'read text mode'],
         'camera.switch_scene': ['switch to scene mode', 'enable scene mode', 'scene mode', 'switch scene mode', 'describe mode'],
         'camera.captureImage': ['capture image', 'take photo', 'snap photo', 'capture photo'],
         'camera.readLastResult': ['read last result', 'read again', 'what was that', 'repeat scan result'],
+
+        'scene.scan': ['scan surroundings', 'scan the surroundings', 'describe surroundings', 'describe the room', 'look around', 'what do you see', 'scan room', 'what\'s around me', 'tell me what you see', 'describe my surroundings', 'what\'s in front of me', 'look around me', 'describe scene', 'scan scene', 'analyze scene'],
+        'ocr.read': ['read text', 'read this', 'scan text', 'read what\'s in front of me', 'read this page', 'read what\'s here', 'read the screen'],
 
         'speech.repeat': ['repeat', 'repeat description', 'repeat speech', 'say again'],
         'speech.stop': ['stop speaking', 'silence', 'stop speech', 'shut up', 'quiet'],

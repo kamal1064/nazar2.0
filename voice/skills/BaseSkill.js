@@ -96,9 +96,10 @@ export class BaseSkill {
      * Returns a SkillResponse matching contracts/SkillResponse.v1.json.
      * @param {string} action 
      * @param {Object} params 
+     * @param {Object} [context]
      * @returns {Promise<Object>} Standardized Skill Response with responseKey
      */
-    async execute(action, params = {}) {
+    async execute(action, params = {}, context = {}) {
         return {
             success: false,
             responseKey: 'recovery.generic',

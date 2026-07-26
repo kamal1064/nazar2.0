@@ -18,6 +18,7 @@ import { sessionManager } from '../core/sessionManager.js';
 import { conversationContext } from '../core/context.js';
 import { conversationManager } from '../core/conversationManager.js';
 import { recoveryManager } from '../core/recoveryManager.js';
+import { CommandPriority } from '../core/priority.js';
 import { audioCues } from '../core/audioCues.js';
 import { voiceConfig } from '../utils/voiceConfig.js';
 import { logger } from '../utils/logger.js';
@@ -62,6 +63,12 @@ export class VoiceController {
 
         if (!ok) {
             logger.voice.error('Speech recognition initialization failed. APIs unsupported.');
+            this._cacheUIElements();
+            if (this._voiceBtnEl) {
+                this._voiceBtnEl.className = 'global-voice-btn state-disabled';
+                this._voiceBtnEl.setAttribute('aria-label', 'Voice assistant unsupported');
+                this._voiceBtnEl.setAttribute('disabled', 'true');
+            }
             await recoveryManager.handle('VOICE_002');
             return;
         }
@@ -94,6 +101,17 @@ export class VoiceController {
         window.addEventListener('beforeunload', () => {
             this.cleanup();
         });
+
+        // Run Voice Engine Self Test
+        logger.voice.info('[Voice Self Test]\n' +
+            `✓ Recognition available: ${!!recognition.recognition}\n` +
+            `✓ Speech synthesis available: ${!!window.speechSynthesis}\n` +
+            `✓ Intent parser loaded: ${!!parser}\n` +
+            `✓ Router initialized: ${!!router}\n` +
+            `✓ Camera bridge available: ${!!(window.NazarVoiceAPI && window.NazarVoiceAPI.ensureCameraReady)}\n` +
+            `✓ Gemini configured: ${!!(voiceConfig && voiceConfig.flags && voiceConfig.flags.functionCalling)}\n` +
+            `✓ Voice Engine Ready: true`
+        );
 
         this.initialized = true;
         logger.voice.info('NAZAR Voice Engine booted successfully.');
@@ -414,6 +432,15 @@ export class VoiceController {
     async handleGlobalButtonTap() {
         if (navigator.vibrate) navigator.vibrate(20);
 
+        // Gesture unlock for SpeechSynthesis on mobile/Safari
+        if (window.speechSynthesis) {
+            try {
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+            } catch (e) {
+                logger.voice.warn('[VoiceController] SpeechSynthesis gesture unlock failed:', e);
+            }
+        }
+
         if (!this.initialized) {
             logger.voice.error('Voice assistant not initialized / SpeechRecognition not supported.');
             await recoveryManager.handle('VOICE_002');
@@ -432,7 +459,13 @@ export class VoiceController {
             stateMachine.setWakeState('Awake');
             await audioCues.play('wake');
             
-            recognition.startContinuous();
+            const granted = await permissionsBroker.requestMicrophonePermission();
+            if (granted) {
+                recognition.startContinuous();
+            } else {
+                await recoveryManager.handle('VOICE_001');
+                this.cancelSession();
+            }
         }
     }
 
@@ -591,13 +624,18 @@ export class VoiceController {
             await audioCues.play('wake');
         }
 
+        // Clean leading/trailing punctuation (like commas, periods, question marks)
+        cleanText = cleanText.replace(/^[.,\/#!$%\^&\*;:{}=\-_`~()?"'\s]+|[.,\/#!$%\^&\*;:{}=\-_`~()?"'\s]+$/g, '').trim();
+
         if (!cleanText) {
             logger.voice.info('[VoiceController] Cleaned transcript is empty (wake phrase only). Waiting for command...');
             return;
         }
 
         logger.voice.info(`[Clean Transcript]\nClean Transcript:\n"${cleanText}"`);
-        logger.voice.info(`[Conversation]\nReceived:\n"${cleanText}"`);
+
+        // Reset silence timer in ConversationManager
+        conversationManager.handleInput(cleanText);
 
         if (this._overlayTranscriptEl) {
             this._overlayTranscriptEl.innerText = `"${cleanText}"`;
@@ -649,6 +687,12 @@ export class VoiceController {
             stages.fuzzyMatchMs = Date.now() - tStartFuzzy;
         }
 
+        // Check local confidence threshold (0.90)
+        if (intent && intent.confidence < 0.90) {
+            logger.voice.info(`[VoiceController] Local intent confidence ${intent.confidence} below threshold 0.90. Fallback to Gemini.`);
+            intent = null;
+        }
+
         // Stage 3: Gemini remote Function Calling (Layer 3)
         if (!intent && voiceConfig.flags.functionCalling && navigator.onLine) {
             const tStartGemini = Date.now();
@@ -669,8 +713,15 @@ export class VoiceController {
             this._lastIntentTime = Date.now();
         }
 
-        // 4. Dispatch resolved intent
+        // 4. Dispatch resolved intent with Execution Lock Check & Emergency Bypass
         if (intent) {
+            const incomingPriority = router.skills[intent.skill]?.constructor.manifest?.priority || 0;
+            if (stateMachine.engineState === 'Executing' && incomingPriority < CommandPriority.EMERGENCY) {
+                logger.voice.info('[VoiceController] Execution lock active. Declining concurrent command.');
+                await speaker.speak("I'm still completing your previous request.", { mode: 'replace' });
+                return;
+            }
+
             logger.voice.info(`[Intent]\n${intent.skill}.${intent.action}`);
             const tStartSkill = Date.now();
             
@@ -690,7 +741,6 @@ export class VoiceController {
 
         stages.totalMs = Date.now() - startTime;
         
-        // Log timing stats
         commandHistory.add({
             transcript: cleanText,
             skill: intent ? intent.skill : 'unknown',
@@ -700,6 +750,9 @@ export class VoiceController {
             stages
         });
     }
+
+
+
 
     async triggerErrorState() {
         if (!this._voiceBtnEl) return;

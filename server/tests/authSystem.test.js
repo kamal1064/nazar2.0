@@ -1,5 +1,6 @@
 const http = require('http');
 const assert = require('assert');
+const mongoose = require('mongoose');
 const handler = require('../server');
 
 function runTestServer() {
@@ -155,6 +156,9 @@ async function runAuthTests() {
         process.exit(1);
     } finally {
         server.close();
+        if (mongoose.connection.readyState !== 0) {
+            await mongoose.disconnect();
+        }
     }
 }
 

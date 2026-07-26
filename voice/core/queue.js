@@ -101,6 +101,7 @@ export class TaskQueue {
 
         this.clear();
         speaker.cancel();
+        speaker.speak("Okay, cancelled.", { mode: 'replace' });
         stateMachine.setEngineState('Idle');
         eventBus.emit(VoiceEvents.SPEECH_PRIORITY, { type: 'cancel' });
     }

@@ -80,6 +80,7 @@ export class Speaker {
      * @param {Function} resolve
      */
     _doSpeak(text, resolve) {
+        console.log("[TTS]\nSpeaking:\n" + JSON.stringify(text));
         this.lastSpokenText = text;
         stateMachine.setEngineState('Speaking');
         eventBus.emit('speech.started');

@@ -130,6 +130,17 @@ class ConversationManager {
         logger.voice.info(`[ConversationManager] Conversation ended. Reason: ${reason}, depth: ${this._depth}`);
     }
 
+    /**
+     * Handles new user voice input, updating conversation state and resetting timers.
+     * @param {string} transcript
+     */
+    handleInput(transcript) {
+        if (!this._active) return;
+        this.latestTranscript = transcript;
+        logger.voice.info(`[Conversation]\nReceived:\n"${transcript}"`);
+        this.startSilenceTimer();
+    }
+
     get isActive() { return this._active; }
 }
 

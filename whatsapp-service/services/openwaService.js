@@ -12,6 +12,7 @@ class OpenWaService {
         this.clientState = 'UNINITIALIZED';
         this.lastReconnect = null;
         this.reconnectAttempts = 0;
+        this.initFailures = 0;
         this.uptimeSeconds = 0;
         this.startTime = null;
         this.sessionReason = null;
@@ -87,19 +88,31 @@ class OpenWaService {
 
         try {
             // Set configurations suitable for hosting environments (like Render/Docker)
-            // Note: chromiumArgs is omitted so we do not override OpenWA's built-in Multi-Device/Docker launcher configurations.
             const launchConfig = {
                 sessionId: 'nazar-sos-session',
                 sessionDataPath: sessionPath,
                 multiDevice: true,
                 useChrome: !process.env.PUPPETEER_EXECUTABLE_PATH,
-                headless: false,
+                headless: process.env.OPENWA_HEADLESS === 'true',
                 qrTimeout: 0,
-                authTimeout: 120,
+                authTimeout: 300,                  // Increased to allow slow/constrained environments to initialize
+                waitForRipeSessionTimeout: 120,     // Wait up to 120s for session page readiness
+                oorTimeout: 120,                    // Out of reach check timeout
                 autoClose: false,
                 killProcessOnBrowserClose: true,
                 throwErrorOnTosBlock: true,
-                userAgent: dynamicUserAgent
+                userAgent: dynamicUserAgent,
+                chromiumArgs: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-gpu',
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    '--disable-background-networking',
+                    '--disable-background-timer-throttling',
+                    '--disable-renderer-backgrounding'
+                ]
             };
 
             // Use system Chrome executable path if specified
@@ -107,9 +120,23 @@ class OpenWaService {
                 launchConfig.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
             }
 
+            // Startup diagnostics logging (excluding private data/tokens)
             console.log(JSON.stringify({
                 level: 'info',
-                message: 'Stage: Config compiled. Waiting for browser launch...',
+                message: 'OpenWA SOS Microservice - Diagnostic Startup Config',
+                config: {
+                    sessionId: launchConfig.sessionId,
+                    sessionDataPath: launchConfig.sessionDataPath,
+                    headless: launchConfig.headless,
+                    multiDevice: launchConfig.multiDevice,
+                    useChrome: launchConfig.useChrome,
+                    executablePath: launchConfig.executablePath || 'default',
+                    authTimeout: `${launchConfig.authTimeout}s`,
+                    qrTimeout: `${launchConfig.qrTimeout}s`,
+                    waitForRipeSessionTimeout: `${launchConfig.waitForRipeSessionTimeout}s`,
+                    oorTimeout: `${launchConfig.oorTimeout}s`,
+                    containerArgs: 'enabled'
+                },
                 timestamp: new Date().toISOString()
             }));
 
@@ -142,6 +169,7 @@ class OpenWaService {
             this.clientState = 'CONNECTED';
             this.initializing = false;
             this.reconnectAttempts = 0;
+            this.initFailures = 0; // Reset consecutive failures on success
             this.startTime = Date.now();
             this.sessionReason = null;
             this.latestQr = null; // Clear QR once authenticated
@@ -179,28 +207,66 @@ class OpenWaService {
             this.client = null;
             this.sessionReason = err.message;
 
+            // Classify error type: separate browser launch failures from session/authentication issues
+            let isBrowserLaunchFailure = false;
+
+            // 1. Check known error codes
+            if (err.code === 'ENOENT' || err.code === 'ECONNRESET' || err.code === 'ECONNREFUSED') {
+                isBrowserLaunchFailure = true;
+            }
+
+            // 2. Check stack/module origin (Puppeteer launcher code vs OpenWA session logic)
+            if (err.stack && (err.stack.includes('Puppeteer') || err.stack.includes('Launcher') || err.stack.includes('BrowserRunner'))) {
+                if (!err.message.includes('Timeout') && !err.message.includes('Waiting')) {
+                    isBrowserLaunchFailure = true;
+                }
+            }
+
+            // 3. Fallback message pattern matching
+            if (!isBrowserLaunchFailure) {
+                const lowerMsg = err.message.toLowerCase();
+                if (lowerMsg.includes('failed to launch') || 
+                    lowerMsg.includes('xvfb') || 
+                    lowerMsg.includes('chrome') || 
+                    lowerMsg.includes('chromium') || 
+                    lowerMsg.includes('browser process')) {
+                    if (!lowerMsg.includes('timeout') && !lowerMsg.includes('waiting')) {
+                        isBrowserLaunchFailure = true;
+                    }
+                }
+            }
+
+            // Only increment consecutive session failures if it wasn't a browser/driver launch crash
+            if (!isBrowserLaunchFailure) {
+                this.initFailures++;
+            }
+
             console.error(JSON.stringify({
                 level: 'error',
-                message: 'OpenWA Client initialization failed. Wiping corrupted session directories...',
+                message: `OpenWA Client initialization failed. (Consecutive session failures: ${this.initFailures}, Browser launch failure: ${isBrowserLaunchFailure})`,
                 error: err.message,
                 timestamp: new Date().toISOString()
             }));
 
-            // Wipe session data to resolve potential integrity check corruption/browser mismatch hangs
-            try {
-                const subDir = path.join(sessionPath, '_IGNORE_nazar-sos-session');
-                const dataFile = path.join(sessionPath, 'nazar-sos-session.data.json');
-                
-                if (fs.existsSync(subDir)) {
-                    console.log(`[openwaService] Wiping session directory to clear corruption: ${subDir}`);
-                    fs.rmSync(subDir, { recursive: true, force: true });
+            // Wipe session data to resolve potential corruption ONLY after 3 consecutive session failures
+            if (!isBrowserLaunchFailure && this.initFailures >= 3) {
+                console.log(`[openwaService] Session failure threshold reached (${this.initFailures}). Wiping session directories...`);
+                try {
+                    const subDir = path.join(sessionPath, '_IGNORE_nazar-sos-session');
+                    const dataFile = path.join(sessionPath, 'nazar-sos-session.data.json');
+                    
+                    if (fs.existsSync(subDir)) {
+                        console.log(`[openwaService] Wiping session directory to clear corruption: ${subDir}`);
+                        fs.rmSync(subDir, { recursive: true, force: true });
+                    }
+                    if (fs.existsSync(dataFile)) {
+                        console.log(`[openwaService] Wiping session data file to clear corruption: ${dataFile}`);
+                        fs.rmSync(dataFile, { force: true });
+                    }
+                    this.initFailures = 0; // Reset counter after clean
+                } catch (clearErr) {
+                    console.error(`[openwaService] Failed to clear session directory: ${clearErr.message}`);
                 }
-                if (fs.existsSync(dataFile)) {
-                    console.log(`[openwaService] Wiping session data file to clear corruption: ${dataFile}`);
-                    fs.rmSync(dataFile, { force: true });
-                }
-            } catch (clearErr) {
-                console.error(`[openwaService] Failed to clear session directory: ${clearErr.message}`);
             }
 
             // Trigger reconnection loop
@@ -211,20 +277,46 @@ class OpenWaService {
     handleReconnect() {
         if (this.initializing) return;
 
-        // Exponential backoff strategy: 5s -> 10s -> 20s -> 40s -> max 60s
-        const backoffSeconds = Math.min(5 * Math.pow(2, this.reconnectAttempts), 60);
         this.reconnectAttempts++;
         this.lastReconnect = new Date().toISOString();
 
+        // 1. Alert operations if consecutive reconnection attempts exceed the threshold
+        if (this.reconnectAttempts >= 25) {
+            console.error(JSON.stringify({
+                level: 'error',
+                message: '[OpenWA] Repeated initialization failures detected. Automatic recovery continues, but manual investigation is recommended.',
+                reconnectAttempts: this.reconnectAttempts,
+                initFailures: this.initFailures,
+                timestamp: new Date().toISOString()
+            }));
+        }
+
+        // 2. Exponential backoff + circuit breaker strategy
+        let backoffSeconds = 5;
+        if (this.reconnectAttempts <= 3) {
+            // First 3 attempts: standard exponential backoff (5s, 10s, 20s)
+            backoffSeconds = 5 * Math.pow(2, this.reconnectAttempts - 1);
+        } else if (this.reconnectAttempts <= 5) {
+            // Attempt 4 & 5: Wait 1 minute (60 seconds)
+            backoffSeconds = 60;
+        } else {
+            // Attempt 6+: Wait 5 minutes (300 seconds)
+            backoffSeconds = 300;
+        }
+
+        // 3. Apply ±20% randomized jitter to prevent thundering herd behavior
+        const jitterRatio = 0.8 + Math.random() * 0.4;
+        const finalDelayMs = Math.round(backoffSeconds * jitterRatio * 1000);
+
         console.log(JSON.stringify({
             level: 'info',
-            message: `Attempting OpenWA client reconnection in ${backoffSeconds} seconds (Attempt #${this.reconnectAttempts})...`,
+            message: `Attempting OpenWA client reconnection in ${(finalDelayMs / 1000).toFixed(1)} seconds (Attempt #${this.reconnectAttempts}, Base delay: ${backoffSeconds}s)...`,
             timestamp: new Date().toISOString()
         }));
 
         setTimeout(() => {
             this.initialize();
-        }, backoffSeconds * 1000);
+        }, finalDelayMs);
     }
 
     async close() {

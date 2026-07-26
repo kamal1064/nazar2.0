@@ -18,7 +18,7 @@ import { voiceConfig } from '../utils/voiceConfig.js';
 import { conversationContext } from '../core/context.js';
 
 export class ObjectFinderSkill extends BaseSkill {
-    async execute(action, params = {}) {
+    async execute(action, params = {}, context = {}) {
         const targetObject = params.object || 'object';
         logger.skill.info(`Executing ObjectFinderSkill: find ${targetObject}`);
 
@@ -32,19 +32,13 @@ export class ObjectFinderSkill extends BaseSkill {
         }
 
         try {
-            // 1. Ensure we are on the camera tab
-            const context = conversationContext;
-            if (context.currentPage !== 'camera') {
-                window.NazarVoiceAPI.navigate('camera');
-                context.setPage('camera');
-                // Wait for camera startup transition
-                await new Promise(resolve => setTimeout(resolve, 1500));
-            }
+            // Ensure camera is fully ready
+            await window.NazarVoiceAPI.ensureCameraReady();
+            conversationContext.setPage('camera');
 
-            // 2. Locate camera stream video element
             const video = document.getElementById('camera-stream');
-            if (!video || video.readyState < video.HAVE_ENOUGH_DATA) {
-                logger.skill.warn('[ObjectFinder] Camera stream not ready.');
+            if (!video) {
+                logger.skill.warn('[ObjectFinder] Camera stream element not found.');
                 return {
                     success: false,
                     responseKey: 'recovery.cameraUnavailable',
@@ -79,6 +73,7 @@ If it IS NOT present:
 
 Return your response strictly adhering to the JSON schema.`;
 
+            this.activeController = new AbortController();
             const response = await fetch('/api/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -87,7 +82,8 @@ Return your response strictly adhering to the JSON schema.`;
                     image: base64Img,
                     ocrMode: false,
                     prompt: prompt
-                })
+                }),
+                signal: this.activeController.signal
             });
 
             if (!response.ok) {
@@ -142,6 +138,16 @@ Return your response strictly adhering to the JSON schema.`;
                 nextState: 'Idle',
                 data: {}
             };
+        }
+    }
+
+    cancel() {
+        if (this.activeController) {
+            try {
+                this.activeController.abort();
+            } catch (e) {
+                logger.skill.warn('[ObjectFinder] Cancel abort error:', e);
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ import { BaseSkill } from './BaseSkill.js';
 import { logger } from '../utils/logger.js';
 
 export class SOSSkill extends BaseSkill {
-    async execute(action, params = {}) {
+    async execute(action, params = {}, context = {}) {
         logger.skill.info(`Executing SOSSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
@@ -52,6 +52,31 @@ export class SOSSkill extends BaseSkill {
                     };
                 }
 
+                case 'callContact': {
+                    const number = localStorage.getItem('nazar-emergency-contact-number') || '';
+                    const name = localStorage.getItem('nazar-emergency-contact-name') || 'Emergency Contact';
+                    if (!number) {
+                        return {
+                            success: false,
+                            responseKey: 'emergency.callContact.notConfigured',
+                            nextState: 'Idle',
+                            data: {}
+                        };
+                    }
+                    
+                    logger.skill.info(`[Emergency]\nCalling ${name} at ${number}`);
+                    const a = document.createElement('a');
+                    a.href = `tel:${number}`;
+                    a.click();
+
+                    return {
+                        success: true,
+                        responseKey: 'emergency.callContact.success',
+                        nextState: 'Idle',
+                        data: { contactName: name, contactNumber: number }
+                    };
+                }
+
                 default:
                     return {
                         success: false,
@@ -78,7 +103,7 @@ SOSSkill.manifest = {
     version: '2.0.0',
     priority: 800, // High action priority below SpeechSkill
     description: 'trigger emergency alerts and share your current location',
-    commands: ['sendSOS', 'cancelSOS', 'shareLocation'],
+    commands: ['sendSOS', 'cancelSOS', 'shareLocation', 'callContact'],
     permissions: [],
     busyDescription: 'sending an emergency alert'
 };

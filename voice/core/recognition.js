@@ -38,7 +38,6 @@ export class Recognition {
         this.failureTimes = [];
         this.lastError = null;
     }
-
     /**
      * Initialize Speech Recognition instance
      * @param {Object} handlers
@@ -53,6 +52,30 @@ export class Recognition {
             console.warn('[Recognition] SpeechRecognition API not supported by this browser.');
             return false;
         }
+
+        if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            console.warn('[Recognition] Insecure context query. SpeechRecognition is restricted to HTTPS/Localhost.');
+        }
+
+        // Feature detection for continuous support
+        let continuousSupported = true;
+        try {
+            const testRec = new SpeechRecognition();
+            testRec.continuous = true;
+            if (testRec.continuous !== true) {
+                continuousSupported = false;
+            }
+        } catch (e) {
+            continuousSupported = false;
+        }
+
+        // Fallback to User Agent detection for mobile devices known to ignore continuous stream persistence
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.platform) || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (continuousSupported && (isIOS || isMobile)) {
+            continuousSupported = false;
+        }
+        this.continuousSupported = continuousSupported;
 
         try {
             this.recognition = new SpeechRecognition();
@@ -290,6 +313,18 @@ export class Recognition {
     }
 
     startContinuous() {
+        if (!this.continuousSupported) {
+            logger.voice.warn('[Recognition] Continuous recognition unsupported. Falling back to Push-to-Talk.');
+            this.isContinuous = false;
+            if (!this._announcedContinuousUnsupported) {
+                this._announcedContinuousUnsupported = true;
+                import('./speaker.js').then(({ speaker }) => {
+                    speaker.speak("Continuous voice isn't supported on this device. Switching to tap-to-talk.", { mode: 'replace' });
+                });
+            }
+            this.start();
+            return;
+        }
         this.isContinuous = true;
         this.start();
     }

@@ -11,6 +11,8 @@ import { eventBus } from './eventBus.js';
 import { VoiceEvents } from '../events.js';
 import { recoveryManager } from './recoveryManager.js';
 import { ALL_SKILLS } from '../skills/index.js';
+import { sessionManager } from './sessionManager.js';
+import { CommandPriority } from './priority.js';
 
 export class Router {
     constructor() {
@@ -83,13 +85,22 @@ export class Router {
         const manifest = skill.constructor.manifest || {};
         logger.router.info(`[Router]\nSelected Skill:\n${skill.constructor.name}`);
 
-        // ─── Background Task Check (Improvement 7) ───────────────────────────
-        // High priority commands (>=800) always interrupt. Others check busy state.
+        // ─── Priority preemption & lock checks ───────────────────────────
         const currentActive = this.activeSkill;
-        if (currentActive && manifest.priority < 800 && currentActive.constructor.manifest?.priority >= 800) {
-            logger.router.info(`Decline low-priority skill execution ${manifest.id} because high priority ${currentActive.name()} is running.`);
-            eventBus.emit(VoiceEvents.COMMAND_DEFERRED, { intent });
-            return;
+        if (currentActive) {
+            if (manifest.priority >= 800 && (currentActive.constructor.manifest?.priority || 0) < 800) {
+                logger.router.info(`Force-cancelling active low-priority skill ${currentActive.constructor.name} for incoming high priority skill ${manifest.id}`);
+                try {
+                    currentActive.cancel();
+                } catch (err) {
+                    logger.router.error(`Failed to cancel active skill ${currentActive.constructor.name}:`, err.message);
+                }
+                speaker.cancel();
+            } else if (manifest.priority < 800 && (currentActive.constructor.manifest?.priority || 0) >= 800) {
+                logger.router.info(`Decline low-priority skill execution ${manifest.id} because high priority ${currentActive.constructor.name} is running.`);
+                eventBus.emit(VoiceEvents.COMMAND_DEFERRED, { intent });
+                return;
+            }
         }
 
         stateMachine.setEngineState('Executing');
@@ -155,7 +166,7 @@ export class Router {
                 } else {
                     // Lower priority: prompt user and defer execution
                     logger.router.warn(`Resource lock conflict on ${resource}. Owner: ${owner}, Requestor: ${manifest.id}`);
-                    await speaker.speak(`I'm currently ${ownerDesc}. Please wait or cancel the current task.`, { mode: 'replace' });
+                    await speaker.speak("I'm still completing your previous request.", { mode: 'replace' });
                     this._resetExecutionState();
                     return;
                 }
@@ -167,8 +178,31 @@ export class Router {
         // ─── 4. Execution ───────────────────────────
         try {
             logger.router.info(`[Skill]\nExecuting:\n${skill.constructor.name}.${intent.action}()`);
-            const response = await skill.execute(intent.action, intent.params);
-            logger.router.info('[Skill]\nExecution Complete');
+            
+            // Watchdog and Execution Context Setup
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('timeout')), 10000)
+            );
+
+            const abortController = new AbortController();
+            const context = {
+                sessionId: sessionManager.sessionId,
+                transcript: intent.rawTranscript || '',
+                intent: intent,
+                abortSignal: abortController.signal,
+                startedAt: Date.now(),
+                priority: manifest.priority || 0,
+                source: intent.source || 'unknown',
+                userInitiated: true
+            };
+
+            const startTime = performance.now();
+            const response = await Promise.race([
+                skill.execute(intent.action, intent.params, context),
+                timeoutPromise
+            ]);
+            const duration = Math.round(performance.now() - startTime);
+            logger.router.info(`[Skill]\nExecution completed successfully\nDuration: ${duration}ms`);
             
             if (response.success) {
                 this.consecutiveFailures = 0;
@@ -187,8 +221,15 @@ export class Router {
             stateMachine.setEngineState(response.nextState || 'Idle');
             eventBus.emit(VoiceEvents.SKILL_FINISHED, { id: manifest.id, response });
         } catch (err) {
-            logger.router.error(`Execution error in skill "${manifest.id}":`, err);
-            await recoveryManager.handle('SKILL_ERROR', { skill: manifest.id, error: err.message });
+            if (err.message === 'timeout') {
+                logger.router.error('[Skill]\nExecution Timeout');
+                await speaker.speak("I'm having trouble completing that request. Please try again.", { mode: 'replace' });
+            } else if (err.message === 'cancelled' || err.message === 'abort' || err.name === 'AbortError') {
+                logger.router.error('[Skill]\nExecution Cancelled');
+            } else {
+                logger.router.error('[Skill]\nExecution Failed:', err);
+                await recoveryManager.handle('SKILL_ERROR', { skill: manifest.id, error: err.message });
+            }
             stateMachine.setEngineState('Idle');
         } finally {
             // Auto-release all locks acquired by this skill

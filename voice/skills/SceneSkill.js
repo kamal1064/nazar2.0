@@ -8,7 +8,7 @@ import { conversationContext } from '../core/context.js';
 import { speaker } from '../core/speaker.js';
 
 export class SceneSkill extends BaseSkill {
-    async execute(action, params = {}) {
+    async execute(action, params = {}, context = {}) {
         logger.skill.info(`Executing SceneSkill: ${action}`);
 
         if (!window.NazarVoiceAPI) {
@@ -21,9 +21,12 @@ export class SceneSkill extends BaseSkill {
         }
 
         try {
+            // Wait for camera to be fully ready before proceeding
+            await window.NazarVoiceAPI.ensureCameraReady();
+
             // Check vision cache (60s TTL)
             const cache = conversationContext.lastScene;
-            const forceNew = params.scan_again || action === 'scan_again';
+            const forceNew = params.scan_again || action === 'scan_again' || action === 'scan';
             
             if (cache && !forceNew) {
                 logger.vision.info('[SceneSkill] Vision cache hit. Reusing description.');
@@ -61,6 +64,12 @@ export class SceneSkill extends BaseSkill {
             };
         }
     }
+
+    cancel() {
+        if (window.NazarVoiceAPI && typeof window.NazarVoiceAPI.stopScan === 'function') {
+            window.NazarVoiceAPI.stopScan();
+        }
+    }
 }
 
 // Static manifest for registration and capability discovery
@@ -69,7 +78,7 @@ SceneSkill.manifest = {
     version: '2.0.0',
     priority: 200,
     description: 'describe your surroundings and environmental hazards',
-    commands: ['describe', 'scan_scene', 'scan_again'],
+    commands: ['describe', 'scan_scene', 'scan_again', 'scan'],
     permissions: ['camera'],
     busyDescription: 'describing surroundings'
 };

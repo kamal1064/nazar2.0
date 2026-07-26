@@ -66,6 +66,19 @@ export class Parser {
                         source: 'local_regex'
                     };
                 }
+            },
+            {
+                pattern: /^(?:find|locate|where is|search for|look for) (?:my\s+|the\s+)?(.+)$/i,
+                resolver: (match) => {
+                    const object = match[1].trim().toLowerCase();
+                    return {
+                        skill: 'objectFinder',
+                        action: 'find',
+                        params: { object },
+                        confidence: 0.95,
+                        source: 'local_regex'
+                    };
+                }
             }
         ];
     }
