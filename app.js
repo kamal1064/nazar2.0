@@ -1,12 +1,15 @@
 // Global Client-Side Promise Rejection Guard
 window.addEventListener('unhandledrejection', (event) => {
-    console.groupCollapsed('[NAZAR Client Guard] Unhandled Promise Rejection');
-    console.error('Reason:', event.reason);
-    if (event.reason?.stack) {
-        console.error(event.reason.stack);
+    const reason = event.reason;
+    console.error('[Unhandled Promise Rejection]', reason);
+    if (reason instanceof Error) {
+        console.error('Type:', reason.constructor.name);
+        console.error('Message:', reason.message);
+        console.error('Stack:', reason.stack);
+    } else {
+        console.error('Value:', JSON.stringify(reason));
     }
-    console.groupEnd();
-    event.preventDefault();
+    // Do NOT call event.preventDefault() — let the browser also report it
 });
 
 document.addEventListener('DOMContentLoaded', () => {

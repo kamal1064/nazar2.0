@@ -8,6 +8,7 @@ import { logger } from '../utils/logger.js';
 import { eventBus } from './eventBus.js';
 import { VoiceEvents } from '../events.js';
 import { sessionManager } from './sessionManager.js';
+import { parser } from './parser.js';
 
 export class Recognition {
     constructor() {
@@ -286,11 +287,28 @@ export class Recognition {
             this.stopReason = null;
             this.recognitionState = 'Starting';
             stateMachine.setEngineState('Starting');
+            logger.voice.info('[Recognition] Calling recognition.start()...');
             this.recognition.start();
         } catch (e) {
             this.recognitionState = 'Idle';
             stateMachine.setEngineState('Idle');
-            console.warn('[Recognition] Failed to start recognition:', e);
+
+            const errorName = e?.name || 'UnknownError';
+            logger.voice.error(`[Recognition Start Failed] ${errorName}: ${e?.message}`);
+            console.error('[Recognition Start Failed]', e);
+            console.error(e?.stack);
+
+            // Handle known SpeechRecognition errors gracefully
+            if (errorName === 'InvalidStateError') {
+                logger.voice.warn('[Recognition] InvalidStateError — recognition was already started or in an invalid state.');
+            } else if (errorName === 'NotAllowedError') {
+                logger.voice.warn('[Recognition] NotAllowedError — microphone permission denied by browser.');
+                eventBus.emit(VoiceEvents.SPEECH_ERROR, { error: 'not-allowed' });
+            } else if (errorName === 'AbortError') {
+                logger.voice.warn('[Recognition] AbortError — recognition was aborted before starting.');
+            } else if (errorName === 'NotSupportedError') {
+                logger.voice.warn('[Recognition] NotSupportedError — SpeechRecognition not supported in this context.');
+            }
         }
     }
 

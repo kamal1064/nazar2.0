@@ -141,23 +141,38 @@ export class VoiceController {
     _registerEvents() {
         // Handle Wake word detected
         eventBus.on(VoiceEvents.WAKE_DETECTED, async ({ transcript }) => {
-            logger.voice.info(`Wake word triggered. Wake transcript: "${transcript}"`);
-            voiceAnalytics.recordWake();
-            if (navigator.vibrate) navigator.vibrate(20);
-            
-            // Wake session start
-            sessionManager.start();
-            conversationManager.newSession();
-            conversationContext.startSession();
+            try {
+                logger.voice.info(`Wake word triggered. Wake transcript: "${transcript}"`);
+                voiceAnalytics.recordWake();
+                if (navigator.vibrate) navigator.vibrate(20);
+                
+                // Wake session start
+                sessionManager.start();
+                conversationManager.newSession();
+                conversationContext.startSession();
 
-            stateMachine.setWakeState('Awake');
-            await audioCues.play('wake');
-            
-            // If already listening, do not call start again. Simply let it continue.
-            if (recognition.recognitionState !== 'Listening' && recognition.recognitionState !== 'Starting') {
-                recognition.startContinuous();
-            } else {
-                logger.voice.info('[VoiceController] SpeechRecognition already active. Preserving active stream.');
+                stateMachine.setWakeState('Awake');
+                await audioCues.play('wake');
+                
+                // If already listening, do not call start again. Simply let it continue.
+                if (recognition.recognitionState !== 'Listening' && recognition.recognitionState !== 'Starting') {
+                    recognition.startContinuous();
+                } else {
+                    logger.voice.info('[VoiceController] SpeechRecognition already active. Preserving active stream.');
+                }
+            } catch (error) {
+                console.error('[Voice Wake Startup Failed]', error);
+                console.error(error?.stack);
+                logger.voice.error('[VoiceController] Wake word startup crashed:', error?.message || String(error));
+                try {
+                    recognition.stop('SESSION_END');
+                    speaker.cancel();
+                    conversationManager._cancelTimers();
+                    stateMachine.setWakeState('Sleeping');
+                    stateMachine.setEngineState('Idle');
+                    sessionManager.end('wake_startup_crash');
+                    this._updateVoiceButtonUI('Idle');
+                } catch (_) { /* cleanup best-effort */ }
             }
         });
 
@@ -176,8 +191,12 @@ export class VoiceController {
 
         // Handle initial prompt speaking variation from ConversationManager
         eventBus.on('conversation.speakPrompt', async () => {
-            const { pickResponse } = await import('../utils/responseVariations.js');
-            await speaker.speak(pickResponse('wake.greeting'), { mode: 'replace' });
+            try {
+                const { pickResponse } = await import('../utils/responseVariations.js');
+                await speaker.speak(pickResponse('wake.greeting'), { mode: 'replace' });
+            } catch (err) {
+                console.error('[VoiceController] speakPrompt handler error:', err);
+            }
         });
 
         // Handle fade out overlay event from ConversationManager timeout
@@ -213,16 +232,23 @@ export class VoiceController {
 
         // Keep local page state synced in Context
         eventBus.on(VoiceEvents.SKILL_FINISHED, ({ id, response }) => {
-            if (id === 'navigate' && response.data?.target) {
-                conversationContext.setPage(response.data.target);
-                logger.productionLog('Navigation Command', { target: response.data.target });
+            try {
+                if (id === 'navigate' && response.data?.target) {
+                    conversationContext.setPage(response.data.target);
+                    logger.productionLog('Navigation Command', { target: response.data.target });
+                }
+                if (id === 'camera' && response.data?.mode) {
+                    conversationContext.setCameraMode(response.data.mode);
+                }
+                
+                // Push conversation loops (Anything else?)
+                const result = conversationManager.onCommandCompleted();
+                if (result && typeof result.catch === 'function') {
+                    result.catch(err => console.error('[VoiceController] onCommandCompleted error:', err));
+                }
+            } catch (err) {
+                console.error('[VoiceController] SKILL_FINISHED handler error:', err);
             }
-            if (id === 'camera' && response.data?.mode) {
-                conversationContext.setCameraMode(response.data.mode);
-            }
-            
-            // Push conversation loops (Anything else?)
-            conversationManager.onCommandCompleted();
         });
 
         // Mutex conflict notification
@@ -358,7 +384,9 @@ export class VoiceController {
                     } else {
                         clickTimeout = setTimeout(() => {
                             clickTimeout = null;
-                            this.handleGlobalButtonTap();
+                            this.handleGlobalButtonTap().catch(err => {
+                                console.error('[VoiceController] Unhandled error in button tap handler:', err);
+                            });
                         }, 250);
                     }
                 });
@@ -367,7 +395,9 @@ export class VoiceController {
                 btn.addEventListener('keydown', (e) => {
                     if (e.key === ' ' || e.key === 'Enter') {
                         e.preventDefault();
-                        this.handleGlobalButtonTap();
+                        this.handleGlobalButtonTap().catch(err => {
+                            console.error('[VoiceController] Unhandled error in keyboard tap handler:', err);
+                        });
                     }
                 });
             });
@@ -398,7 +428,9 @@ export class VoiceController {
             if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'v') {
                 e.preventDefault();
                 logger.voice.info('[VoiceController] Global Ctrl+Shift+V keyboard trigger activated.');
-                this.handleGlobalButtonTap();
+                this.handleGlobalButtonTap().catch(err => {
+                    console.error('[VoiceController] Unhandled error in Ctrl+Shift+V handler:', err);
+                });
             }
         });
 
@@ -469,22 +501,66 @@ export class VoiceController {
         const isWake = stateMachine.wakeState === 'Awake';
         if (isWake) {
             this.cancelSession();
-        } else {
+            return;
+        }
+
+        // ─── Startup Pipeline (fully guarded) ─────────────────────────
+        try {
+            console.log('[Startup] Step 1 - Button Click');
             logger.voice.info('[VoiceController] Global button manual trigger.');
+
+            console.log('[Startup] Step 2 - Session Start');
             sessionManager.start();
+
+            console.log('[Startup] Step 3 - Conversation Manager');
             conversationManager.newSession();
             conversationContext.startSession();
 
+            console.log('[Startup] Step 4 - Wake State');
             stateMachine.setWakeState('Awake');
+
+            console.log('[Startup] Step 5 - Audio Cue');
             await audioCues.play('wake');
-            
+
+            console.log('[Startup] Step 6 - Microphone Permission');
             const granted = await permissionsBroker.requestMicrophonePermission();
+
             if (granted) {
+                console.log('[Startup] Step 7 - Recognition Start');
                 recognition.startContinuous();
+                console.log('[Startup] Step 8 - Startup Complete');
             } else {
+                console.log('[Startup] Step 7 - Permission Denied');
                 await recoveryManager.handle('VOICE_001');
                 this.cancelSession();
             }
+        } catch (error) {
+            // ─── Full Startup Failure Recovery ──────────────────────
+            console.error('[Voice Startup Failed]', error);
+            console.error(error?.stack);
+            logger.voice.error('[VoiceController] Startup pipeline crashed:', error?.message || String(error));
+            logger.productionLog('Error', { source: 'VoiceStartup', error: error?.message || String(error) });
+
+            // Deterministic cleanup: reset everything to safe Idle state
+            try {
+                recognition.stop('SESSION_END');
+                speaker.cancel();
+                conversationManager._cancelTimers();
+                conversationManager._active = false;
+                conversationManager._depth = 0;
+                stateMachine.setWakeState('Sleeping');
+                stateMachine.setEngineState('Idle');
+                sessionManager.end('startup_crash');
+                this._updateVoiceButtonUI('Idle');
+                this._updateOverlayUI('Idle');
+            } catch (cleanupErr) {
+                console.error('[Voice Startup Cleanup Failed]', cleanupErr);
+            }
+
+            // Speak recovery message to user
+            try {
+                await speaker.speak("Sorry, I couldn't start voice recognition.", { mode: 'replace' });
+            } catch (_) { /* non-critical */ }
         }
     }
 
@@ -550,7 +626,9 @@ export class VoiceController {
         } else {
             eventBus.emit(VoiceEvents.ENGINE_OFFLINE);
             logger.voice.warn('Voice assistant is offline. Graceful degradation active.');
-            recoveryManager.handle('VOICE_003');
+            recoveryManager.handle('VOICE_003').catch(err => {
+                console.error('[VoiceController] Recovery handler error (offline):', err);
+            });
         }
     }
 
