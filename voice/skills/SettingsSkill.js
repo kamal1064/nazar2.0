@@ -24,6 +24,16 @@ export class SettingsSkill extends BaseSkill {
             };
         }
 
+        // Ensure required methods exist
+        if (typeof window.NazarVoiceAPI.getSettings !== 'function' || typeof window.NazarVoiceAPI.saveSetting !== 'function') {
+            return {
+                success: false,
+                responseKey: 'settings.error',
+                nextState: "Idle",
+                data: {}
+            };
+        }
+
         try {
             const currentSettings = window.NazarVoiceAPI.getSettings();
             let responseKey = '';

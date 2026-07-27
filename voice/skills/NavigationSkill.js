@@ -25,6 +25,16 @@ export class NavigationSkill extends BaseSkill {
             };
         }
 
+        // Ensure required methods exist
+        if (typeof window.NazarVoiceAPI.navigate !== 'function') {
+            return {
+                success: false,
+                responseKey: 'navigate.error',
+                nextState: "Idle",
+                data: {}
+            };
+        }
+
         try {
             if (target === 'back') {
                 window.history.back();

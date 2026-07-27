@@ -20,6 +20,18 @@ export class SceneSkill extends BaseSkill {
             };
         }
 
+        // Ensure required methods exist
+        if (typeof window.NazarVoiceAPI.ensureCameraReady !== 'function' ||
+            typeof window.NazarVoiceAPI.switchScene !== 'function' ||
+            typeof window.NazarVoiceAPI.startScan !== 'function') {
+            return {
+                success: false,
+                responseKey: 'scene.error',
+                nextState: "Idle",
+                data: {}
+            };
+        }
+
         try {
             // Wait for camera to be fully ready before proceeding
             await window.NazarVoiceAPI.ensureCameraReady();
@@ -27,7 +39,7 @@ export class SceneSkill extends BaseSkill {
             // Check vision cache (60s TTL)
             const cache = conversationContext.lastScene;
             const forceNew = params.scan_again || action === 'scan_again' || action === 'scan';
-            
+
             if (cache && !forceNew) {
                 logger.vision.info('[SceneSkill] Vision cache hit. Reusing description.');
                 await speaker.speak(cache, { mode: 'replace' });
@@ -44,7 +56,7 @@ export class SceneSkill extends BaseSkill {
 
             // 1. Force Scene description mode
             window.NazarVoiceAPI.switchScene();
-            
+
             // 2. Start scanning
             window.NazarVoiceAPI.startScan();
 

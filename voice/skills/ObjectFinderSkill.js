@@ -31,6 +31,16 @@ export class ObjectFinderSkill extends BaseSkill {
             };
         }
 
+        // Ensure required methods exist
+        if (typeof window.NazarVoiceAPI.ensureCameraReady !== 'function') {
+            return {
+                success: false,
+                responseKey: 'ui.error',
+                nextState: 'Idle',
+                data: {}
+            };
+        }
+
         try {
             // Ensure camera is fully ready
             await window.NazarVoiceAPI.ensureCameraReady();
@@ -95,13 +105,13 @@ Return your response strictly adhering to the JSON schema.`;
 
             // 5. Determine if object was found
             // Look in summary text or detected objects list
-            const foundInObjects = data.objects && data.objects.some(obj => 
+            const foundInObjects = data.objects && data.objects.some(obj =>
                 obj.toLowerCase().includes(targetObject.toLowerCase())
             );
             const foundInSummary = data.summary && !data.summary.toLowerCase().includes('not detected') && !data.summary.toLowerCase().includes('not found') && !data.summary.toLowerCase().includes("couldn't find");
 
             const success = foundInObjects || foundInSummary;
-            
+
             // Speak description directly
             await speaker.speak(data.summary, { mode: 'replace' });
 

@@ -18,13 +18,25 @@ export class OCRSkill extends BaseSkill {
             };
         }
 
+        // Ensure required methods exist
+        if (typeof window.NazarVoiceAPI.ensureCameraReady !== 'function' ||
+            typeof window.NazarVoiceAPI.switchOCR !== 'function' ||
+            typeof window.NazarVoiceAPI.startScan !== 'function') {
+            return {
+                success: false,
+                responseKey: 'ocr.error',
+                nextState: "Idle",
+                data: {}
+            };
+        }
+
         try {
             // Wait for camera to be fully ready before proceeding
             await window.NazarVoiceAPI.ensureCameraReady();
 
             // 1. Force OCR text mode
             window.NazarVoiceAPI.switchOCR();
-            
+
             // 2. Start scanning
             window.NazarVoiceAPI.startScan();
 
@@ -62,4 +74,3 @@ OCRSkill.manifest = {
     permissions: ['camera'],
     busyDescription: 'reading text'
 };
-

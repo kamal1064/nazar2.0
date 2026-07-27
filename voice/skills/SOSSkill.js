@@ -18,6 +18,16 @@ export class SOSSkill extends BaseSkill {
             };
         }
 
+        // Ensure required methods exist
+        if (typeof window.NazarVoiceAPI.sendSOS !== 'function') {
+            return {
+                success: false,
+                responseKey: 'emergency.error',
+                nextState: "Idle",
+                data: {}
+            };
+        }
+
         try {
             switch (action) {
                 case 'sendSOS': {
@@ -63,7 +73,7 @@ export class SOSSkill extends BaseSkill {
                             data: {}
                         };
                     }
-                    
+
                     logger.skill.info(`[Emergency]\nCalling ${name} at ${number}`);
                     const a = document.createElement('a');
                     a.href = `tel:${number}`;
@@ -107,4 +117,3 @@ SOSSkill.manifest = {
     permissions: [],
     busyDescription: 'sending an emergency alert'
 };
-
