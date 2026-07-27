@@ -18,6 +18,16 @@ export class CameraSkill extends BaseSkill {
             };
         }
 
+        // Ensure required methods exist
+        if (typeof window.NazarVoiceAPI.ensureCameraReady !== 'function') {
+            return {
+                success: false,
+                responseKey: 'camera.error',
+                nextState: "Idle",
+                data: {}
+            };
+        }
+
         try {
             // Check camera readiness for all actions except open itself (which initializes the camera)
             if (action !== 'open') {
@@ -35,6 +45,14 @@ export class CameraSkill extends BaseSkill {
                     };
 
                 case 'startScan':
+                    if (typeof window.NazarVoiceAPI.startScan !== 'function') {
+                        return {
+                            success: false,
+                            responseKey: 'camera.error',
+                            nextState: "Idle",
+                            data: {}
+                        };
+                    }
                     window.NazarVoiceAPI.startScan();
                     return {
                         success: true,
@@ -44,6 +62,14 @@ export class CameraSkill extends BaseSkill {
                     };
 
                 case 'stopScan':
+                    if (typeof window.NazarVoiceAPI.stopScan !== 'function') {
+                        return {
+                            success: false,
+                            responseKey: 'camera.error',
+                            nextState: "Idle",
+                            data: {}
+                        };
+                    }
                     window.NazarVoiceAPI.stopScan();
                     return {
                         success: true,
@@ -54,6 +80,14 @@ export class CameraSkill extends BaseSkill {
 
                 case 'switchTextMode':
                 case 'switch_ocr':
+                    if (typeof window.NazarVoiceAPI.switchOCR !== 'function') {
+                        return {
+                            success: false,
+                            responseKey: 'camera.error',
+                            nextState: "Idle",
+                            data: {}
+                        };
+                    }
                     window.NazarVoiceAPI.switchOCR();
                     return {
                         success: true,
@@ -64,6 +98,14 @@ export class CameraSkill extends BaseSkill {
 
                 case 'switchSceneMode':
                 case 'switch_scene':
+                    if (typeof window.NazarVoiceAPI.switchScene !== 'function') {
+                        return {
+                            success: false,
+                            responseKey: 'camera.error',
+                            nextState: "Idle",
+                            data: {}
+                        };
+                    }
                     window.NazarVoiceAPI.switchScene();
                     return {
                         success: true,
