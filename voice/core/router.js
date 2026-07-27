@@ -244,9 +244,12 @@ export class Router {
                 timeoutPromise
             ]);
             const duration = Math.round(performance.now() - startTime);
-            logger.router.info(`[Skill]\nExecution completed successfully\nDuration: ${duration}ms`);
-            
-            if (response.success) {
+
+            // Diagnostic logging to see what we actually got
+            logger.router.info(`[Skill Diagnostics] Response type: ${typeof response}, value:`, response);
+            logger.router.info(`[Skill] Execution completed\nDuration: ${duration}ms`);
+
+            if (response && response.success) {
                 this.consecutiveFailures = 0;
                 // Resolve responseKey via responseVariations (v3 Personality Layer)
                 if (response.responseKey) {
