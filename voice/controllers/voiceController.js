@@ -22,6 +22,7 @@ import { CommandPriority } from '../core/priority.js';
 import { audioCues } from '../core/audioCues.js';
 import { voiceConfig } from '../utils/voiceConfig.js';
 import { logger } from '../utils/logger.js';
+import { audioVisualizer } from '../utils/audioVisualizer.js';
 import { eventBus } from '../core/eventBus.js';
 import { VoiceEvents } from '../events.js';
 import { voiceAnalytics } from '../utils/voiceAnalytics.js';
@@ -1048,22 +1049,15 @@ export class VoiceController {
 
             // Start/Stop Audio Analyser (animate waveform in both Listening and Speaking)
             if (state === 'Listening' || state === 'Speaking') {
-                import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
-                    audioVisualizer.start(this._visualizerBars);
-                });
+                audioVisualizer.start(this._visualizerBars);
             } else {
-                import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
-                    audioVisualizer.stop();
-                });
+                audioVisualizer.stop();
             }
         } else {
             this._overlayEl.style.display = 'none';
             this._overlayEl.setAttribute('aria-hidden', 'true');
             if (this._overlayTranscriptEl) this._overlayTranscriptEl.innerText = '';
-            
-            import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
-                audioVisualizer.stop();
-            });
+            audioVisualizer.stop();
 
             if (announcer) announcer.innerText = 'Voice assistant stopped';
         }

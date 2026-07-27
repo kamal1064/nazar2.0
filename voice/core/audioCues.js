@@ -11,27 +11,16 @@
  */
 import { voiceConfig } from '../utils/voiceConfig.js';
 import { logger } from '../utils/logger.js';
+import { audioContextManager } from './audioContextManager.js';
 
 class AudioCueManager {
     constructor() {
-        this._ctx = null;
+        // No longer create AudioContext here
     }
 
-    /** Lazily initialize AudioContext on first use (browser policy: must be user-gesture triggered) */
-    _getContext() {
-        if (!this._ctx || this._ctx.state === 'closed') {
-            try {
-                this._ctx = new (window.AudioContext || window.webkitAudioContext)();
-            } catch (e) {
-                logger.voice.warn('[AudioCues] AudioContext unavailable:', e.message);
-                return null;
-            }
-        }
-        // Resume if suspended (mobile auto-suspend)
-        if (this._ctx.state === 'suspended') {
-            this._ctx.resume().catch(() => {});
-        }
-        return this._ctx;
+    /** Get shared AudioContext, ensuring it is created after user gesture */
+    async _getContext() {
+        return await audioContextManager.getContext();
     }
 
     /**
@@ -43,7 +32,7 @@ class AudioCueManager {
         if (!voiceConfig.flags.audioCues) return;
         const cfg = voiceConfig.speech.audioCues;
 
-        const ctx = this._getContext();
+        const ctx = await this._getContext();
         if (!ctx) return;
 
         try {

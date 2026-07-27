@@ -74,6 +74,7 @@ export class Logger {
         this.perf     = new CategoryLogger('Perf',     this);
         this.vision   = new CategoryLogger('Vision',   this);
         this.session  = new CategoryLogger('Session',  this);
+        this.state    = new CategoryLogger('State',    this);
     }
 
     /**
