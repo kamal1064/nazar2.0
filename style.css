@@ -2833,3 +2833,54 @@ input[type="tel"] {
     }
 }
 
+/* ─── Mobile Header Voice Assistant Button Rules (<= 768px) ─── */
+/* Hidden by default on Desktop & Tablet (> 768px) */
+.mobile-header-voice-btn {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    /* 1. Remove the floating Voice Assistant button from bottom-right corner on mobile */
+    #global-voice-btn {
+        display: none !important;
+    }
+
+    /* 2. Show and style the top nav Voice Assistant button beside profile avatar */
+    .mobile-header-voice-btn {
+        display: flex !important;
+        position: relative !important;
+        bottom: auto !important;
+        right: auto !important;
+        width: 44px !important;
+        height: 44px !important;
+        border-radius: 50% !important;
+        background: var(--primary-gradient) !important;
+        border: 2px solid rgba(255, 255, 255, 0.25) !important;
+        color: #ffffff !important;
+        cursor: pointer;
+        z-index: 100 !important;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45), var(--shadow-medium) !important;
+        transition: transform 0.2s ease, background 0.25s ease, border-color 0.25s ease !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        flex-shrink: 0;
+    }
+
+    .mobile-header-voice-btn:hover {
+        transform: scale(1.05);
+    }
+
+    .mobile-header-voice-btn:focus-visible {
+        outline: 3px solid var(--primary-accent);
+        outline-offset: 4px;
+    }
+
+    /* Ensure avatar is 44x44px on mobile to match mic button size and meet touch target minimums */
+    .profile-avatar-btn {
+        width: 44px !important;
+        height: 44px !important;
+    }
+}
+

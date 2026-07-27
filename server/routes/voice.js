@@ -171,8 +171,7 @@ function updateSessionHistory(sessionId, role, text) {
     const history = getSessionHistory(sessionId);
     history.push({ role, parts: [{ text }] });
     
-    if (history.length > 10) {
-        history.shift();
+    while (history.length > 8) {
         history.shift();
     }
 }
@@ -315,11 +314,15 @@ router.post('/intent', voiceLimiter, async (req, res, next) => {
 
     const history = getSessionHistory(sessionId);
 
-    // Build OpenAI-compatible messages array for Groq
+    // Build OpenAI-compatible messages array for Groq (System Prompt -> Conversation Summary -> Recent Conversation -> Current Page -> Current Mode -> Current User Input)
     const messages = [];
     let systemInstructionText = VOICE_INTENT_INSTRUCTION;
     if (context) {
-        systemInstructionText = `Current user application context:\n${JSON.stringify(context, null, 2)}\n\n` + VOICE_INTENT_INSTRUCTION;
+        const summaryText = context.conversationSummary ? `\nConversation Summary: ${context.conversationSummary}\n` : '';
+        const pageText = `Current Page: ${context.currentPage || 'home'}\nCurrent Camera Mode: ${context.currentCameraMode || 'none'}\n`;
+        const visionText = context.lastScene ? `Last Vision Scene: "${context.lastScene}"\n` : '';
+        const ocrText = context.lastOCR ? `Last OCR Text: "${context.lastOCR}"\n` : '';
+        systemInstructionText = `${VOICE_INTENT_INSTRUCTION}\n\n--- App Context ---\n${pageText}${summaryText}${visionText}${ocrText}`;
     }
     messages.push({ role: 'system', content: systemInstructionText });
 

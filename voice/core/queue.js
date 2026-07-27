@@ -38,7 +38,7 @@ export class TaskQueue {
         if (this.queue.length === 0) {
             this.isProcessing = false;
             this.activeTask = null;
-            if (stateMachine.engineState === 'Executing') {
+            if (stateMachine.engineState === 'Processing' || stateMachine.engineState === 'Executing') {
                 stateMachine.setEngineState('Idle');
             }
             return;
@@ -56,11 +56,18 @@ export class TaskQueue {
             eventBus.emit(VoiceEvents.COMMAND_COMPLETED, { task: this.activeTask });
         } catch (err) {
             logger.router.error('Task execution error:', err);
-            eventBus.emit(VoiceEvents.COMMAND_FAILED, { task: this.activeTask, error: err.message });
+            eventBus.emit(VoiceEvents.COMMAND_FAILED, { task: this.activeTask, error: err.message || String(err) });
+        } finally {
+            this.activeTask = null;
+            if (this.queue.length === 0) {
+                this.isProcessing = false;
+                if (stateMachine.engineState === 'Processing' || stateMachine.engineState === 'Executing') {
+                    stateMachine.setEngineState('Idle');
+                }
+            } else {
+                setTimeout(() => this.processNext(), 100);
+            }
         }
-
-        // Delay briefly before starting next task to allow speech cues to complete
-        setTimeout(() => this.processNext(), 100);
     }
 
     /**

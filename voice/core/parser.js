@@ -9,6 +9,7 @@ import { kannada } from '../commands/kannada.js';
 export class Parser {
     constructor() {
         this.languagePacks = {
+            'en-IN': english,
             'en-US': english,
             'en': english,
             'hi-IN': hindi,
@@ -20,16 +21,16 @@ export class Parser {
         // Regex Rules for dynamic/templated commands (Layer 2)
         this.regexRules = [
             {
-                pattern: /^(?:open|go to|show|take me to|navigate to) (home|camera|settings|profile|preferences|account)$/i,
+                pattern: /^(?:open|go to|show|take me to|navigate to) (home|camera|settings|profile|preferences|account)(?:\s+(?:page|screen|view|tab|mode|panel))?$/i,
                 resolver: (match) => {
                     let target = match[1].toLowerCase();
                     if (target === 'preferences') target = 'settings';
                     if (target === 'account') target = 'profile';
                     return {
-                        skill: 'navigation',
-                        action: 'navigate',
+                        skill: 'navigate',
+                        action: target,
                         params: { target },
-                        confidence: 0.98,
+                        confidence: 1.0,
                         source: 'local_regex'
                     };
                 }
@@ -89,7 +90,7 @@ export class Parser {
      * @param {string} locale e.g. 'en-US', 'hi-IN'
      * @returns {Object|null} The resolved intent structure, or null if no local matches found
      */
-    parse(transcript, locale = 'en-US') {
+    parse(transcript, locale = 'en-IN') {
         const cleanText = transcript.trim().toLowerCase();
         if (!cleanText) return null;
 

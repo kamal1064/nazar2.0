@@ -41,6 +41,7 @@ export class VoiceController {
         this._overlayStatusEl = null;
         this._overlayTranscriptEl = null;
         this._voiceBtnEl = null;
+        this._voiceBtnEls = [];
     }
 
     /**
@@ -57,6 +58,7 @@ export class VoiceController {
         // 2. Initialize Speech Recognition
         const ok = recognition.init({
             onTranscript: (text) => this.handleTranscript(text),
+            onInterim: (text) => this.handleInterimTranscript(text),
             onError: (err) => this.handleRecognitionError(err),
             onPriority: (cmd) => this.handlePriorityCommand(cmd)
         });
@@ -64,10 +66,13 @@ export class VoiceController {
         if (!ok) {
             logger.voice.error('Speech recognition initialization failed. APIs unsupported.');
             this._cacheUIElements();
-            if (this._voiceBtnEl) {
-                this._voiceBtnEl.className = 'global-voice-btn state-disabled';
-                this._voiceBtnEl.setAttribute('aria-label', 'Voice assistant unsupported');
-                this._voiceBtnEl.setAttribute('disabled', 'true');
+            if (this._voiceBtnEls) {
+                this._voiceBtnEls.forEach(btn => {
+                    const baseClass = btn.id === 'mobile-header-voice-btn' ? 'global-voice-btn mobile-header-voice-btn' : 'global-voice-btn';
+                    btn.className = `${baseClass} state-disabled`;
+                    btn.setAttribute('aria-label', 'Voice assistant unsupported');
+                    btn.setAttribute('disabled', 'true');
+                });
             }
             await recoveryManager.handle('VOICE_002');
             return;
@@ -125,6 +130,7 @@ export class VoiceController {
         this._overlayStatusEl = document.getElementById('voice-overlay-status');
         this._overlaySubtitleEl = document.getElementById('voice-overlay-subtitle');
         this._overlayTranscriptEl = document.getElementById('voice-overlay-transcript');
+        this._voiceBtnEls = Array.from(document.querySelectorAll('.global-voice-btn'));
         this._voiceBtnEl = document.getElementById('global-voice-btn');
         this._voiceReadyToast = document.getElementById('voice-ready-toast');
         this._visualizerBars = Array.from(document.querySelectorAll('.voice-wave-bar'));
@@ -209,6 +215,7 @@ export class VoiceController {
         eventBus.on(VoiceEvents.SKILL_FINISHED, ({ id, response }) => {
             if (id === 'navigate' && response.data?.target) {
                 conversationContext.setPage(response.data.target);
+                logger.productionLog('Navigation Command', { target: response.data.target });
             }
             if (id === 'camera' && response.data?.mode) {
                 conversationContext.setCameraMode(response.data.mode);
@@ -230,11 +237,23 @@ export class VoiceController {
             this._updateOverlayUI(state);
             this._updateHudUI();
 
-            if (state === 'Thinking') {
+            if (state === 'Processing' || state === 'Thinking') {
                 await audioCues.play('thinking');
             } else if (state === 'Listening') {
                 await audioCues.play('listening');
             }
+        });
+
+        eventBus.on(VoiceEvents.SPEECH_INTERIM, ({ transcript }) => {
+            this.handleInterimTranscript(transcript);
+        });
+
+        eventBus.on(VoiceEvents.SPEECH_ENDED, async () => {
+            await audioCues.play('stopped');
+        });
+
+        eventBus.on(VoiceEvents.COMMAND_STARTED, async () => {
+            await audioCues.play('success');
         });
 
         // Clean up locks on command completion safety-net
@@ -303,18 +322,16 @@ export class VoiceController {
             }, 300);
         });
 
-        // Pause/resume recognition during speech playback (Speaker decoupling)
+        // Keep speech recognition active during TTS playback for barge-in support (V2 Architecture)
         eventBus.on('speech.started', () => {
             if (stateMachine.wakeState === 'Awake') {
-                logger.voice.info('[VoiceController] Speech playback started. Pausing recognition.');
-                recognition.stop('SPEAKER');
+                logger.voice.info('[VoiceController] Speech playback started (recognition active for barge-in).');
             }
         });
 
         eventBus.on('speech.finished', () => {
             if (stateMachine.wakeState === 'Awake') {
-                logger.voice.info('[VoiceController] Speech playback completed. Resuming recognition.');
-                recognition.startContinuous();
+                logger.voice.info('[VoiceController] Speech playback completed.');
             }
         });
 
@@ -328,29 +345,31 @@ export class VoiceController {
 
     _bindUIInteractions() {
         // Tapping / Double Tapping global button
-        if (this._voiceBtnEl) {
-            this._clickTimeout = null;
-            this._voiceBtnEl.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (this._clickTimeout) {
-                    clearTimeout(this._clickTimeout);
-                    this._clickTimeout = null;
-                    logger.voice.info('[VoiceController] Double click detected. Cancelling session.');
-                    this.cancelSession();
-                } else {
-                    this._clickTimeout = setTimeout(() => {
-                        this._clickTimeout = null;
-                        this.handleGlobalButtonTap();
-                    }, 250);
-                }
-            });
-
-            // Keyboard accessibility (Space/Enter focused triggers)
-            this._voiceBtnEl.addEventListener('keydown', (e) => {
-                if (e.key === ' ' || e.key === 'Enter') {
+        if (this._voiceBtnEls && this._voiceBtnEls.length > 0) {
+            this._voiceBtnEls.forEach(btn => {
+                let clickTimeout = null;
+                btn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    this.handleGlobalButtonTap();
-                }
+                    if (clickTimeout) {
+                        clearTimeout(clickTimeout);
+                        clickTimeout = null;
+                        logger.voice.info('[VoiceController] Double click detected. Cancelling session.');
+                        this.cancelSession();
+                    } else {
+                        clickTimeout = setTimeout(() => {
+                            clickTimeout = null;
+                            this.handleGlobalButtonTap();
+                        }, 250);
+                    }
+                });
+
+                // Keyboard accessibility (Space/Enter focused triggers)
+                btn.addEventListener('keydown', (e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        this.handleGlobalButtonTap();
+                    }
+                });
             });
         }
 
@@ -423,8 +442,8 @@ export class VoiceController {
     }
 
     onTabSwitched(tabId) {
-        if (this._voiceBtnEl) {
-            this._voiceBtnEl.classList.toggle('camera-layout-offset', tabId === 'camera');
+        if (this._voiceBtnEls) {
+            this._voiceBtnEls.forEach(btn => btn.classList.toggle('camera-layout-offset', tabId === 'camera'));
         }
         this._updateHudUI();
     }
@@ -585,26 +604,55 @@ export class VoiceController {
         recognition.stop('USER');
     }
 
+    handleInterimTranscript(text) {
+        if (!text || stateMachine.wakeState === 'Sleeping') return;
+        const clean = text.trim();
+        if (!clean) return;
+        if (this._overlayTranscriptEl) {
+            this._overlayTranscriptEl.innerHTML = `<div style="font-size: 0.75em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">You said:</div><div style="font-size: 1.3em; font-weight: 600; color: #fff;">"${clean}"</div>`;
+        }
+        const hudTranscript = document.getElementById('hud-transcript');
+        if (hudTranscript) hudTranscript.innerText = clean;
+    }
+
     /**
      * Resolves natural speech to local/remote intents sequentially.
      * Tracks stage-level performance metrics.
      */
     async handleTranscript(text) {
+        try {
+            await this._processVoiceIntent(text);
+        } catch (err) {
+            logger.voice.error('[VoiceController] Uncaught exception in voice processing pipeline:', err);
+            logger.productionLog('Error', { source: 'VoicePipeline', error: err.message || String(err) });
+            stateMachine.setEngineState('Idle');
+            await audioCues.play('error');
+            await speaker.speak("Sorry, something went wrong.", { mode: 'replace' });
+        }
+    }
+
+    async _processVoiceIntent(text) {
         const isWake = stateMachine.wakeState === 'Awake';
         
         let cleanText = text;
-        const aliases = voiceConfig.conversation.wakeAliases || ['hey nazar', 'nazar'];
-        
-        // Find if the text starts with a wake alias
         let hasWakeWord = false;
-        const lowerText = cleanText.toLowerCase().trim();
-        for (const alias of aliases) {
-            const normalizedAlias = alias.toLowerCase().trim();
-            if (lowerText.startsWith(normalizedAlias)) {
-                // Strip the alias and any whitespace/newline following it
-                cleanText = cleanText.substring(cleanText.toLowerCase().indexOf(normalizedAlias) + normalizedAlias.length).trim();
-                hasWakeWord = true;
-                break;
+
+        // Strip any leading wake word / phonetic variation (e.g., "Hey Nazar", "He Nazar", "Hi Nazar", "Okay Nazar", "Ok Nazar", "Wake up Nazar", "Nazar")
+        const wakeRegex = /^(?:(?:hey|he|hi|okay|ok|wake\s+up|a|ey|o)\s+)?nazar(?:[\s,!.?-]+|$)/i;
+        if (wakeRegex.test(cleanText.trim())) {
+            hasWakeWord = true;
+            cleanText = cleanText.trim().replace(wakeRegex, '').trim();
+        } else {
+            // Fallback check against wakeAliases array
+            const aliases = voiceConfig.conversation.wakeAliases || ['hey nazar', 'nazar'];
+            const lowerText = cleanText.toLowerCase().trim();
+            for (const alias of aliases) {
+                const normalizedAlias = alias.toLowerCase().trim();
+                if (lowerText.startsWith(normalizedAlias)) {
+                    cleanText = cleanText.substring(cleanText.toLowerCase().indexOf(normalizedAlias) + normalizedAlias.length).trim();
+                    hasWakeWord = true;
+                    break;
+                }
             }
         }
 
@@ -632,13 +680,14 @@ export class VoiceController {
             return;
         }
 
+        logger.voice.info(`[1] Transcript: "${cleanText}"`);
         logger.voice.info(`[Clean Transcript]\nClean Transcript:\n"${cleanText}"`);
 
         // Reset silence timer in ConversationManager
         conversationManager.handleInput(cleanText);
 
         if (this._overlayTranscriptEl) {
-            this._overlayTranscriptEl.innerText = `"${cleanText}"`;
+            this._overlayTranscriptEl.innerHTML = `<div style="font-size: 0.75em; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">You said:</div><div style="font-size: 1.3em; font-weight: 600; color: #fff;">"${cleanText}"</div>`;
         }
 
         // Cancel session immediately if exit phrase spoken
@@ -654,7 +703,7 @@ export class VoiceController {
         }
 
         const stages = {
-            wakeDetectionMs: 0, // Not applicable here
+            wakeDetectionMs: 0,
             localParseMs: 0,
             fuzzyMatchMs: 0,
             geminiRTTMs: 0,
@@ -693,12 +742,32 @@ export class VoiceController {
             intent = null;
         }
 
+        logger.voice.info(`[2] Parsed: ${intent ? `${intent.skill}.${intent.action} (confidence: ${intent.confidence})` : 'No local match'}`);
+        if (intent) {
+            logger.voice.info(`[3] Local Command: ${intent.skill}.${intent.action}`);
+        }
+
+        // Stage 2.8: Ambiguity / Fragment Check before calling LLM
+        const words = cleanText.split(/\s+/);
+        const ambiguousFragments = ['in other', 'of the', 'and then', 'to be', 'on the', 'it is', 'this is', 'that is', 'for the', 'at the', 'by the', 'from the', 'with the', 'in a', 'for a', 'to a', 'other', 'another', 'something', 'anything', 'nothing', 'someone', 'anyone', 'no one', 'everywhere', 'nowhere', 'somewhere', 'anywhere', 'somehow', 'anyhow', 'anyway', 'anyways', 'however', 'whenever', 'whatever', 'whichever', 'whoever', 'whomever', 'whosever', 'um', 'uh', 'ah', 'er', 'the', 'and', 'or', 'so'];
+        const isFragment = ambiguousFragments.includes(cleanText.toLowerCase()) || (words.length === 1 && cleanText.length <= 3 && !['sos', 'cam', 'top', 'run', 'fix', 'say', 'yes', 'no', 'ok', 'out', 'off', 'on'].includes(cleanText.toLowerCase()));
+        
+        if (!intent && isFragment) {
+            logger.voice.warn(`[VoiceController] Transcript "${cleanText}" flagged as ambiguous/fragment. Bypassing LLM.`);
+            logger.productionLog('Ambiguity Rejection', { transcript: cleanText });
+            await speaker.speak("Sorry, I didn't understand. Can you repeat that?", { mode: 'replace' });
+            this._resetExecutionState();
+            return;
+        }
+
         // Stage 3: Gemini remote Function Calling (Layer 3)
         if (!intent && voiceConfig.flags.functionCalling && navigator.onLine) {
+            logger.voice.info(`[4] Sending to Groq: "${cleanText}"`);
             const tStartGemini = Date.now();
             const geminiRes = await geminiService.resolveIntent(cleanText);
             intent = geminiRes.intent;
             stages.geminiRTTMs = geminiRes.duration;
+            logger.voice.info(`[5] Groq Response: ${intent ? `${intent.skill}.${intent.action}` : 'Failed to resolve'}`);
         }
 
         // Enforce intent-based 500ms command deduplication (Revision R3)
@@ -716,12 +785,13 @@ export class VoiceController {
         // 4. Dispatch resolved intent with Execution Lock Check & Emergency Bypass
         if (intent) {
             const incomingPriority = router.skills[intent.skill]?.constructor.manifest?.priority || 0;
-            if (stateMachine.engineState === 'Executing' && incomingPriority < CommandPriority.EMERGENCY) {
+            if ((stateMachine.engineState === 'Processing' || stateMachine.engineState === 'Executing') && router.activeSkill && incomingPriority < CommandPriority.EMERGENCY) {
                 logger.voice.info('[VoiceController] Execution lock active. Declining concurrent command.');
                 await speaker.speak("I'm still completing your previous request.", { mode: 'replace' });
                 return;
             }
 
+            logger.voice.info(`[6] Executing: ${intent.skill}.${intent.action}`);
             logger.voice.info(`[Intent]\n${intent.skill}.${intent.action}`);
             const tStartSkill = Date.now();
             
@@ -732,6 +802,7 @@ export class VoiceController {
             taskQueue.push(intent);
 
             stages.skillExecutionMs = Date.now() - tStartSkill;
+            logger.voice.info(`[7] Finished: ${intent.skill}.${intent.action}`);
         } else {
             logger.voice.warn(`Command failed to resolve: "${cleanText}"`);
             voiceAnalytics.recordCommand('unknown', 'unknown', false);
@@ -755,13 +826,16 @@ export class VoiceController {
 
 
     async triggerErrorState() {
-        if (!this._voiceBtnEl) return;
+        if (!this._voiceBtnEls) return;
         
-        this._voiceBtnEl.className = 'global-voice-btn state-error';
-        const micIcon = this._voiceBtnEl.querySelector('.voice-icon-mic');
-        const errorIcon = this._voiceBtnEl.querySelector('.voice-icon-error');
-        if (micIcon) micIcon.style.display = 'none';
-        if (errorIcon) errorIcon.style.display = 'block';
+        this._voiceBtnEls.forEach(btn => {
+            const baseClass = btn.id === 'mobile-header-voice-btn' ? 'global-voice-btn mobile-header-voice-btn' : 'global-voice-btn';
+            btn.className = `${baseClass} state-error`;
+            const micIcon = btn.querySelector('.voice-icon-mic');
+            const errorIcon = btn.querySelector('.voice-icon-error');
+            if (micIcon) micIcon.style.display = 'none';
+            if (errorIcon) errorIcon.style.display = 'block';
+        });
 
         const announcer = document.getElementById('aria-live-announcer');
         if (announcer) announcer.innerText = 'Voice error occurred';
@@ -814,32 +888,42 @@ export class VoiceController {
     }
 
     // ─── UI Overlay Sync ───────────────────────────────────────────────────────
+    // ─── UI Overlay Sync ───────────────────────────────────────────────────────
     _updateVoiceButtonUI(state) {
-        if (!this._voiceBtnEl) return;
+        if (!this._voiceBtnEls) return;
         
         // Match camera panel state if active
         const isCamera = document.getElementById('camera-panel')?.classList.contains('active-panel');
-        this._voiceBtnEl.classList.toggle('camera-layout-offset', isCamera);
 
-        this._voiceBtnEl.className = 'global-voice-btn';
-        const micIcon = this._voiceBtnEl.querySelector('.voice-icon-mic');
-        const errorIcon = this._voiceBtnEl.querySelector('.voice-icon-error');
-        if (micIcon) micIcon.style.display = 'block';
-        if (errorIcon) errorIcon.style.display = 'none';
+        this._voiceBtnEls.forEach(btn => {
+            btn.classList.toggle('camera-layout-offset', isCamera);
 
-        if (state === 'Listening') {
-            this._voiceBtnEl.classList.add('state-listening');
-            this._voiceBtnEl.setAttribute('aria-label', 'Listening active. Click to cancel');
-        } else if (state === 'Thinking') {
-            this._voiceBtnEl.classList.add('state-processing');
-            this._voiceBtnEl.setAttribute('aria-label', 'Assistant processing');
-        } else if (state === 'Speaking') {
-            this._voiceBtnEl.classList.add('state-speaking');
-            this._voiceBtnEl.setAttribute('aria-label', 'Assistant speaking. Click to cancel');
-        } else {
-            this._voiceBtnEl.classList.add('state-idle');
-            this._voiceBtnEl.setAttribute('aria-label', 'Activate voice assistant');
-        }
+            const baseClass = btn.id === 'mobile-header-voice-btn' ? 'global-voice-btn mobile-header-voice-btn' : 'global-voice-btn';
+            btn.className = baseClass;
+
+            const micIcon = btn.querySelector('.voice-icon-mic');
+            const errorIcon = btn.querySelector('.voice-icon-error');
+            if (micIcon) micIcon.style.display = 'block';
+            if (errorIcon) errorIcon.style.display = 'none';
+
+            if (state === 'Listening') {
+                btn.classList.add('state-listening');
+                btn.setAttribute('aria-label', 'Listening...');
+                btn.title = 'Listening...';
+            } else if (state === 'Processing' || state === 'Thinking') {
+                btn.classList.add('state-processing');
+                btn.setAttribute('aria-label', 'Thinking...');
+                btn.title = 'Thinking...';
+            } else if (state === 'Speaking') {
+                btn.classList.add('state-speaking');
+                btn.setAttribute('aria-label', 'Speaking...');
+                btn.title = 'Speaking...';
+            } else {
+                btn.classList.add('state-idle');
+                btn.setAttribute('aria-label', 'Open Voice Assistant');
+                btn.title = 'Open Voice Assistant';
+            }
+        });
     }
 
     _updateOverlayUI(state) {
@@ -847,22 +931,24 @@ export class VoiceController {
 
         const announcer = document.getElementById('aria-live-announcer');
 
-        if (state === 'Listening' || state === 'Thinking' || state === 'Speaking') {
+        if (state === 'Listening' || state === 'Processing' || state === 'Thinking' || state === 'Speaking') {
             this._overlayEl.style.display = 'flex';
             this._overlayEl.setAttribute('aria-hidden', 'false');
 
             if (this._overlayStatusEl) {
                 this._overlayStatusEl.innerText = state === 'Listening' ? 'Listening...' 
-                                               : state === 'Thinking' ? 'Processing...' 
+                                               : (state === 'Processing' || state === 'Thinking') ? 'Thinking...' 
                                                : 'Speaking...';
             }
             if (this._overlaySubtitleEl) {
-                this._overlaySubtitleEl.innerText = state === 'Listening' ? 'Speak after the tone' : '';
+                this._overlaySubtitleEl.innerText = state === 'Listening' ? 'Speak after the tone' 
+                                                  : (state === 'Processing' || state === 'Thinking') ? 'Processing command...'
+                                                  : 'Playing response...';
             }
 
             if (announcer) {
                 announcer.innerText = state === 'Listening' ? 'Listening' 
-                                    : state === 'Thinking' ? 'Processing' 
+                                    : (state === 'Processing' || state === 'Thinking') ? 'Thinking' 
                                     : 'Speaking';
             }
 
@@ -877,13 +963,13 @@ export class VoiceController {
             Object.entries(icons).forEach(([key, el]) => {
                 if (el) {
                     el.style.display = ((state === 'Listening' && key === 'listening') ||
-                                       (state === 'Thinking' && key === 'processing') ||
+                                       ((state === 'Processing' || state === 'Thinking') && key === 'processing') ||
                                        (state === 'Speaking' && key === 'speaking')) ? 'block' : 'none';
                 }
             });
 
-            // Start/Stop Audio Analyser
-            if (state === 'Listening') {
+            // Start/Stop Audio Analyser (animate waveform in both Listening and Speaking)
+            if (state === 'Listening' || state === 'Speaking') {
                 import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
                     audioVisualizer.start(this._visualizerBars);
                 });
@@ -891,10 +977,6 @@ export class VoiceController {
                 import('../utils/audioVisualizer.js').then(({ audioVisualizer }) => {
                     audioVisualizer.stop();
                 });
-            }
-            
-            if (state === 'Listening' || state === 'Thinking') {
-                if (this._overlayTranscriptEl) this._overlayTranscriptEl.innerText = '...';
             }
         } else {
             this._overlayEl.style.display = 'none';

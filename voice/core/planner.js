@@ -3,6 +3,7 @@
  * v1.0.0
  */
 import { parser } from './parser.js';
+import { logger } from '../utils/logger.js';
 
 export class Planner {
     /**
@@ -11,7 +12,7 @@ export class Planner {
      * @param {string} locale e.g. 'en-US'
      * @returns {Array<Object>} List of task intents
      */
-    plan(transcript, locale = 'en-US') {
+    plan(transcript, locale = 'en-IN') {
         const cleanText = transcript.trim().toLowerCase();
         if (!cleanText) return [];
 
@@ -46,7 +47,7 @@ export class Planner {
             }
         }
 
-        console.log('[Planner] Created execution plan steps:', taskList);
+        logger.voice.info('[Planner] Created execution plan steps:', taskList);
         return taskList;
     }
 

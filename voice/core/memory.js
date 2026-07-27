@@ -6,6 +6,7 @@ import { stateMachine } from './state.js';
 import { voiceConfig } from '../utils/voiceConfig.js';
 import { recognition } from './recognition.js';
 import { speaker } from './speaker.js';
+import { logger } from '../utils/logger.js';
 
 export class SessionMemory {
     constructor() {
@@ -13,7 +14,7 @@ export class SessionMemory {
         
         // Listen to WakeState changes to manage inactivity timeout
         stateMachine.subscribe((state) => {
-            if (state.wakeState === 'Awake') {
+            if (state === 'Awake') {
                 this.resetIdleTimer();
             } else {
                 this.clearIdleTimer();
@@ -29,7 +30,7 @@ export class SessionMemory {
 
         this.idleTimer = setTimeout(async () => {
             if (stateMachine.wakeState === 'Awake') {
-                console.log('[SessionMemory] 3-minute idle inactivity timeout reached. Putting engine to sleep.');
+                logger.voice.info('[SessionMemory] 3-minute idle inactivity timeout reached. Putting engine to sleep.');
                 
                 await speaker.speak("Going to sleep to conserve battery.");
                 recognition.stop();

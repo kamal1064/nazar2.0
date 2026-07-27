@@ -18,7 +18,7 @@ export class Speaker {
         this.pitch = 1.0;
         this.rate = 1.0;
         this.preferredVoice = null;
-        this.preferredLanguage = 'en-US';
+        this.preferredLanguage = 'en-IN';
     }
 
     /**
@@ -35,7 +35,29 @@ export class Speaker {
     }
 
     /**
-     * Speaks a given text transcript out loud.
+     * Breaks text into sentence chunks (delimited by . ! ? newline or 100 chars)
+     * for ~500ms initial latency streaming.
+     */
+    chunkTextIntoSentences(text) {
+        if (!text) return [];
+        const rawChunks = text.split(/(?<=[.!?])\s+|\n+/);
+        const result = [];
+        for (let chunk of rawChunks) {
+            chunk = chunk.trim();
+            if (!chunk) continue;
+            while (chunk.length > 100) {
+                let splitIdx = chunk.lastIndexOf(' ', 100);
+                if (splitIdx === -1) splitIdx = 100;
+                result.push(chunk.substring(0, splitIdx).trim());
+                chunk = chunk.substring(splitIdx).trim();
+            }
+            if (chunk) result.push(chunk);
+        }
+        return result.length > 0 ? result : [text.trim()];
+    }
+
+    /**
+     * Speaks a given text transcript out loud with sentence-level chunking and FIFO queuing.
      * @param {string} text
      * @param {{ mode?: 'queue'|'replace'|'interrupt' }} [options]
      *   - 'queue'     (default): Append — current speech completes first.
@@ -49,26 +71,39 @@ export class Speaker {
         return new Promise((resolve) => {
             if (!text) { resolve(); return; }
 
+            const chunks = this.chunkTextIntoSentences(text);
+            if (chunks.length === 0) { resolve(); return; }
+
+            const queueItems = chunks.map((chunk, index) => ({
+                text: chunk,
+                resolve: index === chunks.length - 1 ? resolve : () => {}
+            }));
+
             if (mode === 'interrupt') {
                 // Cancel everything immediately — used only for SOS/Stop/emergency
                 this.cancel();
                 this._pendingQueue = [];
-                this._doSpeak(text, resolve);
+                const first = queueItems.shift();
+                this._pendingQueue.push(...queueItems);
+                this._doSpeak(first.text, first.resolve);
             } else if (mode === 'replace') {
                 // Clear pending queue but let current utterance finish naturally
                 this._pendingQueue = [];
                 if (this.isSpeaking()) {
-                    // Queue after current finishes
-                    this._pendingQueue.push({ text, resolve });
+                    this._pendingQueue.push(...queueItems);
                 } else {
-                    this._doSpeak(text, resolve);
+                    const first = queueItems.shift();
+                    this._pendingQueue.push(...queueItems);
+                    this._doSpeak(first.text, first.resolve);
                 }
             } else {
                 // 'queue' mode: append after all pending speech
                 if (this.isSpeaking() || this._pendingQueue.length > 0) {
-                    this._pendingQueue.push({ text, resolve });
+                    this._pendingQueue.push(...queueItems);
                 } else {
-                    this._doSpeak(text, resolve);
+                    const first = queueItems.shift();
+                    this._pendingQueue.push(...queueItems);
+                    this._doSpeak(first.text, first.resolve);
                 }
             }
         });
@@ -80,7 +115,7 @@ export class Speaker {
      * @param {Function} resolve
      */
     _doSpeak(text, resolve) {
-        console.log("[TTS]\nSpeaking:\n" + JSON.stringify(text));
+        logger.voice.info("[TTS]\nSpeaking:\n" + JSON.stringify(text));
         this.lastSpokenText = text;
         stateMachine.setEngineState('Speaking');
         eventBus.emit('speech.started');

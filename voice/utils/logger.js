@@ -96,6 +96,21 @@ export class Logger {
         }
     }
 
+    /**
+     * Structured production logging without storing raw user speech.
+     * @param {'Voice Started'|'Recognition Success'|'Recognition Failure'|'Groq Request'|'Groq Response Time'|'Navigation Command'|'Error'} event
+     * @param {Object} [metadata]
+     */
+    productionLog(event, metadata = {}) {
+        const safeMeta = { ...metadata };
+        // Strip any raw user speech from production logs
+        delete safeMeta.transcript;
+        delete safeMeta.rawSpeech;
+        delete safeMeta.text;
+        
+        console.info(`[PROD_LOG] [${event}]`, JSON.stringify(safeMeta));
+    }
+
     // ─── Root-level convenience (no category prefix) ──────────────────────────
     debug(...args) { this.voice.debug(...args); }
     info(...args)  { this.voice.info(...args);  }

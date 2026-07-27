@@ -81,7 +81,7 @@ export class Recognition {
             this.recognition = new SpeechRecognition();
             this.recognition.continuous = true;
             this.recognition.interimResults = true;
-            this.recognition.lang = 'en-US';
+            this.recognition.lang = voiceConfig.recognition.language || 'en-IN';
 
             this.recognition.onstart = () => {
                 this.recognitionState = 'Listening';
@@ -89,6 +89,8 @@ export class Recognition {
                 this.lastTranscriptTime = Date.now();
                 this.resetInactivityTimer();
                 stateMachine.setEngineState('Listening');
+                eventBus.emit(VoiceEvents.SPEECH_STARTED);
+                logger.productionLog('Voice Started', { timestamp: Date.now() });
                 
                 // Reset consecutive errors if it runs successfully without errors for 10s
                 if (Date.now() - this.lastErrorTime > 10000) {
@@ -116,6 +118,9 @@ export class Recognition {
                     logger.voice.info('[Recognition] SpeechRecognition aborted internally.');
                     return;
                 }
+
+                logger.productionLog('Recognition Failure', { error: err });
+                logger.productionLog('Error', { source: 'Recognition', error: err });
 
                 // Increment failures for health monitoring
                 this.failureTimes.push(Date.now());
@@ -149,14 +154,16 @@ export class Recognition {
                 this.clearInactivityTimer();
 
                 // If stopped intentionally due to speaker or session cancellation, don't auto-restart
-                if (this.stopReason === 'USER' || this.stopReason === 'SESSION_END' || this.stopReason === 'PERMISSION' || this.stopReason === 'SPEAKER') {
+                if (this.stopReason === 'USER' || this.stopReason === 'SESSION_END' || this.stopReason === 'PERMISSION' || this.stopReason === 'SPEAKER' || this.stopReason === 'LOW_CONFIDENCE' || this.stopReason === 'LANGUAGE_CHANGE') {
                     logger.voice.info(`[Recognition] Intentional stop (Reason: ${this.stopReason}). Not restarting.`);
+                    eventBus.emit(VoiceEvents.SPEECH_ENDED);
                     return;
                 }
 
                 // If hidden, don't restart here. Let VoiceController handle document visibility restore.
                 if (document.hidden || this.stopReason === 'VISIBILITY') {
                     logger.voice.info('[Recognition] Tab is hidden. Pausing auto-restart.');
+                    eventBus.emit(VoiceEvents.SPEECH_ENDED);
                     return;
                 }
 
@@ -165,6 +172,7 @@ export class Recognition {
                     if (this.lastError === 'not-allowed' || this.lastError === 'service-not-allowed') {
                         logger.voice.warn('[Recognition] Permission or service error. Disabling continuous restart.');
                         this.lastError = null;
+                        eventBus.emit(VoiceEvents.SPEECH_ENDED);
                         return;
                     }
 
@@ -181,12 +189,12 @@ export class Recognition {
                         return;
                     }
 
-                    if (this.consecutiveErrors >= 5) {
-                        logger.voice.error('[Recognition] Maximum retries reached. Stopping voice engine.');
+                    if (this.consecutiveErrors >= 3) {
+                        logger.voice.error('[Recognition] 3 consecutive recognition failures reached. Stopping auto-restart loop.');
                         this.isContinuous = false;
 
                         import('./speaker.js').then(({ speaker }) => {
-                            speaker.speak("Voice recognition is unavailable. Please check your internet connection.", { mode: 'replace' });
+                            speaker.speak("Please tap the microphone.", { mode: 'replace' });
                         });
                         import('./conversationManager.js').then(({ conversationManager }) => {
                             conversationManager._endConversation('max_retries_exceeded');
@@ -200,7 +208,7 @@ export class Recognition {
                             `Session: ${sessionManager.sessionId || 'N/A'}\n` +
                             `Generation: ${this.sessionGeneration}\n` +
                             `State: ${this.recognitionState}\n` +
-                            `Attempt: ${this.consecutiveErrors}/5\n` +
+                            `Attempt: ${this.consecutiveErrors}/3\n` +
                             `Delay: ${delay}ms\n` +
                             `Reason: ${this.lastError || 'disconnect'}`
                         );
@@ -340,19 +348,30 @@ export class Recognition {
      */
     handleResult(event) {
         this.consecutiveErrors = 0;
-        this.lastTranscriptTime = Date.now();
         this.resetInactivityTimer();
+        this.lastTranscriptTime = Date.now();
 
         let interimTranscript = '';
         let finalTranscript = '';
+        let totalConf = 0;
+        let confCount = 0;
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const transcriptSegment = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-                finalTranscript += transcriptSegment;
+            const res = event.results[i];
+            if (res.isFinal) {
+                finalTranscript += res[0].transcript;
+                if (res[0].confidence > 0) {
+                    totalConf += res[0].confidence;
+                    confCount++;
+                }
             } else {
-                interimTranscript += transcriptSegment;
+                interimTranscript += res[0].transcript;
             }
+        }
+
+        const currentText = (finalTranscript || interimTranscript).trim();
+        if (currentText) {
+            eventBus.emit(VoiceEvents.SPEECH_INTERIM, { transcript: currentText });
         }
 
         // Forward INTERIM transcripts to WakeWordDetector (for <100ms detection)
@@ -360,7 +379,7 @@ export class Recognition {
             this.onInterimCallback(interimTranscript.trim());
         }
 
-        const activeText = (finalTranscript || interimTranscript).trim().toLowerCase();
+        const activeText = currentText.toLowerCase();
         
         // Simple VAD filtering: Ignore extremely short accidental bursts/noises
         if (activeText.length < 2) return;
@@ -372,12 +391,47 @@ export class Recognition {
             return;
         }
 
+        // Barge-in reset: if user speaks (>2 chars) while NAZAR is speaking or thinking, abort Groq & cancel TTS!
+        if (stateMachine.engineState === 'Speaking' || (stateMachine.engineState === 'Processing' && finalTranscript)) {
+            logger.voice.info(`[Barge-in] User utterance detected during ${stateMachine.engineState}. Triggering Complete Barge-In Reset.`);
+            import('./speaker.js').then(({ speaker }) => speaker.cancel());
+            import('../services/gemini.js').then(({ geminiService }) => geminiService.abort());
+            stateMachine.setEngineState('Listening');
+        }
+
         // Forward FINAL transcripts to the core parser
         if (finalTranscript && this.onTranscriptCallback) {
-            logger.voice.info(`[Recognition]\nTranscript:\n"${finalTranscript.trim()}"`);
+            const cleanFinal = finalTranscript.trim();
+            const isLocalCommand = !!parser.parse(cleanFinal);
+
+            if (!isLocalCommand && confCount > 0) {
+                const avgConf = totalConf / confCount;
+                const minThreshold = voiceConfig.performance.confidence.minConfidence || 0.40;
+                if (avgConf < minThreshold) {
+                    logger.voice.warn(`[Recognition] Low confidence on non-local command (${(avgConf * 100).toFixed(1)}% < ${(minThreshold * 100).toFixed(0)}%). Requesting repeat.`);
+                    this.stop('LOW_CONFIDENCE');
+                    import('./speaker.js').then(({ speaker }) => {
+                        speaker.speak("I didn't quite catch that. Could you repeat it?", { mode: 'replace' });
+                    });
+                    import('./audioCues.js').then(({ audioCues }) => {
+                        audioCues.play('error');
+                    });
+                    return;
+                }
+            }
+
+            logger.voice.info(`[Recognition]\nTranscript:\n"${cleanFinal}"`);
+            logger.productionLog('Recognition Success', { length: cleanFinal.length });
             stateMachine.setEngineState('Processing');
-            this.onTranscriptCallback(finalTranscript.trim());
-            eventBus.emit(VoiceEvents.SPEECH_HEARD, { transcript: finalTranscript.trim() });
+            try {
+                const res = this.onTranscriptCallback(cleanFinal);
+                if (res && typeof res.catch === 'function') {
+                    res.catch(err => logger.voice.error('[Recognition] Unhandled promise in transcript callback:', err));
+                }
+            } catch (err) {
+                logger.voice.error('[Recognition] Error calling transcript callback:', err);
+            }
+            eventBus.emit(VoiceEvents.SPEECH_HEARD, { transcript: cleanFinal });
             
             // In Push-to-Talk mode, stop listening immediately after receiving a final result
             if (!this.isContinuous) {

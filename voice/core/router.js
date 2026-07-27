@@ -20,6 +20,21 @@ export class Router {
         this.consecutiveFailures = 0;
         this.pendingRecoveryTask = null; // Stash intent here if waiting for permission approval
         this.activeSkill = null;
+        this._isCommandLocked = false;
+    }
+
+    get isCommandLocked() {
+        return this._isCommandLocked || !!this.activeSkill;
+    }
+
+    lockCommand(skill) {
+        this._isCommandLocked = true;
+        this.activeSkill = skill || null;
+    }
+
+    unlockCommand() {
+        this._isCommandLocked = false;
+        this.activeSkill = null;
     }
 
     /**
@@ -61,12 +76,23 @@ export class Router {
     }
 
     /**
-     * Resolves and routes an intent to its matching registered skill.
      * Integrates background task checks and R15 Resource Mutex locking.
-     * @param {Object} intent JSON intent matching IntentContract.v1
      */
     async executeIntent(intent) {
-        if (!intent) {
+        if (this.isCommandLocked && intent.skill === 'navigate') {
+            logger.router.warn(`[Command Lock] Ignoring incoming navigation while command execution is locked.`);
+            return;
+        }
+
+        const gate = this.validateExecute();
+        if (!gate.valid) {
+            logger.router.info(`[Router] Execution blocked: ${gate.reason}`);
+            await recoveryManager.handle('VOICE_004', { detail: gate.reason });
+            return;
+        }
+
+        if (!intent || !intent.skill || !intent.action) {
+            logger.router.warn('Invalid or empty intent payload received:', intent);
             await recoveryManager.handle('VOICE_004', { detail: 'Empty intent' });
             return;
         }
@@ -88,6 +114,12 @@ export class Router {
         // ─── Priority preemption & lock checks ───────────────────────────
         const currentActive = this.activeSkill;
         if (currentActive) {
+            // Command Lock: If an action or navigation is already running, ignore overlapping navigation or duplicate commands!
+            const activeId = currentActive.constructor.manifest?.id || '';
+            if (intent.skill === 'navigate' || activeId === 'navigate' || intent.skill === activeId) {
+                logger.router.warn(`[Command Lock] Ignoring incoming command (${intent.skill}.${intent.action}) while active skill (${activeId || currentActive.constructor.name}) is executing.`);
+                return;
+            }
             if (manifest.priority >= 800 && (currentActive.constructor.manifest?.priority || 0) < 800) {
                 logger.router.info(`Force-cancelling active low-priority skill ${currentActive.constructor.name} for incoming high priority skill ${manifest.id}`);
                 try {
@@ -103,7 +135,9 @@ export class Router {
             }
         }
 
-        stateMachine.setEngineState('Executing');
+        this.lockCommand(skill);
+
+        stateMachine.setEngineState('Processing');
         this.activeSkill = skill;
         eventBus.emit(VoiceEvents.SKILL_STARTED, { id: manifest.id, action: intent.action });
 
@@ -236,12 +270,12 @@ export class Router {
             for (const res of lockedResources) {
                 resourceLock.release(res, manifest.id);
             }
-            this.activeSkill = null;
+            this.unlockCommand();
         }
     }
 
     _resetExecutionState() {
-        this.activeSkill = null;
+        this.unlockCommand();
         stateMachine.setEngineState('Idle');
     }
 
@@ -256,7 +290,7 @@ export class Router {
             }
         }
         this.skills = {};
-        this.activeSkill = null;
+        this.unlockCommand();
     }
 }
 

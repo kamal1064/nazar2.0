@@ -44,19 +44,15 @@ class ConversationManager {
         }
     }
 
-    /** Starts the 2-second initial prompt timer (greets only if user stays silent) */
+    /** Removed 2-second initial prompt timer so users have uninterrupted listening time */
     startInitialPromptTimer() {
-        if (this._promptHandle) clearTimeout(this._promptHandle);
-        this._promptHandle = setTimeout(async () => {
-            if (this._active && stateMachine.wakeState === 'Awake' && stateMachine.engineState === 'Listening') {
-                logger.voice.info('[ConversationManager] User is silent. Speaking prompt.');
-                // Trigger randomized prompt greeting
-                eventBus.emit('conversation.speakPrompt');
-            }
-        }, 2000);
+        if (this._promptHandle) {
+            clearTimeout(this._promptHandle);
+            this._promptHandle = null;
+        }
     }
 
-    /** Starts/Resets the main silence timeout timer (default 10s) */
+    /** Starts/Resets the main silence timeout timer (default 18s) */
     startSilenceTimer() {
         if (this._timeoutHandle) clearTimeout(this._timeoutHandle);
         this._timeoutHandle = setTimeout(async () => {
@@ -70,12 +66,12 @@ class ConversationManager {
 
             // 3. Wait 300ms for overlay to fade out, then speak timeout message
             setTimeout(async () => {
-                await speaker.speak("I didn't hear anything.", { mode: 'replace' });
+                await speaker.speak("Conversation ended.", { mode: 'replace' });
             }, 300);
 
             // 4. Return to Idle/Sleeping
             this._endConversation('silence_timeout');
-        }, voiceConfig.conversation.conversationTimeout || 10000);
+        }, voiceConfig.conversation.conversationTimeout || 18000);
     }
 
     /** Called after every successful command execution */
@@ -96,6 +92,20 @@ class ConversationManager {
             return;
         }
 
+        // Check if the AI's response ended with a question
+        const lastSpeech = speaker.lastSpokenText || '';
+        const endsWithQuestion = /\?\s*$/.test(lastSpeech.trim());
+
+        if (endsWithQuestion) {
+            logger.voice.info('[ConversationManager] Response ended with a question. Automatically returning to Listening without wake word.');
+            this.startSilenceTimer();
+            eventBus.emit(VoiceEvents.CONVERSATION_ACTIVE, { depth: this._depth });
+            import('./recognition.js').then(({ recognition }) => {
+                if (!recognition.isContinuous) recognition.start();
+            });
+            return;
+        }
+
         // Ask "Anything else?" once per session, subsequent rounds are silent
         if (!this._hasGreeted) {
             this._hasGreeted = true;
@@ -105,6 +115,9 @@ class ConversationManager {
 
         this.startSilenceTimer();
         eventBus.emit(VoiceEvents.CONVERSATION_ACTIVE, { depth: this._depth });
+        import('./recognition.js').then(({ recognition }) => {
+            if (!recognition.isContinuous) recognition.start();
+        });
     }
 
     isExitPhrase(rawTranscript) {

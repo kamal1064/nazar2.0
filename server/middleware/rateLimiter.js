@@ -79,7 +79,7 @@ const sosLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { xForwardedForHeader: false, forwardedHeader: false }
+    validate: { xForwardedForHeader: false, forwardedHeader: false, keyGeneratorIpFallback: false }
 });
 
 module.exports = {

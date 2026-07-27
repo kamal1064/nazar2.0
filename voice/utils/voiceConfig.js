@@ -25,25 +25,25 @@ export const voiceConfig = {
 
     // ─── Recognition ──────────────────────────────────────────────────────────
     recognition: {
-        inactivityTimeout:          15000,  // ms — mic auto-stops on silence
+        inactivityTimeout:          18000,  // ms — mic auto-stops on silence (18s silence recovery)
         interimTranscriptEnabled:   true,   // Feed interim results to wake detector
-        language:                   'en-US',
+        language:                   'en-IN',
         continuous:                 true,   // Keep recognition alive
         interimResults:             true,
+        maxRetries:                 3,      // Max auto-restart attempts on stream drop
     },
+
+    WakeStates: ['Sleeping', 'Awake', 'Speaking', 'Listening', 'Processing', 'Starting', 'Error', 'Idle'],
 
     // ─── Conversation ─────────────────────────────────────────────────────────
     conversation: {
-        wakeWordTimeout:        10000,  // ms — command window after wake
-        conversationTimeout:    10000,  // ms — wait after "Anything else?"
+        wakeWordTimeout:        18000,  // ms — command window after wake
+        conversationTimeout:    18000,  // ms — wait after "Anything else?"
         maxDepth:               8,      // Max rounds before forced sleep
         greetingDelayMs:        800,    // Pause before "Anything else?"
         dedupWindowMs:          500,    // Intent-based dedup window
-        // Phonetic aliases for "Hey Nazar" — covers recognition variations
         wakeAliases: [
-            'hey nazar', 'hi nazar', 'nazar', 'okay nazar', 'ok nazar',
-            'hey nasar', 'hey nazer', 'hey nasa', 'hey naser',
-            'hey nizza', 'nazar wake up', 'wake up nazar',
+            'nazar', 'hey nazar', 'hi nazar', 'okay nazar', 'ok nazar', 'wake up nazar'
         ],
     },
 
@@ -82,10 +82,10 @@ export const voiceConfig = {
             skillExecution:     500,    // ms — skill execute()
         },
         confidence: {
-            executeImmediate:   0.95,   // Band A — execute without confirmation
-            askConfirmation:    0.75,   // Band B — confirm before executing
-            askRepeat:          0.50,   // Band C — ask to repeat
-                                        // Band D (<0.50) — deny
+            minConfidence:      0.70,   // Minimum threshold to execute command
+            executeImmediate:   0.85,   // Band A — execute without confirmation
+            askConfirmation:    0.70,   // Band B — confirm before executing
+            askRepeat:          0.70,   // Band C — ask to repeat if below 0.70
         },
     },
 

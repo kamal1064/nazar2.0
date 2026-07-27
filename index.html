@@ -108,7 +108,25 @@
                                 <span>NAZAR</span>
                             </div>
                         </div>
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <div style="display: flex; align-items: center; gap: 14px;">
+                            <!-- Mobile Top Navigation Voice Assistant Button (Visible only on mobile <= 768px) -->
+                            <button id="mobile-header-voice-btn" class="global-voice-btn mobile-header-voice-btn state-idle" aria-label="Open Voice Assistant" aria-haspopup="true">
+                                <div class="voice-btn-pulse"></div>
+                                <div class="voice-btn-spinner">
+                                    <svg viewBox="0 0 36 36">
+                                        <path class="spinner-track" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="2.5"></path>
+                                        <path class="spinner-indicator" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="30, 100"></path>
+                                    </svg>
+                                </div>
+                                <div class="voice-btn-icon-wrap">
+                                    <svg class="voice-icon-mic" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                                    </svg>
+                                    <svg class="voice-icon-error" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20" style="display: none;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                            </button>
                             <!-- Profile Avatar + Dropdown -->
                             <div class="profile-avatar-wrapper" id="profile-avatar-wrapper">
                                 <button class="voice-badge-btn profile-avatar-btn" id="header-account-btn" aria-label="Account" aria-haspopup="true" aria-expanded="false" style="background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-main); position: relative; overflow: hidden; font-size: 0.95rem; font-weight: 800; letter-spacing: 0.02em;">

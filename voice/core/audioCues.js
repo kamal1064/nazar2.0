@@ -36,7 +36,7 @@ class AudioCueManager {
 
     /**
      * Play a named audio cue.
-     * @param {'wake'|'listening'|'success'|'error'|'thinking'} name
+     * @param {'wake'|'listening'|'stopped'|'success'|'finished'|'error'|'failed'|'thinking'} name
      * @returns {Promise<void>}
      */
     async play(name) {
@@ -49,37 +49,42 @@ class AudioCueManager {
         try {
             switch (name) {
                 case 'wake':
-                    // Ascending two-tone chime — signals assistant is active
-                    await this._tone(ctx, 520, 0.12, cfg.wakeVolume);
-                    await this._tone(ctx, 780, 0.18, cfg.wakeVolume);
+                case 'listening':
+                    // Soft chime — signals assistant is listening
+                    await this._tone(ctx, 440, 0.12, cfg.wakeVolume || 0.15);
+                    await this._tone(ctx, 554, 0.15, cfg.wakeVolume || 0.15);
                     break;
 
-                case 'listening':
-                    // Short rising beep — mic is open
-                    await this._tone(ctx, 440, 0.10, cfg.successVolume);
+                case 'stopped':
+                    // Different confirmation tone — signals listening stopped
+                    await this._tone(ctx, 480, 0.10, cfg.successVolume || 0.12);
+                    await this._tone(ctx, 380, 0.12, cfg.successVolume || 0.12);
                     break;
 
                 case 'success':
-                    // Gentle two-note confirmation chord
-                    await this._tone(ctx, 523, 0.10, cfg.successVolume); // C5
-                    await this._tone(ctx, 659, 0.12, cfg.successVolume); // E5
+                case 'finished':
+                    // Soft notification sound — processing finished
+                    await this._tone(ctx, 523, 0.10, cfg.successVolume || 0.12); // C5
+                    await this._tone(ctx, 659, 0.14, cfg.successVolume || 0.12); // E5
                     break;
 
                 case 'error':
-                    // Soft descending tone
-                    await this._tone(ctx, 350, 0.15, cfg.errorVolume);
-                    await this._tone(ctx, 280, 0.15, cfg.errorVolume);
+                case 'failed':
+                    // Double beep — recognition or execution failed
+                    await this._tone(ctx, 320, 0.10, cfg.errorVolume || 0.15);
+                    await new Promise(r => setTimeout(r, 60));
+                    await this._tone(ctx, 320, 0.10, cfg.errorVolume || 0.15);
                     break;
 
                 case 'thinking':
                     // Subtle single blip
-                    await this._tone(ctx, 400, 0.08, cfg.successVolume * 0.5);
+                    await this._tone(ctx, 400, 0.08, (cfg.successVolume || 0.12) * 0.5);
                     break;
 
                 case 'timeout':
                     // Double-tone chime for silence timeout
-                    await this._tone(ctx, 480, 0.12, cfg.successVolume * 0.7);
-                    await this._tone(ctx, 480, 0.12, cfg.successVolume * 0.7);
+                    await this._tone(ctx, 480, 0.12, (cfg.successVolume || 0.12) * 0.7);
+                    await this._tone(ctx, 480, 0.12, (cfg.successVolume || 0.12) * 0.7);
                     break;
 
                 default:
