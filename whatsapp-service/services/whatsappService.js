@@ -267,6 +267,13 @@ class WhatsAppService {
     _handleDisconnect(statusCode, authPath) {
         const { DisconnectReason } = this._baileys;
 
+        // Log the disconnect reason for debugging
+        console.log(JSON.stringify({
+            level: 'debug',
+            message: `[_handleDisconnect] Received disconnect reason: ${statusCode}`,
+            timestamp: new Date().toISOString()
+        }));
+
         switch (statusCode) {
             case DisconnectReason.loggedOut:
                 // User explicitly unlinked device from WhatsApp mobile
@@ -358,6 +365,13 @@ class WhatsAppService {
                 // Let Baileys handle reconnect
                 break;
         }
+
+        // Log after handling
+        console.log(JSON.stringify({
+            level: 'debug',
+            message: `[_handleDisconnect] Finished handling disconnect reason: ${statusCode}`,
+            timestamp: new Date().toISOString()
+        }));
     }
 
     handleReconnect() {
