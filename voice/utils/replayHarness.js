@@ -50,9 +50,6 @@ export function runReplayTests() {
         try {
             // Level 1 & 2: Parser (exact / regex)
             let resolved = parser.parse(test.command, 'en-IN');
-            if (!resolved) {
-                resolved = parser.parseRegex(test.command, 'en-IN');
-            }
 
             // Level 2.5: Fuzzy Local Matcher fallback
             if (!resolved) {

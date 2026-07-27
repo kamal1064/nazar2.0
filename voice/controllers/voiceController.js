@@ -803,9 +803,6 @@ export class VoiceController {
         // Stage 1: Exact / Regex Local parsing (Layers 1 & 2)
         const tStartParse = Date.now();
         intent = parser.parse(cleanText, activeLang);
-        if (!intent) {
-            intent = parser.parseRegex(cleanText, activeLang);
-        }
         stages.localParseMs = Date.now() - tStartParse;
 
         // Stage 2: Fuzzy local parsing (Layer 2.5)

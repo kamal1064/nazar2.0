@@ -32,6 +32,14 @@ export class Router {
         this.activeSkill = skill || null;
     }
 
+    /**
+     * Validate if execution can proceed
+     * @returns {{valid: boolean, reason?: string}}
+     */
+    validateExecute() {
+        return { valid: true };
+    }
+
     unlockCommand() {
         this._isCommandLocked = false;
         this.activeSkill = null;
