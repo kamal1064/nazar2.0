@@ -196,8 +196,8 @@ class WhatsAppService {
                     this.connected = false;
                     this.authenticated = false;
                     this.clientState = ConnectionState.DISCONNECTED;
-                    this.initializing = false;
-                    this.sock = null;
+                    // Do not null the socket; let Baileys handle reconnection
+                    // this.sock = null;
 
                     const statusCode = lastDisconnect?.error?.output?.statusCode;
                     const reason = lastDisconnect?.error?.message || 'Unknown';
@@ -261,6 +261,8 @@ class WhatsAppService {
 
     /**
      * Map each DisconnectReason to a specific recovery action.
+     * Note: We rely on Baileys' internal reconnection mechanism for most cases.
+     * We only clear auth for specific reasons and let Baileys reconnect.
      */
     _handleDisconnect(statusCode, authPath) {
         const { DisconnectReason } = this._baileys;
@@ -281,7 +283,7 @@ class WhatsAppService {
                     console.error(`[whatsappService] Failed to clear auth after logout: ${e.message}`);
                 }
                 this.sessionReason = 'Logged out. Fresh QR scan required.';
-                this.handleReconnect();
+                // Let Baileys reconnect with cleared auth (will trigger QR)
                 break;
 
             case DisconnectReason.badSession:
@@ -298,7 +300,7 @@ class WhatsAppService {
                 } catch (e) {
                     console.error(`[whatsappService] Failed to clear auth after bad session: ${e.message}`);
                 }
-                this.handleReconnect();
+                // Let Baileys reconnect with cleared auth
                 break;
 
             case DisconnectReason.restartRequired:
@@ -307,7 +309,7 @@ class WhatsAppService {
                     message: 'Restart required by WhatsApp. Reconnecting...',
                     timestamp: new Date().toISOString()
                 }));
-                this.handleReconnect();
+                // Let Baileys handle restart
                 break;
 
             case DisconnectReason.connectionClosed:
@@ -318,7 +320,7 @@ class WhatsAppService {
                     message: `Transient disconnect (code: ${statusCode}). Reconnecting...`,
                     timestamp: new Date().toISOString()
                 }));
-                this.handleReconnect();
+                // Let Baileys handle reconnect
                 break;
 
             case DisconnectReason.connectionReplaced:
@@ -344,7 +346,7 @@ class WhatsAppService {
                 } catch (e) {
                     console.error(`[whatsappService] Failed to clear auth after mismatch: ${e.message}`);
                 }
-                this.handleReconnect();
+                // Let Baileys reconnect with cleared auth
                 break;
 
             default:
@@ -353,7 +355,7 @@ class WhatsAppService {
                     message: `Unknown disconnect reason (code: ${statusCode}). Reconnecting...`,
                     timestamp: new Date().toISOString()
                 }));
-                this.handleReconnect();
+                // Let Baileys handle reconnect
                 break;
         }
     }
