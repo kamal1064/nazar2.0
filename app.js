@@ -218,8 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const saveBtn = document.getElementById('btn-save-emergency');
             const deleteBtn = document.getElementById('btn-delete-emergency');
-            const testSosBtn = document.getElementById('btn-test-sos');
-            const testEmailBtn = document.getElementById('btn-test-email');
             const errorBox = document.getElementById('emergency-contact-error');
 
             if (saveBtn) {
@@ -295,46 +293,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     this.updateSavedContactCard();
                     SpeechService.announce('Emergency contact deleted.');
                 });
-            }
-
-            if (testEmailBtn) {
-                testEmailBtn.addEventListener('click', () => {
-                    const email = this.state.emergencyContactEmail || localStorage.getItem("nazar-emergency-contact-email") || '';
-                    let contactsList = [];
-                    try {
-                        contactsList = JSON.parse(localStorage.getItem('nazar-emergency-contacts-list') || '[]');
-                    } catch (e) {
-                        contactsList = [];
-                    }
-                    const hasEmail = email || contactsList.some(c => c.email && c.email.includes('@'));
-                    if (!hasEmail) {
-                        SpeechService.announce("Emergency contact email not configured. Please add contact email in Settings.");
-                        if (errorBox) {
-                            errorBox.innerText = 'Emergency contact email not configured. Please add contact email in Settings.';
-                            errorBox.style.display = 'block';
-                        }
-                        return;
-                    }
-                    executeEmergencySOS(true, true);
-                });
-            }
-
-            if (testSosBtn) {
-                testSosBtn.addEventListener('click', () => {
-                    const contactNumber = this.state.emergencyContactNumber || localStorage.getItem("nazar-emergency-contact-number") || '';
-                    if (!contactNumber) {
-                        SpeechService.announce("Emergency contact not configured. Please add an emergency contact in Settings.");
-                        if (errorBox) {
-                            errorBox.innerText = 'Emergency contact not configured. Please add contact in Settings.';
-                            errorBox.style.display = 'block';
-                        }
-                        return;
-                    }
-                    SpeechService.announce("Testing emergency SOS. Getting your current location.");
-                    executeEmergencySOS(true, false);
-                });
-            }
-
             this.initAccordions();
         },
 
