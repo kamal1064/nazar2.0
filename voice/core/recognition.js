@@ -39,6 +39,39 @@ export class Recognition {
         this.failureTimes = [];
         this.lastError = null;
     }
+
+    /**
+     * Log diagnostic information for debugging recognition issues
+     * @param {string} context - Context string for the log
+     * @private
+     */
+    _logDiagnostics(context) {
+        try {
+            const diagnosis = {
+                context,
+                timestamp: Date.now(),
+                recognitionState: this.recognitionState,
+                isListening: this.isListening,
+                isContinuous: this.isContinuous,
+                sessionGeneration: this.sessionGeneration,
+                stopReason: this.stopReason,
+                language: this.recognition ? this.recognition.lang : 'unknown',
+                continuousSupported: this.continuousSupported,
+                interimResults: this.recognition ? this.recognition.interimResults : 'unknown',
+                maxAlternatives: this.recognition ? this.recognition.maxAlternatives : 'unknown',
+                navigatorOnLine: navigator.onLine,
+                visibilityState: document.visibilityState,
+                userAgent: navigator.userAgent,
+                isSecureContext: window.isSecureContext,
+                // Note: We cannot directly check microphone permission state without API, but we can note if we have attempted to start
+                lastError: this.lastError,
+                consecutiveErrors: this.consecutiveErrors
+            };
+            logger.voice.info(`[Recognition Diagnostics] ${JSON.stringify(diagnosis)}`);
+        } catch (e) {
+            logger.voice.warn('[Recognition] Failed to log diagnostics:', e);
+        }
+    }
     /**
      * Initialize Speech Recognition instance
      * @param {Object} handlers
@@ -104,12 +137,15 @@ export class Recognition {
             };
 
             this.recognition.onerror = (e) => {
+                // Log diagnostics when an error occurs
+                this._logDiagnostics(`[Recognition] onerror fired: ${e.error}`);
+
                 this.recognitionState = 'Idle'; // Error breaks the active session
                 this.isListening = false;
-                
+
                 const err = e.error;
                 this.lastError = err;
-                
+
                 if (err === 'no-speech') {
                     eventBus.emit(VoiceEvents.SPEECH_ERROR, { error: err });
                     return;
@@ -131,7 +167,7 @@ export class Recognition {
                     logger.voice.error('[Recognition] Health Monitor: 5 failures in under 60 seconds. Stopping voice engine.');
                     this.stop('ERROR');
                     this.isContinuous = false;
-                    
+
                     import('./speaker.js').then(({ speaker }) => {
                         speaker.speak("Voice recognition is experiencing persistent errors. Please check your internet connection.", { mode: 'replace' });
                     });
@@ -281,6 +317,9 @@ export class Recognition {
             logger.voice.info(`[Recognition] Start validation failed. Reason: ${gate.reason}`);
             return;
         }
+
+        // Log diagnostics before starting
+        this._logDiagnostics('[Recognition] About to call start()');
 
         try {
             this.sessionGeneration++;

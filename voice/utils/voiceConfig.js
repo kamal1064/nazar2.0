@@ -27,7 +27,15 @@ export const voiceConfig = {
     recognition: {
         inactivityTimeout:          18000,  // ms — mic auto-stops on silence (18s silence recovery)
         interimTranscriptEnabled:   true,   // Feed interim results to wake detector
-        language:                   'en-IN',
+        get language() {
+            // Use browser's language, fallback to en-US if not set or not supported
+            const browserLang = navigator.language || navigator.userLanguage;
+            if (browserLang) {
+                // Try to use the browser's language (e.g., en-US, en-GB, etc.)
+                return browserLang;
+            }
+            return 'en-US';
+        },
         continuous:                 true,   // Keep recognition alive
         interimResults:             true,
         maxRetries:                 3,      // Max auto-restart attempts on stream drop
