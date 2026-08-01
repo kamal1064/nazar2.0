@@ -27,7 +27,7 @@ When a user types your website address into their browser and presses Enter, an 
 5.  **Understanding Intent (Three-Layer Brain):**
     *   **Layer 1 (Instant Match):** The browser JavaScript first checks if you said a simple command like *"Camera"* or *"Help"*. If yes, it acts instantly.
     *   **Layer 2 (Fuzzy Match):** If you mumbled or mispronounced slightly (e.g., *"Cammra"*), our local JavaScript math formula catches it without internet delay.
-    *   **Layer 3 (Google Gemini AI):** If you asked a complex question like *"Find where I left my keys"* or *"Describe this room"*, our JavaScript sends your request to our **Express backend server**, which securely asks **Google Gemini 3.1 Flash Lite** to figure out what you want.
+    *   **Layer 3 (Groq AI):** If you asked a complex question like *"Find where I left my keys"* or *"Describe this room"*, our JavaScript sends your request to our **Express backend server**, which securely asks **Groq Llama-3.1-8B-Instant** to figure out what you want.
 6.  **Seeing the World (Camera & AI):** If the command requires seeing, the browser captures a single photo frame from the camera stream and sends it to our backend, which forwards it to **Google Gemini Vision AI** to analyze objects, scenes, or text.
 7.  **Delivering the Final Result (Text-to-Speech):** The AI's description is sent back to the browser. The **Web Speech Synthesis API** reads the answer out loud in a natural voice while displaying synchronized words on the screen, completing the loop!
 
@@ -130,21 +130,21 @@ For a blind or visually impaired person, navigating menus and clicking small scr
    *   **Layer 1:** Checks a local dictionary (`voice/commands/english.js`) for exact matches like *"open camera"*.
    *   **Layer 2:** If spelled slightly wrong by the microphone, our fuzzy math matcher (`voice/core/fuzzyMatcher.js`) corrects word errors up to 2 letters off.
    *   **Layer 3:** If it's a conversational sentence like *"Can you check if there is a water bottle in front of me?"*, JavaScript sends the text to our backend server.
-3. The server asks **Google Gemini AI** to translate the sentence into a structured action command.
+3. The server asks **Groq Llama-3.1-8B-Instant** to translate the sentence into a structured action command.
 4. Our Task Queue (`voice/core/queue.js`) executes the command safely without overlapping speech sounds.
 
 ### 4. Technologies used
 *   **What happens in the frontend:** Captures audio, performs local word matching, and animates the voice button (idle blue, listening green, processing spinner, speaking purple).
-*   **What happens in the backend:** Receives voice phrases and talks to Google Gemini to understand complex intentions (`/api/voice/intent`).
-*   **What APIs are used:** Google Gemini 3.1 Flash Lite API (using structured Function Calling); Web Speech API.
+*   **What happens in the backend:** Receives voice phrases and talks to Groq Llama-3.1-8B-Instant to understand complex intentions (`/api/voice/intent`).
+*   **What APIs are used:** Groq Llama-3.1-8B-Instant API (using structured Function Calling); Web Speech API.
 *   **What data is stored in MongoDB:** API key usage metrics and error logs (`apikeyusages` collection).
-*   **What Google Gemini does:** Acts as an intelligent translator, turning messy conversational speech into precise command instructions that the website can execute.
+*   **What Groq Llama does:** Acts as an intelligent translator, turning messy conversational speech into precise command instructions that the website can execute.
 *   **What Python does:** **Not implemented or used in NAZAR.**
 *   **What JavaScript does:** Routes commands, manages the task queue, controls button animations, and handles speech output.
-*   **What Vercel does:** Runs the backend API endpoints that connect our website to Google Gemini.
+*   **What Vercel does:** Runs the backend API endpoints that connect our website to the Groq API.
 *   **What GitHub is used for:** Stores the complex voice router, skill registry, and local command dictionaries.
 *   **What browser APIs are used:** Web Speech API (`SpeechRecognition`) and Web Audio API (`AnalyserNode`).
-*   **How everything connects together:** Microphone -> Web Speech API text -> Local JS Matcher OR Express Backend -> Google Gemini AI -> Action Queue -> Skill execution.
+*   **How everything connects together:** Microphone -> Web Speech API text -> Local JS Matcher OR Express Backend -> Groq Llama-3.1-8B-Instant -> Action Queue -> Skill execution.
 
 ### 5. Real-life example
 Like having a personal human concierge sitting next to you; you don't have to push buttons on a machine, you just say what you need, and the concierge pulls the right levers for you.
@@ -656,7 +656,7 @@ To summarize for judges or exhibition visitors, here is how the entire ecosystem
 5.  **Web Workers & TensorFlow.js** run real-time object detection locally in background threads without internet lag.
 6.  **Node.js & Express (Backend)** act as our secure server bridge, protected by **Helmet** security headers and **CORS** rules.
 7.  **MongoDB** stores user profiles, preferences, scan histories, and emergency contacts securely in the cloud using **Mongoose**.
-8.  **Google Gemini 3.1 Flash Lite & Vision AI** serve as our cloud intelligence, understanding complex spoken phrases and describing spatial camera scenes.
+8.  **Google Gemini 3.1 Flash Lite** serves as our visual cloud intelligence for describing spatial camera scenes, while **Groq Llama-3.1-8B-Instant** acts as our real-time intent translator.
 9.  **Nodemailer** dispatches instant emergency GPS emails to loved ones when the SOS system is triggered.
 
 *Every line of code in NAZAR is engineered with a single purpose: empowering visually impaired individuals with independence, safety, and instant understanding of their environment.*

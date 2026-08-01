@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+================================================================================
+⚠️ WARNING: OBSOLETE / INACTIVE CODE REFERENCE ONLY
+================================================================================
+This Python script is NOT used by the production Node.js Express backend.
+It is preserved solely as an offline reference implementation.
+================================================================================
+
 NAZAR Backend Groq Conversational AI Service (Python Implementation)
 Model: llama-3.1-8b-instant
 

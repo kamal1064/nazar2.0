@@ -176,25 +176,38 @@ class WhatsAppService {
 
                 if (connection === 'open') {
                     this.connected = true;
+                    // Note: We don't set authenticated = true here yet.
+                    // Authentication completion will be detected via other signals
+                    console.log(JSON.stringify({
+                        level: 'info',
+                        message: 'Stage: WebSocket connection opened, waiting for authentication...',
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+
+                // Check for authentication completion
+                // In Baileys, when authentication is successful, we typically see:
+                // 1. connection: 'open' (already handled above)
+                // 2. The presence of an 'assertion' property in the update object
+                // 3. Or we can rely on credentials.update event
+                if (update.assertion) {
+                    // We have received an assertion, which indicates authentication progress
+                    // When assertion is present and valid, authentication is complete
                     this.authenticated = true;
-                    this.clientState = ConnectionState.READY;
-                    this.initializing = false;
-                    this.reconnectAttempts = 0;
-                    this.initFailures = 0;
-                    this.startTime = Date.now();
+                    this.clientState = ConnectionState.AUTHENTICATED;
                     this.sessionReason = null;
-                    this.latestQr = null;
 
                     console.log(JSON.stringify({
                         level: 'info',
-                        message: 'Stage: WhatsApp client successfully connected and ready!',
+                        message: 'Stage: WhatsApp authentication successful!',
                         timestamp: new Date().toISOString()
                     }));
                 }
 
                 if (connection === 'close') {
                     this.connected = false;
-                    this.authenticated = false;
+                    // Note: We don't set authenticated = false here immediately
+                    // as it might be a temporary disconnect
                     this.clientState = ConnectionState.DISCONNECTED;
                     // Do not null the socket; let Baileys handle reconnection
                     // this.sock = null;
@@ -214,7 +227,41 @@ class WhatsAppService {
             });
 
             // Persist credential updates (key rotations, session tokens)
-            this.sock.ev.on('creds.update', saveCreds);
+            this.sock.ev.on('creds.update', async () => {
+                // Save credentials when they update
+                await saveCreds();
+
+                // Also check if this indicates authentication completion
+                // Credentials update often happens after successful auth
+                if (this.connected && !this.authenticated) {
+                    this.authenticated = true;
+                    if (this.clientState === ConnectionState.AUTHENTICATED || this.clientState === ConnectionState.CONNECTING) {
+                        this.clientState = ConnectionState.AUTHENTICATED;
+                    }
+                    this.sessionReason = null;
+
+                    console.log(JSON.stringify({
+                        level: 'info',
+                        message: 'Stage: WhatsApp credentials updated - authentication confirmed',
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+            });
+
+            // Also listen for authenticated event if available in this Baileys version
+            this.sock.ev.on('authenticated', () => {
+                this.authenticated = true;
+                if (this.connected) {
+                    this.clientState = ConnectionState.AUTHENTICATED;
+                }
+                this.sessionReason = null;
+
+                console.log(JSON.stringify({
+                    level: 'info',
+                    message: 'Stage: WhatsApp authenticated event received',
+                    timestamp: new Date().toISOString()
+                }));
+            });
 
         } catch (err) {
             this.connected = false;
@@ -313,10 +360,18 @@ class WhatsAppService {
             case DisconnectReason.restartRequired:
                 console.log(JSON.stringify({
                     level: 'info',
-                    message: 'Restart required by WhatsApp. Reconnecting...',
+                    message: 'Restart required by WhatsApp. Clearing auth and reconnecting...',
                     timestamp: new Date().toISOString()
                 }));
-                // Let Baileys handle restart
+                // For restartRequired, we should clear auth state to allow fresh authentication
+                try {
+                    if (fs.existsSync(authPath)) {
+                        fs.rmSync(authPath, { recursive: true, force: true });
+                    }
+                } catch (e) {
+                    console.error(`[whatsappService] Failed to clear auth after restart required: ${e.message}`);
+                }
+                // Let Baileys handle restart with fresh auth state
                 break;
 
             case DisconnectReason.connectionClosed:

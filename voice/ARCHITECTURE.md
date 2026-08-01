@@ -1,11 +1,11 @@
-# NAZAR Voice Engine Architecture Specification (v1.0.0)
+# NAZAR Voice Engine Architecture Specification (v2.0.0)
 
 This document is the technical specification and architecture reference for the **NAZAR Voice Engine**, a voice-operating layer that coordinates speech recognition, intent resolution, sequential queuing, and verbal feedback for the NAZAR accessibility platform.
 
 ---
 
 ## 1. System Overview
-The NAZAR Voice Engine sits between the web browser APIs (SpeechRecognition, SpeechSynthesis) and the core NAZAR application controllers. It translates verbal inputs into execution graphs of decoupled "Skills" that run locally or query a text-only Gemini API using server-side rotated API keys.
+The NAZAR Voice Engine sits between the web browser APIs (SpeechRecognition, SpeechSynthesis) and the core NAZAR application views. It translates verbal inputs into execution dispatches of decoupled "Skills" that run locally or query a text-only Groq Llama-3.1 API via the backend Vercel gateway using secure, rotated API keys.
 
 ---
 
@@ -13,30 +13,27 @@ The NAZAR Voice Engine sits between the web browser APIs (SpeechRecognition, Spe
 
 ```mermaid
 graph TD
-    UserSpeech[User Speech] -->|Browser API| Recognition[recognition.js]
-    Recognition -->|Text Transcript| Parser[parser.js]
+    UserSpeech[User Speech] -->|Browser API| Recognition[core/recognition.js]
+    Recognition -->|Text Transcript| Parser[core/parser.js]
     
     subgraph Pipeline [Three-Layer Processing Pipeline]
         Parser -->|1. Exact Alias Match| LocalCommands[commands/*.js]
-        Parser -->|2. Local Regex Match| Rules[parser.js Regexes]
+        Parser -->|2. Local Fuzzy Match| Fuzzy[core/fuzzyMatcher.js]
         Parser -->|3. Remote Intent Resolution| GeminiService[services/gemini.js]
     end
     
     GeminiService -->|Proxy POST /api/voice/intent| Backend[Backend Router /api/voice]
-    Backend -->|Rotated Key API call| GeminiAPI[Gemini Text Model]
+    Backend -->|Rotated Key API call| GroqAPI[Groq Llama-3.1-8B Model]
     
-    LocalCommands -->|Resolved Command| Planner[planner.js]
-    Rules -->|Resolved Command| Planner
-    GeminiService -->|Validated Intent JSON| Planner
+    LocalCommands -->|Resolved Command| Router[core/router.js]
+    Fuzzy -->|Resolved Command| Router
+    GeminiService -->|Validated Intent JSON| Router
     
-    Planner -->|Build Task Dependency Graph| Queue[queue.js]
-    Queue -->|Ordered Dispatches| Router[router.js]
-    
-    Router -->|Check Skill Health & Permissions| SkillRegistry[router.js SkillRegistry]
+    Router -->|Check Skill Health & Permissions| SkillRegistry[core/router.js SkillRegistry]
     SkillRegistry -->|Invoke Skill| Skills[skills/*Skill.js]
     
-    Skills -->|Standardized Skill Response| Speaker[speaker.js]
-    Skills -->|Mutate UI State| AppBridge[app.js Bridge]
+    Skills -->|Standardized Skill Response| Speaker[core/speaker.js]
+    Skills -->|Mutate UI State| AppBridge[app.js UI Controller]
     
     Speaker -->|Audio Earcon / Speech Output| UserSpeech
 ```
@@ -49,12 +46,11 @@ graph TD
 sequenceDiagram
     autonumber
     actor User
-    participant Rec as recognition.js
-    participant Parser as parser.js
-    participant Cache as cache.js
+    participant Rec as core/recognition.js
+    participant Parser as core/parser.js
+    participant Cache as utils/cache.js
     participant Backend as Backend Router
-    participant Queue as queue.js
-    participant Router as router.js
+    participant Router as core/router.js
     participant Skill as BaseSkill
 
     User->>Rec: Speak "Open camera and start scanning"
@@ -63,22 +59,19 @@ sequenceDiagram
     alt Cache Hit
         Cache-->>Parser: Return Cached Intent
     else Cache Miss
-        Parser->>Parser: Evaluate local aliases & rules
+        Parser->>Parser: Evaluate local aliases & fuzzy matches
         alt Match Found
             Parser-->>Parser: Resolve Intent
         else No Match
-            Parser->>Backend: Fetch /api/voice/intent
+            Parser->>Backend: Fetch POST /api/voice/intent
             Backend-->>Parser: Return Validated Intent Contract
         end
     end
-    Parser->>Queue: Push Actions to Execution Queue
-    loop Sequence execution
-        Queue->>Router: Dispatch Task
-        Router->>Router: Verify Permissions & Health
-        Router->>Skill: Execute (action, params)
-        Skill-->>Router: Standardized Skill Response
-        Router->>User: Verbal Feedback via speaker.js
-    end
+    Parser->>Router: Dispatch Task
+    Router->>Router: Verify Permissions & Health
+    Router->>Skill: Execute (action, params)
+    Skill-->>Router: Standardized Skill Response
+    Router->>User: Verbal Feedback via core/speaker.js
 ```
 
 ---
@@ -94,24 +87,24 @@ To support both Push-to-Talk (PTT) and Continuous Listening modes, states are sp
 ### Voice Engine State
 - **Idle (⚪)**: System is active but inactive, awaiting speech input.
 - **Listening (🔵)**: Web Speech Recognition API is listening to speech.
-- **Thinking (🟡)**: Querying the Gemini Intent API. Audio delay cues trigger if latency > 700ms.
+- **Thinking (🟡)**: Querying the Groq Intent API via the Express backend.
 - **Executing (🟢)**: Router is calling active Skills.
 - **Speaking (🟣)**: SpeechSynthesis is speaking out loud.
-- **Offline (🔴)**: Browser has no network connection. Gemini commands are disabled.
+- **Offline (🔴)**: Browser has no network connection. Remote Groq classifications are disabled.
 
 ---
 
 ## 5. Event Bus Events
 
-The `eventBus.js` module provides a central broker to coordinate asynchronous components:
+The `core/eventBus.js` module provides a central broker to coordinate asynchronous components:
 
 | Event ID | Publisher | Subscribers | Payload | Description |
 |---|---|---|---|---|
-| `wake.state` | `state.js` | `recognition.js`, HUD | `{ state: 'Awake' }` | Wake status changed |
-| `engine.state`| `state.js` | HUD, status dot | `{ state: 'Listening' }` | Engine status changed |
-| `speech.heard` | `recognition.js` | `parser.js`, HUD | `{ text: '...' }` | Transcript received |
-| `speech.priority`| `recognition.js` | `queue.js`, `speaker.js` | `{ command: 'stop' }` | Priority interrupt triggered |
-| `skill.finished`| `router.js` | `queue.js`, `memory.js` | `{ success: true, ... }` | Skill finished executing |
+| `wake.state` | `core/state.js` | `core/recognition.js`, HUD | `{ state: 'Awake' }` | Wake status changed |
+| `engine.state`| `core/state.js` | HUD, status dot | `{ state: 'Listening' }` | Engine status changed |
+| `speech.heard` | `core/recognition.js` | `core/parser.js`, HUD | `{ text: '...' }` | Transcript received |
+| `speech.priority`| `core/recognition.js` | `core/queue.js`, `core/speaker.js` | `{ command: 'stop' }` | Priority interrupt triggered |
+| `skill.finished`| `core/router.js` | `core/queue.js`, `core/memory.js` | `{ success: true, ... }` | Skill finished executing |
 
 ---
 
@@ -129,7 +122,7 @@ Skills extend `BaseSkill` and self-register on the Router:
 RequiredPermissions() ──► Check browser access
             │ (if Granted)
             ▼
-   Execute(action) ──► Perform DOM / API update
+    Execute(action) ──► Perform DOM / API update
             │
             ▼
    Return Standard Response ──► Spoken text feedback
@@ -141,18 +134,18 @@ RequiredPermissions() ──► Check browser access
 ---
 
 ## 7. Intent Contracts
-All intent transactions between the client and backend must comply with **IntentContract.v1**:
+All intent transactions between the client and backend must comply with the `IntentContract` schema:
 
 ```json
 {
-  "$schema": "voice/contracts/IntentContract.v1.json",
   "skill": "string (matches registered skill name)",
   "action": "string (matches skill action)",
   "params": {
     "type": "object",
     "properties": {
       "mode": { "type": "string" },
-      "target": { "type": "string" }
+      "target": { "type": "string" },
+      "object": { "type": "string" }
     }
   },
   "confidence": "number (0.00 to 1.00)"
@@ -168,15 +161,15 @@ All intent transactions between the client and backend must comply with **Intent
   - **Payload**:
     ```json
     {
-      "transcript": "what am I looking at?",
+      "text": "what am I looking at?",
+      "sessionId": "session_99",
       "context": {
-        "sessionId": "UUIDv4",
-        "lastIntent": "ocr",
-        "lastResult": "Raw scanned text..."
+        "currentPage": "home",
+        "lastScene": "Raw spatial text description..."
       }
     }
     ```
-  - **Response**: `IntentContract.v1` JSON structure.
+  - **Response**: Resolved intent JSON structure.
 
 ---
 
@@ -185,17 +178,27 @@ All intent transactions between the client and backend must comply with **Intent
 voice/
   contracts/
     IntentContract.v1.json      # Schema for input intent
-    SkillResponse.v1.json        # Schema for skill outputs
-    Session.v1.json              # Schema for session state
+    SkillResponse.v1.json       # Schema for skill outputs
+    Session.v1.json             # Schema for session state
   core/
+    audioContextManager.js      # Web Audio analyser controller
+    audioCues.js                # Programmatic audio sounds chimes
+    context.js                  # Conversation session context
+    conversationManager.js      # Memory window manager
     eventBus.js                 # Decoupled Pub/Sub Broker
+    fuzzyMatcher.js             # Local Levenshtein edit distance logic
+    memory.js                   # Conversation context history store
+    parser.js                   # Exact keyword and regex triggers
+    priority.js                 # Priority action mappings
+    queue.js                    # Task execution scheduler
     recognition.js              # Speech Recognition wrapper
+    recoveryManager.js          # Speech error recovery checks
+    resourceLock.js             # Media mutex resource lock
+    router.js                   # Skill registration and execution
+    sessionManager.js           # Frontend session metrics tracker
     speaker.js                  # Speech Synthesis wrapper
-    parser.js                   # Alias/Rules Matcher
-    planner.js                  # Compound Execution Planner
     state.js                    # Wake/Engine State Machine
-    cache.js                    # Bounded LRU Cache (100)
-    queue.js                    # Execution Queue
+    wakeWord.js                 # Continuous wake phrase detector
   commands/
     english.js                  # English aliases
     hindi.js                    # Hindi aliases
@@ -209,20 +212,20 @@ voice/
     SOSSkill.js                 # SOS dispatching calls
     SettingsSkill.js            # Speed/volume/dark-mode
     ProfileSkill.js             # User accounts & login
+    SpeechSkill.js              # Stop speaking, repeat last
+    UISkill.js                  # Scroll down, scroll up, help
+    PermissionSkill.js          # Permissions gates check
+    ObjectFinderSkill.js        # Item locator
   services/
     gemini.js                   # Client-side intent proxy
     permissions.js              # Hardware permissions broker
-    settings.js                 # Voice settings manager
-    logger.js                   # Log level manager
-  models/
-    SessionModel.js             # Holds current conversation state
-    SkillResponseModel.js       # Typed skill output struct
-    Intents.js                  # Typed intent definitions
   utils/
     errorCodes.js               # Unified codes VOICE_001 to VOICE_005
     selfTest.js                 # Startup capability diagnostics
     voiceConfig.js              # Configuration timings
     replayHarness.js            # Batch local command harness
+    logger.js                   # JSDoc category prefix logger
+    responseVariations.js       # Dynamic speech text variations
   controllers/
     voiceController.js          # Coordinator & UI bootstrap
 ```
@@ -230,10 +233,10 @@ voice/
 ---
 
 ## 10. Performance Targets
-- **Local Parsing Latency**: `< 100 ms`
+- **Local Parsing Latency**: `< 10 ms`
 - **Queue Dispatch Latency**: `< 50 ms`
 - **UI Transition Action Time**: `< 150 ms`
-- **Gemini Intent Resolution Target**: `< 2.0 s`
+- **Groq Intent Resolution Target**: `< 500 ms`
 - **Speech Synthesis Start Latency**: `< 300 ms`
 
 ---
@@ -251,8 +254,8 @@ voice/
 ---
 
 ## 12. Testing Strategy
-1. **Automated Integration Tests**: `server/tests/voiceIntent.test.js` checks backend routing, schemas, and rotated key extraction.
-2. **Replay regression Harness**: `replayHarness.js` passes mock transcript batches in the frontend, verifying cache matches and execution outputs.
+1. **Automated Integration Tests**: `server/tests/groqService.test.js` checks key rotation, 429 failover, and fallback responses.
+2. **Replay Regression Harness**: `replayHarness.js` passes mock transcript batches in the frontend, verifying cache matches and execution outputs.
 3. **Manual Voice Command Checklist**: Verified across Chrome (Windows/Android) and Safari (iOS) focusing on:
    - "Open settings" (local match)
    - "Describe surroundings" (Gemini vision fallback)

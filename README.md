@@ -7,265 +7,237 @@
 
 ---
 
-[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D%2018.0.0-green.svg)](https://nodejs.org/)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](file:///c:/Users/kamal/Documents/n1/LICENSE)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D%2020.0.0-green.svg)](file:///c:/Users/kamal/Documents/n1/.nvmrc)
 [![Database: MongoDB](https://img.shields.io/badge/Database-MongoDB-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Mobile%20%7C%20Desktop-lightgrey.svg)](#)
+[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20Mobile-lightgrey.svg)](#)
 
-**NAZAR** is a production-grade, open-source AI-powered accessibility companion built specifically to assist visually impaired individuals in navigating their environment. By overlaying a voice-first interface on top of advanced computer vision and text analysis pipelines, NAZAR makes environment description, text reading, object search, and emergency SOS alerts immediate, responsive, and completely hands-free.
+**NAZAR** is a production-grade, open-source AI-powered accessibility operating layer built specifically to assist visually impaired individuals in navigating their physical surroundings. By overlaying a hands-free, voice-first interface on top of advanced computer vision and text analysis pipelines, NAZAR makes environment description, document reading, object localization, and emergency SOS alerts immediate, responsive, and reliable.
 
 ---
 
 ## 📖 Table of Contents
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Voice Assistant Lifecycle](#-voice-assistant-lifecycle)
-- [Project Structure](#-project-structure)
-- [Environment Setup](#-environment-setup)
-- [Installation & Running](#-installation--running)
-- [Testing](#-testing)
-- [Accessibility Design](#-accessibility-design)
-- [Security](#-security)
-- [Performance Optimization](#-performance-optimization)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
-- [License](#-license)
+1. [AI Split-API Architecture](#-ai-split-api-architecture)
+2. [Mermaid System Diagrams](#-mermaid-system-diagrams)
+3. [Key Features](#-key-features)
+4. [Technology Stack](#-technology-stack)
+5. [Directory Layout](#-directory-layout)
+6. [Local Installation](#-local-installation)
+7. [Environment Configuration](#-environment-configuration)
+8. [Testing & Verification](#-testing--verification)
+9. [Accessibility Compliance (WAI-ARIA)](#-accessibility-compliance-wai-aria)
+10. [Security & Rate Limiting](#-security--rate-limiting)
+11. [Performance Optimization](#-performance-optimization)
+12. [Troubleshooting & FAQ](#-troubleshooting--faq)
+13. [Documentation Directory Index](#-documentation-directory-index)
+14. [License](#-license)
 
 ---
 
-## ✨ Features
+## 🏗️ AI Split-API Architecture
 
-NAZAR delivers a highly responsive accessibility experience through modular skills:
-
-| Category | Feature | Description |
-| :--- | :--- | :--- |
-| **Visual Core** | **AI Scene Description** | Captures a camera frame on-demand and streams a spatial layout description of surroundings. |
-| | **OCR Reading** | Scans, extracts, and speaks text from documents, labels, and screens in real-time. |
-| | **On-Demand Object Finder** | Analyzes a single camera capture to locate a target item (e.g., *"Find my keys"*). |
-| **Voice Interface** | **Fuzzy Local Matcher** | Resolves near-match voice commands locally using Levenshtein distance $\le 2$ (bypassing AI to reduce latency). |
-| | **Gemini Function Calling** | Seamless intent translation using structured Gemini API tools instead of fragile JSON parsing. |
-| | **Progressive Spoken Captions** | Displays words synchronously as they are spoken; falls back immediately to complete sentences. |
-| | **Reactive Audio Visualizer** | Smoothly displays microphone input using an exponentially smoothed Web Audio Analyser. |
-| **Safety & Config** | **Emergency SOS Alerts** | Hands-free verbal triggers that send instant email and GPS sharing alerts to emergency contacts. |
-| | **API Key Rotation** | Dynamically rotates through 4 Gemini API keys at 495 requests or 429 errors to guarantee uptime. |
-| | **Resource Lock Mutex** | Prevents concurrent device access conflicts (e.g., blocking OCR speech overlap during scene descriptions). |
+NAZAR splits its cloud AI pipelines into two separate, optimized engines:
+1. **Visual Core (Google Gemini Vision)**: All high-density image queries (Optical Character Recognition, spatial layouts, scene hazard analysis, and object finder queries) are sent to the Google Gemini `gemini-3.1-flash-lite` model. It features a backend Key Rotation service running up to 4 keys to ensure continuous visual updates.
+2. **Voice Engine (Groq Llama-3.1)**: Chat completions and natural language voice commands are classified by Groq's `llama-3.1-8b-instant` using functional tool calling. Intent parsing is resolved in under 200ms, ensuring immediate vocal interactions.
 
 ---
 
-## 🛠️ Tech Stack
+## 📊 Mermaid System Diagrams
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | HTML5, Vanilla CSS3, Vanilla ES6 JavaScript (Module-based structure) |
-| **Backend** | Node.js, Express 5.2.1, Helmet (Security Headers), CORS |
-| **Database** | MongoDB, Mongoose 9.7.4 (Atomic updates and persistent sessions) |
-| **AI Models** | Google Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite`), Gemini Vision API |
-| **Voice APIs** | Web Speech API (`SpeechRecognition`, `SpeechSynthesis`), Web Audio API (`AnalyserNode`) |
-| **Mail Delivery** | Nodemailer (Secure SMTP transporter) |
-
----
-
-## 🏗️ Architecture
-
-NAZAR employs a decoupled, event-driven architecture. The user speaks, the transcript is parsed, and actions are scheduled on an asynchronous Task Queue.
-
+### System Integration Map
 ```mermaid
 graph TD
-    UserSpeech[User Speech] -->|Browser Web Speech API| Recognition[voice/core/recognition.js]
-    Recognition -->|Speech heard event| Controller[voice/controllers/voiceController.js]
+    UserSpeech[User Speech] -->|Browser API| Recognition[voice/core/recognition.js]
+    Recognition -->|Transcript text| Controller[voice/controllers/voiceController.js]
     
     subgraph IntentResolution [Three-Layer Processing Pipeline]
         Controller -->|1. Exact Local Match| Local[voice/commands/english.js]
-        Controller -->|2. Fuzzy local match| Fuzzy[voice/core/fuzzyMatcher.js]
-        Controller -->|3. Remote API resolve| GeminiService[voice/services/gemini.js]
+        Controller -->|2. Fuzzy Local Match| Fuzzy[voice/core/fuzzyMatcher.js]
+        Controller -->|3. Remote API Match| GeminiService[voice/services/gemini.js]
     end
     
-    GeminiService -->|Structured Function Call proxy| Express[Express server /api/voice/intent]
-    Express -->|Dynamically Rotated Key request| GeminiAPI[Google Gemini API]
+    GeminiService -->|REST HTTP POST| Express[Express server /api/voice/intent]
+    Express -->|Groq Client completion| GroqAPI[Groq Llama-3.1-8B]
     
-    Local -->|Resolved intent contract| Queue[voice/core/queue.js Task Queue]
+    Local -->|Resolved intent contract| Queue[voice/core/queue.js Queue]
     Fuzzy -->|Resolved intent contract| Queue
-    GeminiAPI -->|Resolved intent contract| Queue
+    GroqAPI -->|Resolved intent contract| Queue
     
     Queue -->|Ordered dispatch| Router[voice/core/router.js]
-    Router -->|Verify resource locks & health| SkillRegistry[router.js Skill Registry]
+    Router -->|Verify resource locks & permissions| SkillRegistry[Skill Registry]
     SkillRegistry -->|Execute| Skills[voice/skills/*Skill.js]
     
-    Skills -->|Mutate screen layouts| App[app.js Bridge]
-    Skills -->|Progressive Speech Output| Speaker[voice/core/speaker.js]
-    Speaker -->|onboundary captions + Web Audio cue| UserSpeech
+    Skills -->|Mutate layouts| App[app.js UI Controller]
+    Skills -->|Spoken readout text| Speaker[voice/core/speaker.js]
+    Speaker -->|SpeechSynthesis captions| UserSpeech
+```
+
+### Visual Dependency Graph
+```mermaid
+graph LR
+    ClientUI[app.js UI] -->|REST POST /api/scan| ExpressAPI[Express Server]
+    ClientUI -->|REST POST /api/voice/intent| ExpressAPI
+    ClientUI -->|REST POST /api/sos| ExpressAPI
+    
+    ExpressAPI -->|Read/Write| MongoDB[(MongoDB Atlas)]
+    ExpressAPI -->|Generate content v1beta| GeminiAPI[Google Gemini API]
+    ExpressAPI -->|Chat completion| GroqAPI[Groq API]
+    ExpressAPI -->|SMTP Port 587| MailServer[Gmail SMTP Server]
+    ExpressAPI -->|Signed HMAC POST| whatsapp-service[Baileys Microservice]
+    
+    whatsapp-service -->|Protobuf WebSockets| WhatsAppServer[WhatsApp Servers]
+```
+
+### Emergency WhatsApp SOS Flow
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User
+    participant Express as Express Server
+    participant Contacts as Mongoose Contacts
+    participant Micro as Baileys Microservice
+    participant Socket as WebSocket Protocol
+    participant WhatsApp as WhatsApp Cloud
+
+    User->>Express: Trigger SOS (Voice/Click)
+    Express->>Contacts: Query user emergency contacts list
+    Express->>Express: Build alert message with GPS coords
+    Express->>Express: Sign payload using SHA-256 HMAC
+    Express->>Micro: POST /api/send-sos (Bearer Authorized)
+    Micro->>Micro: Verify signature & enqueue job
+    Micro->>Socket: Compile Proto payload
+    Socket->>WhatsApp: Send WebSocket dispatch package
+    WhatsApp-->>Socket: Status: Message delivered
+    Socket->>Express: POST /callback gateway update
 ```
 
 ---
 
-## 🎙️ Voice Assistant Lifecycle
+## ✨ Key Features
 
-The assistant transitions through six states via visual cues on the global button, screen overlay, and ARIA live regions:
-
-```
-[Idle (Blue mic)]
-   │
-   ▼  (User Tap / "Hey Nazar" Wake Word) -> plays audioCue.play('listening')
-[Listening (Green core, pulsing wave ring)] -> Web Audio visualizer active
-   │
-   ▼  (Speech detection ends) -> plays audioCue.play('thinking')
-[Processing (Progress spinner, rotates)] -> API key evaluation
-   │
-   ▼  (Intent resolved & executed) -> speaks progressive captions
-[Speaking (Purple core, breathing scale)] -> reads output text
-   │
-   ▼  (Utterance completed / silence timeout)
-[Idle (Blue mic)]
-```
-
-If an error or network timeout occurs, the button transitions to **Error (Red shake animation)**, plays a low warning chime, and safely returns to **Idle** without trapping the user.
+- **Scene Description**: Analyzes the viewfinder stream, spatializing obstacles and guiding the user safely.
+- **OCR text reader**: Real-time scanning, extraction, and reading of document text.
+- **On-Demand Item Locator**: Analyzes frames to locate specific items.
+- **Fuzzy Matcher**: Compiles Levenshtein edits locally on client, bypassing 40% of API calls.
+- **Progressive Spoken Captions**: Synchronized visual captioning overlays.
+- **Microservice WhatsApp SOS**: Socket connection dispatching helper warnings on container scales.
+- **Key Rotation Mutual Lock**: Limits quota errors and locks speech engines from overlapping sounds.
 
 ---
 
-## 📁 Project Structure
+## 🛠️ Technology Stack
 
-```text
-nazar/
-├── server/
-│   ├── config.js               # Port, DB, and SMTP configuration
-│   ├── db.js                   # Mongoose connection wrapper
-│   ├── server.js               # Main Express app bindings and vercel functions
-│   ├── middleware/             # Request validation & global error handlers
-│   ├── models/                 # Database schemas (Session, Users, Scans)
-│   ├── routes/                 # Endpoint routers (Auth, Scans, Emergency)
-│   └── services/               # KeyRotationService, EmailService
-├── voice/
-│   ├── contracts/              # Schema validation schemas
-│   ├── core/                   # EventBus, Speech recognition, Speaker pipelines
-│   ├── commands/               # Local command word mappings
-│   ├── skills/                 # Pluggable modular features (BaseSkill, UISkill, OCRSkill)
-│   ├── services/               # API proxies & permission handlers
-│   └── utils/                  # Analytics, configurations, test harnesses
-├── app.js                      # Core frontend navigation and view logic
-├── index.html                  # Accessible layout with Developer HUD
-├── style.css                   # Responsive layout stylesheet
-└── vercel.json                 # Serverless deployment configuration
-```
+- **Frontend**: HTML5, Vanilla CSS3, Vanilla ES6 JavaScript (Module-based).
+- **Core AI**: TensorFlow.js, COCO-SSD (Web Worker).
+- **Backend API**: Node.js, Express 5.2.1, Helmet.
+- **Database**: MongoDB, Mongoose 9.7.4.
+- **AI Engines**: Google Gemini 3.1 Flash Lite (Vision), Groq Llama-3.1-8B-Instant (NLP).
+- **Microservice**: `@whiskeysockets/baileys` WebSocket client.
 
 ---
 
-## ⚙️ Environment Setup
+## 📁 Directory Layout
 
-Copy `.env.example` to `.env` in the root folder:
+- **`server/`**: Express routers (`routes/`), data models (`models/`), logic controllers (`controllers/`), and key rotation/email services (`services/`).
+- **`voice/`**: Front-end voice operating layer. Includes commands dictionaries (`commands/`), skills registry (`skills/`), audio cues (`core/audioCues.js`), and recognitions (`core/recognition.js`).
+- **`whatsapp-service/`**: Standalone socket-based WhatsApp container.
+- **`docs/`**: ADR folders and developer indexes.
 
-```ini
-PORT=5000
-NODE_ENV=development
-MONGODB_URI=mongodb+srv://<db_user>:<db_password>@cluster0.mongodb.net/nazar
-GEMINI_API_KEY_1=your_gemini_api_key_1
-GEMINI_API_KEY_2=your_gemini_api_key_2
-GEMINI_API_KEY_3=your_gemini_api_key_3
-GEMINI_API_KEY_4=your_gemini_api_key_4
-GEMINI_MODEL=gemini-3.1-flash-lite
-GEMINI_TIMEOUT=60000
-EMAIL_USER=your_smtp_sender_email@gmail.com
-EMAIL_APP_PASSWORD=your_secure_smtp_app_password
-```
+For a granular breakdown, see [PROJECT_STRUCTURE.md](file:///c:/Users/kamal/Documents/n1/PROJECT_STRUCTURE.md).
 
 ---
 
-## 🚀 Installation & Running
+## 🚀 Local Installation
 
-### 1. Installation
-Clone the repository and install Node dependencies:
 ```bash
+# 1. Clone repository
 git clone https://github.com/kamal1064/nazar2.0.git
 cd nazar2.0
+
+# 2. Install root dependencies
+npm install
+
+# 3. Install microservice dependencies
+cd whatsapp-service
 npm install
 ```
-
-### 2. Running Locally
-Start the Express server and local client watcher:
-```bash
-npm run dev
-```
-The application will boot on `http://localhost:5000`.
+For local setups, database settings, and pairing QR steps, check [INSTALL.md](file:///c:/Users/kamal/Documents/n1/INSTALL.md).
 
 ---
 
-## 🧪 Testing
+## ⚙️ Environment Configuration
 
-### Automated Jest Tests
-Run the backend test suite:
+You must create `.env` templates in the root directory and inside the `whatsapp-service/` subfolder. Refer to [ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/ENVIRONMENT.md) for full descriptions of all variables.
+
+---
+
+## 🧪 Testing & Verification
+
+NAZAR includes comprehensive integration and diagnostics checks:
 ```bash
+# Execute Jest backend check suites
 npm test
 ```
-This runs four test categories:
-- **Error Handling**: Verifies 400 and 404 responses are clean and sanitized.
-- **Post-Refactor**: Validates key rotation sequences and API robustness.
-- **Auth System**: Tests secure register, login, and cookies.
-- **OAuth Checks**: Tests Google login route wrappers.
-
-### Client-side Replay Tests
-To run the local intent matching parser tests directly in the browser:
-1. Open the Developer Console (`F12`).
-2. Run:
-   ```javascript
-   window.runVoiceReplayTests();
-   ```
-3. Look for the `PASSED` logs to confirm that all 24 local commands, fuzzy matches, and regex parsers pass cleanly.
+To verify frontend regex intents and alias mappings inside browser scopes:
+1. Open Developer tools console (`F12`).
+2. Run: `window.runVoiceReplayTests()`.
+3. Verify that all 24 local commands pass successfully.
 
 ---
 
-## ♿ Accessibility Design
+## ♿ Accessibility Compliance (WAI-ARIA)
 
-NAZAR is built from the ground up for high compliance under WAI-ARIA standards:
-- **Predictable Positioning**: The floating microphone button is locked to the bottom-right corner to preserve visually impaired users' muscle memory. It automatically offsets upward when the camera viewfinder dock opens to prevent overlapping controls.
-- **Interactive Focus Binds**: Floating button supports focused keyboard triggers (`Space` or `Enter` to wake or cancel the assistant).
-- **Global Keyboard Shortcut**: Press `Ctrl + Shift + V` from any screen to instantly toggle listening.
-- **Progressive Captioning Overlay**: Visual captions print synchronously with the SpeechSynthesis utterance (falling back to a full sentence block if character boundary indicators are unavailable).
-- **Translucent Backdrop**: Uses `backdrop-filter: blur(16px); background: rgba(15, 23, 42, 0.35);` to ensure low-vision users maintain spatial awareness of their current page.
-- **Haptic Vibrations**: Triggers `navigator.vibrate(20)` confirmations on wake detection, button clicks, and command completions.
-- **Keyboard Overlay Trap**: Users can immediately press `Escape` or click the backdrop to cancel a listening session.
+- **Positioning**: Fixed-location float microphone button preserves muscle memory. Offsets dynamically when visual viewfinder anchors mount.
+- **Focused Keyboards**: Full button focus, triggering on `Space`/`Enter`. Global shortcut toggle via `Ctrl + Shift + V`.
+- **Captions Overlay**: High-contrast subtitles print synchronously with Speech Utterance boundaries.
+- **Haptics**: Triggers client vibration feedbacks on speech locks and wake words.
 
 ---
 
-## 🔒 Security
+## 🔒 Security & Rate Limiting
 
-- **API Key Sanitization**: Gemini keys are stored securely on the backend. Client requests proxy through the backend, preventing key exposure.
-- **Data Protection**: Authentication routes set encrypted, secure cookies with JWT validation.
-- **API Defense**: Integrated `Helmet` (HTTP Headers protection) and custom rate limiting on endpoints:
-  - `voiceIntentLimiter`: Restricts AI requests to 30 requests/minute.
-  - `authLimiter`: Prevents brute-forcing account endpoints.
+- **Proxy Security**: Google Gemini and Groq API keys reside on backend environments and are never exposed in user browsers.
+- **Bearer & HMAC Verifications**: Microservice transactions require bearer-token validation headers and payload HMAC validation.
+- **Rate Limiters**: Configured limit constraints protect auth (5 requests/min), scans (15 requests/min), and voice routes (30 requests/min).
 
 ---
 
 ## 🚀 Performance Optimization
 
-- **Levenshtein Distance Fuzzy Matcher**: Near-matches are resolved locally in under 10ms, eliminating remote API round-trips.
-- **Vision Session Caching**: Saves description outputs inside the 10-field conversation memory. If the user asks a follow-up question within 60s, it references `context.lastScene` instead of re-capturing camera frames.
-- **Resource Lock Mutex**: Locks microhpne and speech tracks, eliminating collision delays and racing conditions.
-- **Atomic Key Updates**: Updates quota states atomically in MongoDB to avoid concurrency bottlenecks during key transitions.
+- **Edit Distance Fuzzy Parser**: classified locally in <10ms, eliminating remote RTT delays.
+- **Context Caching**: Follow-up questions reuse visual scene summaries cached inside conversation memory if requested within 60 seconds, saving API visual scans.
+- **Audio Context Mutex**: Locks input microphone capture tracks when text synthesis plays back, preventing voice-synthesizer feedback loops.
 
 ---
 
-## 🗺️ Roadmap
+## 💬 Troubleshooting & FAQ
 
-- [x] Global Floating Assistant available on all panels.
-- [x] Gemini Function Calling intent resolver integration.
-- [x] Web Audio real-time exponentially smoothed visualizer.
-- [x] Programmatic double-tone timeout and error chimes.
-- [ ] Multilingual speech synthesis support (Hindi, Kannada, and Spanish).
-- [ ] Offline local command execution modules using compact local transformers.
-- [ ] Integration with hardware smart glasses.
+### Q: Why do authentication routes return HTTP 500 in my local test console?
+**A**: Ensure your local MongoDB server is online and running. If the server cannot establish database connections, Mongoose find requests will time out.
+
+### Q: Why is my camera preview black on my hosted deployment?
+**A**: Browsers block media device permissions on non-secure origins. Ensure the web application is served over HTTPS.
 
 ---
 
-## 🤝 Contributing
-Contributions are highly welcomed. Please read these basic steps:
-1. Fork the project repository.
-2. Create your Feature Branch: `git checkout -b feature/AmazingFeature`.
-3. Commit your changes: `git commit -m 'feat: add amazing feature'`.
-4. Push to the Branch: `git push origin feature/AmazingFeature`.
-5. Open a Pull Request.
+## 📖 Documentation Directory Index
+
+- **[docs/README.md](file:///c:/Users/kamal/Documents/n1/docs/README.md)**: Main documentation tree index.
+- **[API.md](file:///c:/Users/kamal/Documents/n1/API.md)**: Standard REST endpoint specifications.
+- **[ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/ENVIRONMENT.md)**: Environment variable definitions.
+- **[INSTALL.md](file:///c:/Users/kamal/Documents/n1/INSTALL.md)**: Setup and pairing guides.
+- **[DEPLOYMENT.md](file:///c:/Users/kamal/Documents/n1/DEPLOYMENT.md)**: Vercel & VPS deployment manuals.
+- **[SYSTEM_REQUIREMENTS.md](file:///c:/Users/kamal/Documents/n1/SYSTEM_REQUIREMENTS.md)**: Device compatibility tables.
+- **[DEPENDENCIES.md](file:///c:/Users/kamal/Documents/n1/DEPENDENCIES.md)**: Production dependencies catalogue.
+- **[THIRD_PARTY_LICENSES.md](file:///c:/Users/kamal/Documents/n1/THIRD_PARTY_LICENSES.md)**: Dependency licenses.
+- **[FEATURES.md](file:///c:/Users/kamal/Documents/n1/FEATURES.md)**: Project features breakdown.
+- **[MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/MAINTAINERS.md)**: Code owners and release flows.
+- **[ROADMAP.md](file:///c:/Users/kamal/Documents/n1/ROADMAP.md)**: Development roadmap.
+- **[SECURITY.md](file:///c:/Users/kamal/Documents/n1/SECURITY.md)**: Protection configurations.
+- **[DECISIONS.md](file:///c:/Users/kamal/Documents/n1/DECISIONS.md)**: Architecture design indices.
+- **[AUDIT_REPORT.md](file:///c:/Users/kamal/Documents/n1/AUDIT_REPORT.md)**: Repository audit log reports.
 
 ---
 
 ## 📄 License
-This project is licensed under the **ISC License** — see the [package.json](package.json) file for details.
+This project is licensed under the **ISC License** — see the [LICENSE](file:///c:/Users/kamal/Documents/n1/LICENSE) file for details.
