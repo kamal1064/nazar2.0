@@ -143,7 +143,7 @@ sequenceDiagram
 - **`whatsapp-service/`**: Standalone socket-based WhatsApp container.
 - **`docs/`**: ADR folders and developer indexes.
 
-For a granular breakdown, see [PROJECT_STRUCTURE.md](file:///c:/Users/kamal/Documents/n1/PROJECT_STRUCTURE.md).
+For a granular breakdown, see [PROJECT_STRUCTURE.md](file:///c:/Users/kamal/Documents/n1/docs/PROJECT_STRUCTURE.md).
 
 ---
 
@@ -161,13 +161,13 @@ npm install
 cd whatsapp-service
 npm install
 ```
-For local setups, database settings, and pairing QR steps, check [INSTALL.md](file:///c:/Users/kamal/Documents/n1/INSTALL.md).
+For local setups, database settings, and pairing QR steps, check [INSTALL.md](file:///c:/Users/kamal/Documents/n1/docs/INSTALL.md).
 
 ---
 
 ## ⚙️ Environment Configuration
 
-You must create `.env` templates in the root directory and inside the `whatsapp-service/` subfolder. Refer to [ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/ENVIRONMENT.md) for full descriptions of all variables.
+You must create `.env` templates in the root directory and inside the `whatsapp-service/` subfolder. Refer to [ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/docs/ENVIRONMENT.md) for full descriptions of all variables.
 
 ---
 
@@ -223,19 +223,19 @@ To verify frontend regex intents and alias mappings inside browser scopes:
 ## 📖 Documentation Directory Index
 
 - **[docs/README.md](file:///c:/Users/kamal/Documents/n1/docs/README.md)**: Main documentation tree index.
-- **[API.md](file:///c:/Users/kamal/Documents/n1/API.md)**: Standard REST endpoint specifications.
-- **[ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/ENVIRONMENT.md)**: Environment variable definitions.
-- **[INSTALL.md](file:///c:/Users/kamal/Documents/n1/INSTALL.md)**: Setup and pairing guides.
-- **[DEPLOYMENT.md](file:///c:/Users/kamal/Documents/n1/DEPLOYMENT.md)**: Vercel & VPS deployment manuals.
-- **[SYSTEM_REQUIREMENTS.md](file:///c:/Users/kamal/Documents/n1/SYSTEM_REQUIREMENTS.md)**: Device compatibility tables.
-- **[DEPENDENCIES.md](file:///c:/Users/kamal/Documents/n1/DEPENDENCIES.md)**: Production dependencies catalogue.
-- **[THIRD_PARTY_LICENSES.md](file:///c:/Users/kamal/Documents/n1/THIRD_PARTY_LICENSES.md)**: Dependency licenses.
-- **[FEATURES.md](file:///c:/Users/kamal/Documents/n1/FEATURES.md)**: Project features breakdown.
-- **[MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/MAINTAINERS.md)**: Code owners and release flows.
-- **[ROADMAP.md](file:///c:/Users/kamal/Documents/n1/ROADMAP.md)**: Development roadmap.
-- **[SECURITY.md](file:///c:/Users/kamal/Documents/n1/SECURITY.md)**: Protection configurations.
-- **[DECISIONS.md](file:///c:/Users/kamal/Documents/n1/DECISIONS.md)**: Architecture design indices.
-- **[AUDIT_REPORT.md](file:///c:/Users/kamal/Documents/n1/AUDIT_REPORT.md)**: Repository audit log reports.
+- **[API.md](file:///c:/Users/kamal/Documents/n1/docs/API.md)**: Standard REST endpoint specifications.
+- **[ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/docs/ENVIRONMENT.md)**: Environment variable definitions.
+- **[INSTALL.md](file:///c:/Users/kamal/Documents/n1/docs/INSTALL.md)**: Setup and pairing guides.
+- **[DEPLOYMENT.md](file:///c:/Users/kamal/Documents/n1/docs/DEPLOYMENT.md)**: Vercel & VPS deployment manuals.
+- **[SYSTEM_REQUIREMENTS.md](file:///c:/Users/kamal/Documents/n1/docs/SYSTEM_REQUIREMENTS.md)**: Device compatibility tables.
+- **[DEPENDENCIES.md](file:///c:/Users/kamal/Documents/n1/docs/DEPENDENCIES.md)**: Production dependencies catalogue.
+- **[THIRD_PARTY_LICENSES.md](file:///c:/Users/kamal/Documents/n1/docs/THIRD_PARTY_LICENSES.md)**: Dependency licenses.
+- **[FEATURES.md](file:///c:/Users/kamal/Documents/n1/docs/FEATURES.md)**: Project features breakdown.
+- **[MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/docs/MAINTAINERS.md)**: Code owners and release flows.
+- **[ROADMAP.md](file:///c:/Users/kamal/Documents/n1/docs/ROADMAP.md)**: Development roadmap.
+- **[SECURITY.md](file:///c:/Users/kamal/Documents/n1/docs/SECURITY.md)**: Protection configurations.
+- **[DECISIONS.md](file:///c:/Users/kamal/Documents/n1/docs/DECISIONS.md)**: Architecture design indices.
+- **[AUDIT_REPORT.md](file:///c:/Users/kamal/Documents/n1/docs/AUDIT_REPORT.md)**: Repository audit log reports.
 
 ---
 

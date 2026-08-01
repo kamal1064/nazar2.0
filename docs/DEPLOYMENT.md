@@ -40,7 +40,7 @@ Vercel hosts the front-end static modules (`index.html`, `app.js`, `style.css`, 
 2. Open the [Vercel Dashboard](https://vercel.com) and click **Add New Project**.
 3. Import your `nazar2.0` repository.
 4. Set the **Framework Preset** to **Other** (Vercel will detect `package.json` and build scripts automatically).
-5. In **Environment Variables**, add the configurations from [ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/ENVIRONMENT.md):
+5. In **Environment Variables**, add the configurations from [ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/docs/ENVIRONMENT.md):
    - `MONGODB_URI` & `MONGODB_DB_NAME`
    - `GEMINI_API_KEY_1` to `4` (at least `1` required)
    - `GROQ_API_KEY_1` & `GROQ_API_KEY_2`

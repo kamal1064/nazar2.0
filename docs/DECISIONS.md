@@ -14,4 +14,4 @@ For the complete details of each architectural design decision, refer to the cor
 | **[ADR-0004](file:///c:/Users/kamal/Documents/n1/docs/adr/0004-mongodb-choice.md)** | **MongoDB for Session, Settings & Key Quotas** | 2026-06-20 | Persistent DB store supporting schema validation and atomic increments. |
 
 ---
-*For questions regarding these architectural decisions or to propose updates, please check [MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/MAINTAINERS.md) and open a design review request.*
+*For questions regarding these architectural decisions or to propose updates, please check [MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/docs/MAINTAINERS.md) and open a design review request.*

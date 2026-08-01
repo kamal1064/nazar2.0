@@ -27,20 +27,20 @@
 
 ### Newly Created Files
 - [docs/README.md](file:///c:/Users/kamal/Documents/n1/docs/README.md) (Master docs index)
-- [DECISIONS.md](file:///c:/Users/kamal/Documents/n1/DECISIONS.md) (ADR index reference)
+- [DECISIONS.md](file:///c:/Users/kamal/Documents/n1/docs/DECISIONS.md) (ADR index reference)
 - [docs/adr/0001-gemini-for-vision.md](file:///c:/Users/kamal/Documents/n1/docs/adr/0001-gemini-for-vision.md) (ADR Gemini)
 - [docs/adr/0002-groq-for-voice.md](file:///c:/Users/kamal/Documents/n1/docs/adr/0002-groq-for-voice.md) (ADR Groq Llama)
 - [docs/adr/0003-baileys-over-openwa.md](file:///c:/Users/kamal/Documents/n1/docs/adr/0003-baileys-over-openwa.md) (ADR WhatsApp microservice)
 - [docs/adr/0004-mongodb-choice.md](file:///c:/Users/kamal/Documents/n1/docs/adr/0004-mongodb-choice.md) (ADR Database)
-- [DEPENDENCIES.md](file:///c:/Users/kamal/Documents/n1/DEPENDENCIES.md) (Dependency tracking specifications)
-- [ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/ENVIRONMENT.md) (Environment configuration logs)
-- [PROJECT_STRUCTURE.md](file:///c:/Users/kamal/Documents/n1/PROJECT_STRUCTURE.md) (Folder map directories)
-- [MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/MAINTAINERS.md) (Owners and releases guide)
-- [FEATURES.md](file:///c:/Users/kamal/Documents/n1/FEATURES.md) (Feature catalogue specs)
-- [SYSTEM_REQUIREMENTS.md](file:///c:/Users/kamal/Documents/n1/SYSTEM_REQUIREMENTS.md) (Compatibility tables)
-- [API.md](file:///c:/Users/kamal/Documents/n1/API.md) (REST endpoint schemas)
-- [THIRD_PARTY_LICENSES.md](file:///c:/Users/kamal/Documents/n1/THIRD_PARTY_LICENSES.md) (License audit report)
-- [CODEBASE_STATISTICS.md](file:///c:/Users/kamal/Documents/n1/CODEBASE_STATISTICS.md) (Lines of code and statistics metrics)
+- [DEPENDENCIES.md](file:///c:/Users/kamal/Documents/n1/docs/DEPENDENCIES.md) (Dependency tracking specifications)
+- [ENVIRONMENT.md](file:///c:/Users/kamal/Documents/n1/docs/ENVIRONMENT.md) (Environment configuration logs)
+- [PROJECT_STRUCTURE.md](file:///c:/Users/kamal/Documents/n1/docs/PROJECT_STRUCTURE.md) (Folder map directories)
+- [MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/docs/MAINTAINERS.md) (Owners and releases guide)
+- [FEATURES.md](file:///c:/Users/kamal/Documents/n1/docs/FEATURES.md) (Feature catalogue specs)
+- [SYSTEM_REQUIREMENTS.md](file:///c:/Users/kamal/Documents/n1/docs/SYSTEM_REQUIREMENTS.md) (Compatibility tables)
+- [API.md](file:///c:/Users/kamal/Documents/n1/docs/API.md) (REST endpoint schemas)
+- [THIRD_PARTY_LICENSES.md](file:///c:/Users/kamal/Documents/n1/docs/THIRD_PARTY_LICENSES.md) (License audit report)
+- [CODEBASE_STATISTICS.md](file:///c:/Users/kamal/Documents/n1/docs/CODEBASE_STATISTICS.md) (Lines of code and statistics metrics)
 - [whatsapp-service/README.md](file:///c:/Users/kamal/Documents/n1/whatsapp-service/README.md) (Microservice setup manual)
 - [LICENSE](file:///c:/Users/kamal/Documents/n1/LICENSE) (Root ISC text file)
 - [.gitattributes](file:///c:/Users/kamal/Documents/n1/.gitattributes) (Line-ending normalization rules)
@@ -50,7 +50,7 @@
 ### Modified Files
 - [README.md](file:///c:/Users/kamal/Documents/n1/README.md) (Complete overhaul with badges and system graphics flowcharts)
 - [voice/ARCHITECTURE.md](file:///c:/Users/kamal/Documents/n1/voice/ARCHITECTURE.md) (Updated flows, directories, and diagrams to reflect Groq migration)
-- [NAZAR_Exhibition_Guide.md](file:///c:/Users/kamal/Documents/n1/NAZAR_Exhibition_Guide.md) (Replaced legacy voice Gemini references with Groq classifications)
+- [NAZAR_Exhibition_Guide.md](file:///c:/Users/kamal/Documents/n1/docs/NAZAR_Exhibition_Guide.md) (Replaced legacy voice Gemini references with Groq classifications)
 
 ---
 

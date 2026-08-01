@@ -33,7 +33,7 @@ If you identify a security vulnerability in NAZAR, please report it to us immedi
 
 ### Reporting Steps:
 1. Do **not** open a public GitHub issue reporting the security leak.
-2. Email the lead architect directly (refer to the contacts in [MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/MAINTAINERS.md)).
+2. Email the lead architect directly (refer to the contacts in [MAINTAINERS.md](file:///c:/Users/kamal/Documents/n1/docs/MAINTAINERS.md)).
 3. Include:
    - Description of the vulnerability.
    - Detailed proof of concept or steps to reproduce the leak.
